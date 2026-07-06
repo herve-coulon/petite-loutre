@@ -85,6 +85,7 @@ export function newRecords() {
     treasures: 0,
     wins: 0,
     battles: 0,
+    questsDone: 0,
     achievements: []
   };
 }

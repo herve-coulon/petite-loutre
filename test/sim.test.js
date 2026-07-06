@@ -80,10 +80,10 @@ test('œuf : éclot après HATCH_MS', () => {
 test('éveillée 10 h : décroissance exacte', () => {
   const s = babyState();
   stepSim(s, 10 * H, { simNow: T0 + 10 * H, rnd: noLuck });
-  assert.equal(Math.round(s.hunger), 30);  // 80 - 5*10
-  assert.equal(Math.round(s.fun), 40);     // 80 - 4*10
-  assert.equal(Math.round(s.energy), 55);  // 80 - 2.5*10
-  assert.equal(Math.round(s.clean), 80);   // 100 - 2*10
+  assert.equal(Math.round(s.hunger), 20);  // 80 - 6*10
+  assert.equal(Math.round(s.fun), 30);     // 80 - 5*10
+  assert.equal(Math.round(s.energy), 50);  // 80 - 3*10
+  assert.equal(Math.round(s.clean), 75);   // 100 - 2.5*10
 });
 
 test('les jauges ne passent jamais sous 0', () => {
@@ -166,7 +166,7 @@ test('hors-ligne 10 h : même décroissance qu en direct', () => {
   s.lastTick = T0;
   const { elapsed } = simulateOffline(s, T0 + 10 * H, noLuck);
   assert.equal(elapsed, 10 * H);
-  assert.equal(Math.round(s.hunger), 30);
+  assert.equal(Math.round(s.hunger), 20);
   assert.equal(s.lastTick, T0 + 10 * H);
 });
 

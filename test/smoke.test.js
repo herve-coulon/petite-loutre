@@ -159,7 +159,7 @@ test('garde-robe : déblocage par records + équipement', () => {
 test('succès : écran + records affichés', () => {
   $('b-ach').click();
   assert.ok(!$('ovl-ach').classList.contains('hidden'));
-  assert.equal($('ach-list').querySelectorAll('.row-item').length, 11);
+  assert.equal($('ach-list').querySelectorAll('.row-item').length, 15, '3 quêtes + 12 succès');
   assert.match($('rec-line').textContent, /Records/);
   $('btn-ach-close').click();
 });

@@ -25,7 +25,9 @@ export const ACHIEVEMENTS = [
   { id: 'plongeuse', icon: '🤿', name: 'Chasseuse de trésors', desc: 'Rapporter un trésor de plongée',
     test: (s, r) => r.treasures >= 1 },
   { id: 'collection', icon: '🌈', name: 'Collectionneuse', desc: 'Débloquer tous les pelages',
-    test: (s, r) => unlockedFurs(r).length === FURS.length }
+    test: (s, r) => unlockedFurs(r).length === FURS.length },
+  { id: 'assidue', icon: '📅', name: 'Assidue', desc: 'Terminer 10 quêtes du jour',
+    test: (s, r) => (r.questsDone || 0) >= 10 }
 ];
 
 /** Marque les succès nouvellement obtenus dans rec et les retourne. */

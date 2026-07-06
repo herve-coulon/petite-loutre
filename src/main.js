@@ -1,5 +1,6 @@
 // Orchestrateur : relie simulation, rendu, UI, audio et PWA.
-import { SEC, MIN, clamp } from './constants.js';
+import { SEC, MIN, clamp, TREAT_CD, DIVE_MS } from './constants.js';
+import { bumpQuest, completedQuests, ensureDaily } from './quests.js';
 import {
   newState, saveState, loadState, clearSave,
   loadRecords, saveRecords, exportSave, importSave
@@ -59,7 +60,7 @@ const isChildPlus = () => s && (s.stage === 'child' || s.stage === 'adult');
 function actTreat() {
   if (busy() || s.sleeping || !isChildPlus()) return;
   const t = now();
-  const CD = 2 * 60 * MIN;
+  const CD = TREAT_CD;
   if (t - (s.lastTreat || 0) < CD) {
     const left = Math.ceil((CD - (t - s.lastTreat)) / MIN);
     ui.log('Plus de friandises pour l\'instant… (encore ' + left + ' min)');
@@ -73,14 +74,15 @@ function actTreat() {
   sfx.happy();
   ui.log(s.name + ' savoure sa brochette de baies ! 🍡');
   afterAct();
+  quest('treats');
 }
 
 function actDive() {
   if (busy() || s.sleeping || s.stage !== 'adult') return;
   press();
-  s.divingUntil = now() + 30 * MIN;
+  s.divingUntil = now() + DIVE_MS;
   sfx.wash();
-  ui.log(s.name + ' plonge chercher un trésor… retour dans 30 min ! 🤿');
+  ui.log(s.name + ' plonge chercher un trésor… retour dans 15 min ! 🤿');
   afterAct();
 }
 
@@ -109,7 +111,7 @@ function actFeed() {
   sfx.eat();
   ui.log('Miam ! ' + s.name + ' dévore un poisson frais. 🐟');
   afterAct();
-  checkUnlocks();
+  quest('meals');
 }
 
 function actWash() {
@@ -124,7 +126,7 @@ function actWash() {
   sfx.wash();
   ui.log(hadPoop ? 'Grand nettoyage ! Tout est propre. ✨' : s.name + ' barbote dans son bain. 🫧');
   afterAct();
-  checkUnlocks();
+  quest('washes');
 }
 
 function actSleep() {
@@ -134,7 +136,11 @@ function actSleep() {
   if (s.sleeping) {
     rec.sleepsTotal++;
     sfx.sleep(); ui.log(s.name + ' se blottit pour dormir… 💤');
-  } else { sfx.press(); ui.log(s.name + ' se réveille et s\'étire.'); }
+    afterAct();
+    quest('sleeps');
+    return;
+  }
+  sfx.press(); ui.log(s.name + ' se réveille et s\'étire.');
   afterAct();
   checkUnlocks();
 }
@@ -173,6 +179,7 @@ function pet() {
     s.fun = clamp(s.fun + 3, 0, 100);
     sfx.happy();
     ui.log(s.name + ' adore les caresses ! 💛');
+    quest('pets');
   } else {
     sfx.press();
   }
@@ -203,7 +210,8 @@ function endGame(res) {
   else { sfx.sad(); ui.log('Aucun poisson… ils étaient rusés aujourd\'hui.'); }
   persist();
   ui.updateHUD(s, mg);
-  checkUnlocks();
+  quest('games');
+  if (sc > 0) quest('fish', sc);
 }
 
 /* ---------------- Canvas (pêche, caresses, œuf) ---------------- */
@@ -250,6 +258,20 @@ function checkUnlocks() {
   persistRec();
 }
 
+/** Progression de quête + récompense immédiate si terminée. */
+function quest(key, n = 1) {
+  if (!s || s.stage === 'egg' || s.gameOver) return;
+  bumpQuest(s, key, n, now());
+  for (const q of completedQuests(s, rec, now())) {
+    s.fun = clamp(s.fun + 10, 0, 100);
+    R.spawn('heart', s.stage);
+    ui.toast(q.icon + ' Quête du jour réussie : ' + q.label + ' !');
+    sfx.hatch(); vibrate([10, 30, 10]);
+  }
+  persistRec();
+  checkUnlocks();
+}
+
 /* ---------------- Cycle de vie ---------------- */
 function startNew() {
   s = newState(now());
@@ -277,6 +299,7 @@ function tick() {
     applyEvents(stepSim(s, rawDt, { simNow: t }));
   }
   if (s.divingUntil && t >= s.divingUntil && !s.gameOver) resolveDive();
+  if (s.stage !== 'egg' && ensureDaily(s, t)) persist(); // nouvelles quêtes du jour
   ui.updateHUD(s, mg);
   if (t - lastSave > 5 * SEC) {
     lastSave = t;
@@ -377,6 +400,7 @@ function boot() {
     persistRec();
     sfx.evolve(); vibrate([20, 40, 20]);
     ui.updateBattleUI(battle);
+    quest('battles');
   });
   const doMove = (id) => {
     if (!battle || battle.over) return;
@@ -440,7 +464,8 @@ function boot() {
   // Succès
   $('b-ach').addEventListener('click', () => {
     sfx.press();
-    ui.renderAchievements(rec);
+    if (s && s.stage !== 'egg') ensureDaily(s, now());
+    ui.renderAchievements(rec, s);
     ui.showOverlay('ovl-ach');
   });
   $('btn-ach-close').addEventListener('click', () => ui.hideOverlay('ovl-ach'));

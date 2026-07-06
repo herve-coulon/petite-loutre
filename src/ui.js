@@ -4,6 +4,7 @@ import { ageMs } from './sim.js';
 import { HATS, unlockedHats } from './accessories.js';
 import { FURS, DECORS, unlockedFurs, unlockedDecors } from './skins.js';
 import { ACHIEVEMENTS } from './achievements.js';
+import { dailyQuests } from './quests.js';
 
 const $ = id => document.getElementById(id);
 
@@ -148,9 +149,30 @@ export function updateBattleUI(b) {
 }
 
 /* ---------------- Succès & records ---------------- */
-export function renderAchievements(rec) {
+export function renderAchievements(rec, s) {
   const list = $('ach-list');
   list.innerHTML = '';
+
+  // Quêtes du jour en tête
+  if (s && s.qDaily) {
+    const t = document.createElement('p');
+    t.className = 'small'; t.textContent = '— Quêtes du jour —';
+    list.appendChild(t);
+    for (const q of dailyQuests(s.qDaily.date)) {
+      const done = s.qDaily.done.includes(q.id);
+      const prog = Math.min(s.qDaily.progress[q.key] || 0, q.target);
+      const div = document.createElement('div');
+      div.className = 'row-item' + (done ? ' equipped' : '');
+      div.style.cursor = 'default';
+      div.innerHTML = '<span class="ic2">' + q.icon + '</span><div>' + q.label +
+        '<small>' + (done ? 'Terminée ! +10 humeur' : prog + ' / ' + q.target) + '</small></div>' +
+        (done ? '<span class="tag">✓</span>' : '');
+      list.appendChild(div);
+    }
+    const t2 = document.createElement('p');
+    t2.className = 'small'; t2.textContent = '— Succès —';
+    list.appendChild(t2);
+  }
   for (const a of ACHIEVEMENTS) {
     const ok = rec.achievements.includes(a.id);
     const div = document.createElement('div');
