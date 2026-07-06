@@ -304,8 +304,13 @@ function openPhoto() {
   let url = '';
   try { url = cardCv && cardCv.toDataURL('image/png'); } catch (e) {}
   $('photo-img').src = url || '';
-  // le partage natif n'existe pas partout (desktop) -> bouton masqué, il reste "Enregistrer"
-  $('btn-photo-share').classList.toggle('hidden', typeof navigator.share !== 'function');
+  // un seul bon chemin par plateforme :
+  // - mobile (partage natif dispo) : PARTAGER — la feuille iOS/Android propose
+  //   « Enregistrer l'image » ; le téléchargement direct est ignoré en PWA iOS
+  // - desktop : ENREGISTRER (téléchargement classique)
+  const hasShare = typeof navigator.share === 'function';
+  $('btn-photo-share').classList.toggle('hidden', !hasShare);
+  $('btn-photo-save').classList.toggle('hidden', hasShare);
   ui.showOverlay('ovl-photo');
 }
 
