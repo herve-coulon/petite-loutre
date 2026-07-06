@@ -3,6 +3,7 @@ import { PAL, SPRITES } from './sprites.js';
 import { HATCH_MS, MIN, SEC } from './constants.js';
 import { hatById } from './accessories.js';
 import { furById } from './skins.js';
+import { moodOf, pickIdle, canIdle, IDLE_FRAMES } from './mood.js';
 
 export const CANVAS_W = 160, CANVAS_H = 120;
 export const OTTER_X = 64;
@@ -29,6 +30,10 @@ export function makeRenderer(cv) {
   const ctx = cv.getContext('2d');
   let particles = [];
   let squashUntil = 0;
+  let idleAnim = null;                              // {kind, start} — petite manie en cours
+  let nextIdleAt = 400 + Math.random() * 700;       // en frames
+  let jumpFish = null;                              // {x, dir, start} — poisson qui saute
+  let nextJumpAt = 300 + Math.random() * 500;
 
   function drawSprite(rows, x, y, sc = 2, palOver = null, flip = false) {
     for (let j = 0; j < rows.length; j++) {
@@ -107,6 +112,123 @@ export function makeRenderer(cv) {
   /** Squash & stretch au prochain rendu (caresse, réception d'un soin…). */
   function squash() { squashUntil = Date.now() + SQUASH_MS; }
 
+  /* ---------------- Vie du décor : libellule, luciole, poissons sauteurs ---------------- */
+  function drawAmbient(mg, frame, night) {
+    if (!night) {
+      // libellule qui zigzague au-dessus de la berge
+      const ax = 80 + Math.sin(frame / 37) * 55 + Math.sin(frame / 13) * 8;
+      const ay = 68 + Math.sin(frame / 23) * 7;
+      ctx.fillStyle = '#3f9fb8';
+      ctx.fillRect(ax, ay, 4, 1);
+      ctx.fillStyle = 'rgba(255,255,255,.9)';
+      const w = (frame >> 1) % 2; // battement d'ailes
+      ctx.fillRect(ax + 1, ay - 1 - w, 2, 1);
+      ctx.fillRect(ax + 1, ay + 1 + w, 2, 1);
+    } else {
+      // luciole qui pulse doucement
+      const ax = 46 + Math.sin(frame / 41) * 34;
+      const ay = 72 + Math.sin(frame / 17) * 6;
+      ctx.fillStyle = (frame >> 3) % 2 ? '#ffd94a' : '#f2913d';
+      ctx.fillRect(ax, ay, 2, 2);
+    }
+
+    // poisson qui bondit hors de la rivière (jamais pendant la pêche : ce serait un leurre)
+    if (mg) { jumpFish = null; return; }
+    if (!jumpFish && frame >= nextJumpAt) {
+      jumpFish = { x: 16 + Math.random() * 118, dir: Math.random() < 0.5 ? -1 : 1, start: frame };
+      splashAt(jumpFish.x, 108);
+    }
+    if (jumpFish) {
+      const p = (frame - jumpFish.start) / 46;
+      if (p >= 1) {
+        splashAt(jumpFish.x + jumpFish.dir * 14, 108);
+        jumpFish = null;
+        nextJumpAt = frame + 420 + Math.random() * 600;
+      } else {
+        const fx2 = jumpFish.x + jumpFish.dir * p * 14;
+        const fy2 = 108 - Math.sin(p * Math.PI) * 15;
+        drawSprite(SPRITES.fish, fx2, fy2, 1, null, jumpFish.dir > 0);
+      }
+    }
+  }
+
+  /* ---------------- Petites manies (idle) ---------------- */
+  function drawIdle(kind, t, ox, oy, fur) {
+    const B = (fur && fur.B) || PAL.B, D = (fur && fur.D) || PAL.D;
+    if (kind === 'gratte') {
+      // patte qui gratte le flanc, un nuage de poussière s'échappe
+      const up = (t >> 2) % 2;
+      ctx.fillStyle = B;
+      ctx.fillRect(ox - 2, oy + 18 - up, 4, 6);
+      ctx.fillStyle = D;
+      ctx.fillRect(ox - 2, oy + 23 - up, 4, 1);
+      if ((t >> 3) % 2) {
+        ctx.fillStyle = '#c9bfae';
+        ctx.fillRect(ox - 5, oy + 22, 1, 1);
+        ctx.fillRect(ox - 7, oy + 19, 1, 1);
+      }
+    } else if (kind === 'caillou') {
+      // jongle avec un caillou (deux lancers par cycle)
+      const half = IDLE_FRAMES.caillou / 2;
+      const p = (t % half) / half;
+      const py = Math.sin(p * Math.PI) * 14;
+      ctx.fillStyle = '#9a9a8c';
+      ctx.fillRect(ox + 14, oy + 8 - py, 3, 3);
+      ctx.fillStyle = '#6e6e62';
+      ctx.fillRect(ox + 15, oy + 10 - py, 2, 1);
+    }
+    // 'baille' : tout se joue sur le visage (yeux fermés, grande bouche)
+  }
+
+  /* ---------------- Visage selon l'humeur ---------------- */
+  function drawFace(s, mood, ox, oy, frame, fur, yawning) {
+    if (!mood || mood === 'dodo') return; // paupières de sommeil gérées ailleurs
+    const baby = s.stage === 'baby';
+    const ey = oy + (baby ? 10 : 8);   // ligne des yeux
+    const my = oy + (baby ? 14 : 12);  // truffe (KK)
+    const lidCol = (fur && fur.B) || PAL.B;
+
+    if (yawning) {
+      ctx.fillStyle = lidCol;
+      ctx.fillRect(ox + 4, ey, 6, 2); ctx.fillRect(ox + 22, ey, 6, 2);
+      ctx.fillStyle = PAL.K; ctx.fillRect(ox + 13, my + 2, 6, 5);
+      ctx.fillStyle = PAL.P; ctx.fillRect(ox + 14, my + 5, 4, 2);
+      return;
+    }
+    if (mood === 'contente') {
+      // grand sourire + joues roses
+      ctx.fillStyle = PAL.K;
+      ctx.fillRect(ox + 11, my + 2, 2, 2);
+      ctx.fillRect(ox + 19, my + 2, 2, 2);
+      ctx.fillRect(ox + 13, my + 4, 6, 2);
+      ctx.fillStyle = PAL.P;
+      ctx.fillRect(ox + 4, my, 2, 2); ctx.fillRect(ox + 26, my, 2, 2);
+    } else if (mood === 'affamee') {
+      // bouche ouverte qui réclame, sourcils inquiets, goutte d'envie
+      ctx.fillStyle = PAL.K; ctx.fillRect(ox + 13, my + 3, 6, 4);
+      ctx.fillStyle = PAL.P; ctx.fillRect(ox + 14, my + 5, 4, 2);
+      ctx.fillStyle = PAL.D;
+      ctx.fillRect(ox + 4, ey - 2, 3, 1); ctx.fillRect(ox + 7, ey - 3, 3, 1);
+      ctx.fillRect(ox + 25, ey - 2, 3, 1); ctx.fillRect(ox + 22, ey - 3, 3, 1);
+      if ((frame >> 4) % 2) { ctx.fillStyle = PAL.W; ctx.fillRect(ox + 20, my + 6, 1, 2); }
+    } else if (mood === 'boudeuse') {
+      // moue à l'envers + sourcils froncés
+      ctx.fillStyle = PAL.K;
+      ctx.fillRect(ox + 13, my + 2, 6, 2);
+      ctx.fillRect(ox + 11, my + 4, 2, 2);
+      ctx.fillRect(ox + 19, my + 4, 2, 2);
+      ctx.fillStyle = PAL.D;
+      ctx.fillRect(ox + 4, ey - 3, 3, 1); ctx.fillRect(ox + 7, ey - 2, 3, 1);
+      ctx.fillRect(ox + 25, ey - 3, 3, 1); ctx.fillRect(ox + 22, ey - 2, 3, 1);
+    } else if (mood === 'malade') {
+      // yeux mi-clos, petite bouche tombante
+      ctx.fillStyle = lidCol;
+      ctx.fillRect(ox + 4, ey, 6, 1); ctx.fillRect(ox + 22, ey, 6, 1);
+      ctx.fillStyle = PAL.K; ctx.fillRect(ox + 13, my + 3, 6, 1);
+    }
+    // 'neutre' : le sprite de base suffit
+  }
+
   function skyColors(hour) {
     const night = hour >= 21 || hour < 7;
     const dusk = (hour >= 19 && hour < 21) || (hour >= 7 && hour < 8);
@@ -164,6 +286,9 @@ export function makeRenderer(cv) {
 
     const fur = furById(s.fur).map;
 
+    // vie du décor (libellule le jour, luciole la nuit, poissons bondissants)
+    drawAmbient(mg, frame, c.night);
+
     // adversaire de combat (dessiné à droite, en miroir)
     if (fx.foe) {
       const fspr = SPRITES[fx.foe.stage] || SPRITES.baby;
@@ -198,12 +323,23 @@ export function makeRenderer(cv) {
       }
     });
 
+    // humeur du moment + petites manies quand tout va bien
+    const mood = moodOf(s);
+    const calm = !mg && !fx.foe && !fx.diving && !s.sleeping && s.stage !== 'egg' && canIdle(mood);
+    if (idleAnim && (!calm || frame - idleAnim.start >= IDLE_FRAMES[idleAnim.kind])) {
+      idleAnim = null;
+      nextIdleAt = frame + 500 + Math.random() * 900;
+    }
+    if (!idleAnim && calm && frame >= nextIdleAt) idleAnim = { kind: pickIdle(), start: frame };
+    const yawning = !!idleAnim && idleAnim.kind === 'baille';
+
     // loutre / œuf
     const spr = SPRITES[s.stage];
-    const bounce = (s.sleeping || s.stage === 'egg') ? 0 : ((frame >> 4) % 2 === 0 ? 0 : -2);
+    const bounce = (s.sleeping || s.stage === 'egg' || yawning) ? 0 : ((frame >> 4) % 2 === 0 ? 0 : -2);
     let ox = OTTER_X, oy = otterY(s.stage) + bounce;
     if (s.stage === 'egg' && fx.wobble) ox += ((frame >> 1) % 2 === 0 ? -2 : 2);
     if (s.sick && (frame >> 2) % 6 === 0) ox += 1;
+    if (idleAnim && idleAnim.kind === 'gratte') ox += (frame >> 2) % 2; // frisson de grattage
 
     // squash & stretch (ancré aux pieds, tout le corps + chapeau suivent)
     const sqT = 1 - Math.max(0, squashUntil - Date.now()) / SQUASH_MS;
@@ -224,6 +360,10 @@ export function makeRenderer(cv) {
       const hat = hatById(s.hat);
       if (hat) drawSprite(hat.rows, ox, oy - hat.rows.length * 2 + 4, 2);
     }
+
+    // manie en cours (grattage, caillou…) puis visage de l'humeur
+    if (idleAnim) drawIdle(idleAnim.kind, frame - idleAnim.start, ox, oy, fur);
+    if (s.stage !== 'egg') drawFace(s, mood, ox, oy, frame, fur, yawning);
 
     // paupières (sommeil / clignement)
     if (s.stage !== 'egg') {
