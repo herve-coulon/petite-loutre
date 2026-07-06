@@ -41,10 +41,10 @@ function schedule() {
     if (nextT < ac.currentTime - 0.1) nextT = ac.currentTime + 0.05; // retard (onglet gelé)
     if (!isMuted()) {
       const m = MELODY[step];
-      if (m) note(ac, night ? m / 2 : m, nextT, dur * 0.92, night ? 'triangle' : 'square', night ? 0.02 : 0.022);
+      if (m) note(ac, night ? m / 2 : m, nextT, dur * 0.92, night ? 'triangle' : 'square', night ? 0.045 : 0.05);
       if (step % 4 === 0) {
         const b = BASS[(step / 4) | 0];
-        note(ac, b, nextT, dur * 3.6, 'triangle', 0.03);
+        note(ac, b, nextT, dur * 3.6, 'triangle', 0.06);
       }
     }
     nextT += dur;

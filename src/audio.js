@@ -20,7 +20,9 @@ function ctx() {
 /** Contexte audio partagé (musique + sfx : un seul AudioContext, iOS oblige). */
 export function audioCtx() { return ctx(); }
 
-export function beep(freq, dur = 0.09, delay = 0, type = 'square', vol = 0.045) {
+// v2.5.1 : volume par défaut remonté — sur un haut-parleur de téléphone,
+// l'ancien réglage (0.045) était à peine audible.
+export function beep(freq, dur = 0.09, delay = 0, type = 'square', vol = 0.08) {
   if (muted) return;
   const ac = ctx(); if (!ac) return;
   try {
