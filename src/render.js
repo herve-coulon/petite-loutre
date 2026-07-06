@@ -13,9 +13,22 @@ export function otterY(stage) {
   return GROUND_Y - spr.length * 2 + (stage === 'egg' ? 4 : 0);
 }
 
+/* ---------------- Game feel : squash & stretch (fonction pure, testée) ---------------- */
+export const SQUASH_MS = 320;
+/** Enveloppe d'écrasement : t=0 écrasée, rebond étiré amorti, t>=1 repos exact. */
+export function squashScale(t) {
+  if (!(t >= 0) || t >= 1) return { sx: 1, sy: 1 };
+  const amp = 0.3 * (1 - t);
+  const sy = 1 - amp * Math.cos(t * Math.PI * 3);
+  return { sx: 1 + (1 - sy) * 0.7, sy };
+}
+
+const CONFETTI_COLS = ['#e5484d', '#f2c14e', '#5fc9e0', '#8ad05f', '#e8608a', '#ffffff'];
+
 export function makeRenderer(cv) {
   const ctx = cv.getContext('2d');
   let particles = [];
+  let squashUntil = 0;
 
   function drawSprite(rows, x, y, sc = 2, palOver = null, flip = false) {
     for (let j = 0; j < rows.length; j++) {
@@ -69,6 +82,30 @@ export function makeRenderer(cv) {
   function splashAt(x, y) {
     particles.push({ x, y, vx: 0, vy: -0.6, life: 20, kind: 'splash' });
   }
+
+  /** Rafale généreuse : confettis qui retombent, étincelles qui montent… */
+  function burst(kind, n, stage) {
+    const y0 = (stage === 'egg' ? 78 : otterY(stage)) + 10;
+    for (let i = 0; i < n; i++) {
+      if (kind === 'confetti') {
+        particles.push({
+          x: OTTER_X + 16 - 22 + Math.random() * 44, y: y0 - 26 - Math.random() * 14,
+          vx: -0.9 + Math.random() * 1.8, vy: -(0.8 + Math.random() * 1.2),
+          g: 0.045, life: 55 + Math.floor(Math.random() * 30), kind,
+          col: CONFETTI_COLS[i % CONFETTI_COLS.length]
+        });
+      } else if (kind === 'sparkle') {
+        particles.push({
+          x: OTTER_X + 16 - 20 + Math.random() * 40, y: y0 - 6 - Math.random() * 24,
+          vx: -0.25 + Math.random() * 0.5, vy: -(0.15 + Math.random() * 0.35),
+          life: 30 + Math.floor(Math.random() * 16), kind
+        });
+      } else spawn(kind, stage);
+    }
+  }
+
+  /** Squash & stretch au prochain rendu (caresse, réception d'un soin…). */
+  function squash() { squashUntil = Date.now() + SQUASH_MS; }
 
   function skyColors(hour) {
     const night = hour >= 21 || hour < 7;
@@ -167,6 +204,19 @@ export function makeRenderer(cv) {
     let ox = OTTER_X, oy = otterY(s.stage) + bounce;
     if (s.stage === 'egg' && fx.wobble) ox += ((frame >> 1) % 2 === 0 ? -2 : 2);
     if (s.sick && (frame >> 2) % 6 === 0) ox += 1;
+
+    // squash & stretch (ancré aux pieds, tout le corps + chapeau suivent)
+    const sqT = 1 - Math.max(0, squashUntil - Date.now()) / SQUASH_MS;
+    const squashing = sqT < 1 && s.stage !== 'egg';
+    if (squashing) {
+      const { sx, sy } = squashScale(sqT);
+      const cx = ox + 16, cyf = otterY(s.stage) + spr.length * 2;
+      ctx.save();
+      ctx.translate(cx, cyf);
+      ctx.scale(sx, sy);
+      ctx.translate(-cx, -cyf);
+    }
+
     drawSprite(spr, ox, oy, 2, s.stage === 'egg' ? null : fur);
 
     // chapeau équipé (posé sur la tête, suit le rebond)
@@ -213,6 +263,8 @@ export function makeRenderer(cv) {
       }
     }
 
+    if (squashing) ctx.restore();
+
     // décompte éclosion
     if (s.stage === 'egg') {
       const left = Math.max(0, HATCH_MS - (Date.now() - s.born));
@@ -241,6 +293,7 @@ export function makeRenderer(cv) {
   function drawParticles() {
     particles = particles.filter(p => p.life-- > 0);
     particles.forEach(p => {
+      if (p.g) p.vy += p.g; // gravité (confettis)
       p.x += p.vx; p.y += p.vy;
       if (p.kind === 'heart') drawSprite(SPRITES.heart, p.x, p.y, 1);
       else if (p.kind === 'fish') drawSprite(SPRITES.fish, p.x, p.y, 1);
@@ -250,9 +303,16 @@ export function makeRenderer(cv) {
       } else if (p.kind === 'splash') {
         ctx.fillStyle = '#cfe9ff';
         ctx.fillRect(p.x - 2, p.y, 2, 2); ctx.fillRect(p.x + 2, p.y - 2, 2, 2); ctx.fillRect(p.x, p.y - 4, 2, 2);
+      } else if (p.kind === 'confetti') {
+        ctx.fillStyle = p.col;
+        if ((p.life >> 2) % 2) ctx.fillRect(p.x, p.y, 2, 3); // virevolte
+        else ctx.fillRect(p.x - 1, p.y + 1, 3, 2);
+      } else if (p.kind === 'sparkle') {
+        ctx.fillStyle = (p.life >> 2) % 2 ? '#ffe9a8' : '#ffffff';
+        ctx.fillRect(p.x, p.y - 1, 1, 3); ctx.fillRect(p.x - 1, p.y, 3, 1);
       }
     });
   }
 
-  return { render, spawn, splashAt };
+  return { render, spawn, splashAt, burst, squash };
 }

@@ -7,7 +7,7 @@
   "scripts": {
     "start": "python3 -m http.server 8080 || npx serve .",
     "test": "npm run test:sim && npm run test:dom",
-    "test:sim": "node --test test/sim.test.js test/features.test.js test/battle.test.js",
+    "test:sim": "node --test test/sim.test.js test/features.test.js test/battle.test.js test/polish.test.js",
     "test:dom": "node --test test/smoke.test.js",
     "icons": "python3 scripts/gen-icons.py"
   },

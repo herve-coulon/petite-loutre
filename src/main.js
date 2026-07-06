@@ -34,7 +34,11 @@ const R = makeRenderer(cv);
 /* ---------------- Événements de simulation -> retours joueur ---------------- */
 function applyEvents(events, offline = false) {
   for (const ev of events) {
-    if (ev.type === 'hatch') { ui.showNaming(); if (!offline) sfx.hatch(); continue; }
+    if (ev.type === 'hatch') {
+      ui.showNaming();
+      if (!offline) { sfx.hatch(); R.burst('confetti', 26, 'egg'); }
+      continue;
+    }
     if (ev.type === 'die') {
       rec.otters++;
       rec.bestAge = Math.max(rec.bestAge, ageMs(s, s.diedAt || now()));
@@ -46,7 +50,11 @@ function applyEvents(events, offline = false) {
     if (offline) continue; // le reste est résumé au retour
     const msg = ui.liveEventMessage(ev, s);
     if (msg) ui.log(msg);
-    if (ev.type === 'evolve') { ui.toast('✨ ' + s.name + ' a grandi ! ✨'); sfx.evolve(); }
+    if (ev.type === 'evolve') {
+      ui.toast('✨ ' + s.name + ' a grandi ! ✨');
+      sfx.evolve();
+      R.burst('confetti', 40, s.stage); // pluie de confettis d'évolution
+    }
     if (ev.type === 'sick') sfx.sad();
   }
 }
@@ -70,7 +78,8 @@ function actTreat() {
   s.lastTreat = t;
   s.hunger = clamp(s.hunger + 10, 0, 100);
   s.fun = clamp(s.fun + 8, 0, 100);
-  R.spawn('heart', s.stage); R.spawn('heart', s.stage);
+  R.spawn('heart', s.stage); R.spawn('heart', s.stage); R.spawn('heart', s.stage);
+  R.burst('sparkle', 5, s.stage);
   sfx.happy();
   ui.log(s.name + ' savoure sa brochette de baies ! 🍡');
   afterAct();
@@ -93,6 +102,7 @@ function resolveDive() {
   s.hunger = clamp(s.hunger - 8, 0, 100);
   const finds = ['une perle nacrée 🦪', 'un coquillage rare 🐚', 'une pièce ancienne 🪙', 'un caillou qui brille ✨'];
   ui.log(s.name + ' remonte avec ' + finds[Math.floor(Math.random() * finds.length)] + ' !');
+  R.burst('sparkle', 10, s.stage);
   sfx.hatch(); vibrate([15, 30, 15]);
   persist();
   checkUnlocks();
@@ -107,7 +117,7 @@ function actFeed() {
   s.fed++;
   rec.mealsTotal++;
   s.nextPoop = Math.min(s.nextPoop, now() + (2 + Math.random() * 2) * 60 * MIN);
-  R.spawn('fish', s.stage); R.spawn('heart', s.stage);
+  R.spawn('fish', s.stage); R.spawn('heart', s.stage); R.spawn('heart', s.stage);
   sfx.eat();
   ui.log('Miam ! ' + s.name + ' dévore un poisson frais. 🐟');
   afterAct();
@@ -122,7 +132,8 @@ function actWash() {
   s.clean = 100;
   s.washed++;
   rec.bathsTotal++;
-  for (let i = 0; i < 6; i++) R.spawn('bubble', s.stage);
+  for (let i = 0; i < 10; i++) R.spawn('bubble', s.stage);
+  R.burst('sparkle', 4, s.stage);
   sfx.wash();
   ui.log(hadPoop ? 'Grand nettoyage ! Tout est propre. ✨' : s.name + ' barbote dans son bain. 🫧');
   afterAct();
@@ -153,6 +164,8 @@ function actHeal() {
   s.health = clamp(s.health + 20, 0, 100);
   s.healed++;
   R.spawn('heart', s.stage);
+  R.burst('sparkle', 8, s.stage);
+  R.squash();
   sfx.heal();
   ui.log('Le médicament fait effet. ' + s.name + ' va mieux ! 💊');
   afterAct();
@@ -173,10 +186,12 @@ function actWarm() {
 function pet() {
   if (busy() || s.sleeping) return;
   const t = now();
+  R.squash(); // la loutre s'écrase puis rebondit sous la caresse
   R.spawn('heart', s.stage);
   if (t - lastPet > 20 * SEC) {
     lastPet = t;
     s.fun = clamp(s.fun + 3, 0, 100);
+    R.spawn('heart', s.stage);
     sfx.happy();
     ui.log(s.name + ' adore les caresses ! 💛');
     quest('pets');
@@ -205,6 +220,8 @@ function endGame(res) {
   rec.fishTotal += sc;
   if (sc >= tot && tot >= 5) rec.perfectGames++;
   mg = null;
+  if (sc >= tot && tot >= 5) R.burst('confetti', 24, s.stage);       // partie parfaite !
+  else if (sc >= tot - 1 && sc > 0) R.burst('sparkle', 8, s.stage);
   if (sc >= tot - 1) { sfx.happy(); ui.log('Pêche royale : ' + sc + ' poisson' + (sc > 1 ? 's' : '') + ' ! ' + s.name + ' est ravie ! 🎉'); }
   else if (sc > 0) { sfx.eat(); ui.log(sc + ' poisson' + (sc > 1 ? 's' : '') + ' attrapé' + (sc > 1 ? 's' : '') + ' ! Pas mal !'); }
   else { sfx.sad(); ui.log('Aucun poisson… ils étaient rusés aujourd\'hui.'); }
@@ -245,6 +262,7 @@ function checkUnlocks() {
     if (!prevHats.has(id)) {
       const h = hatById(id);
       ui.toast('🎩 Débloqué : ' + h.name + ' !');
+      if (s && !s.gameOver && s.stage !== 'egg') R.burst('sparkle', 12, s.stage);
       sfx.evolve(); vibrate([15, 30, 15]);
     }
   }
@@ -253,6 +271,7 @@ function checkUnlocks() {
   const got = newAchievements(s, rec);
   for (const a of got) {
     ui.toast(a.icon + ' Succès : ' + a.name + ' !');
+    if (s && !s.gameOver && s.stage !== 'egg') R.burst('sparkle', 12, s.stage);
     sfx.happy(); vibrate(20);
   }
   persistRec();
@@ -265,6 +284,7 @@ function quest(key, n = 1) {
   for (const q of completedQuests(s, rec, now())) {
     s.fun = clamp(s.fun + 10, 0, 100);
     R.spawn('heart', s.stage);
+    R.burst('sparkle', 10, s.stage);
     ui.toast(q.icon + ' Quête du jour réussie : ' + q.label + ' !');
     sfx.hatch(); vibrate([10, 30, 10]);
   }
@@ -398,6 +418,7 @@ function boot() {
     battle.log.push('Le combat commence ! ' + battle.me.name + ' vs ' + battle.foe.name);
     rec.battles++;
     persistRec();
+    ui.shake(); // l'arène tremble !
     sfx.evolve(); vibrate([20, 40, 20]);
     ui.updateBattleUI(battle);
     quest('battles');

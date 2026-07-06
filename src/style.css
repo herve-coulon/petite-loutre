@@ -148,6 +148,21 @@ button.mini:active{color:var(--txt);}
 #b-install{background:linear-gradient(180deg,var(--accent),var(--accent2)); color:#241b06; font-weight:bold;}
 #ios-hint{font-size:9.5px; color:var(--dim); letter-spacing:.5px; text-align:center; margin:4px 0 0; flex:none;}
 
+/* v2.4 — game feel */
+.fill.up{animation:barup .55s steps(3);}
+@keyframes barup{
+  0%{filter:brightness(2.1) saturate(1.5);}
+  70%{filter:brightness(1.5);}
+  100%{filter:none;}
+}
+#screenwrap.shake{animation:shake .34s steps(2);}
+@keyframes shake{
+  20%{transform:translate(-3px,2px);}
+  40%{transform:translate(3px,-1px);}
+  60%{transform:translate(-2px,-2px);}
+  80%{transform:translate(2px,1px);}
+}
+
 /* Écrans confortables : look console posée sur la table */
 @media (min-width:500px) and (min-height:700px){
   body{display:flex; align-items:center; justify-content:center; padding:14px;}

@@ -27,10 +27,31 @@ export function fmtAge(s, now = Date.now()) {
   return m + ' min';
 }
 
+const barPrev = {}; // dernière valeur par jauge -> détection des remontées
 function setBar(id, v) {
   const el = $(id);
   el.style.width = clamp(v, 0, 100) + '%';
   el.classList.toggle('low', v < 20);
+  const prev = barPrev[id];
+  if (prev !== undefined && v > prev + 0.5) {
+    el.classList.remove('up');
+    void el.offsetWidth; // relance l'animation CSS
+    el.classList.add('up');
+    clearTimeout(el._up);
+    el._up = setTimeout(() => el.classList.remove('up'), 700);
+  }
+  barPrev[id] = v;
+}
+
+/** Micro-tremblement de l'écran de jeu (début de combat…). */
+export function shake() {
+  const el = $('screenwrap');
+  if (!el) return;
+  el.classList.remove('shake');
+  void el.offsetWidth;
+  el.classList.add('shake');
+  clearTimeout(el._sh);
+  el._sh = setTimeout(() => el.classList.remove('shake'), 450);
 }
 
 export function updateHUD(s, mg) {

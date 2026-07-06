@@ -175,3 +175,33 @@ test('réglages : export non vide, import round-trip', () => {
   assert.equal(L.state.name, 'Némo', 'état restauré depuis le code');
   assert.ok($('ovl-set').classList.contains('hidden'));
 });
+
+/* ---------------- v2.4 : game feel ---------------- */
+
+test('game feel : une jauge qui remonte pulse (classe .up)', () => {
+  L.state.hunger = 40;
+  tick(); // mémorise la valeur basse
+  // purge des pulses éventuels des tests précédents (timers 700 ms encore en vol)
+  $('f-hunger').classList.remove('up');
+  $('f-energy').classList.remove('up');
+  $('b-feed').click(); // faim 40 -> 70
+  assert.ok($('f-hunger').classList.contains('up'), 'la jauge remontée pulse');
+  assert.ok(!$('f-energy').classList.contains('up'), 'une jauge qui n\'a pas monté ne pulse pas');
+});
+
+test('game feel : le début de combat secoue l\'écran', () => {
+  // vieillit la loutre jusqu'au stade jeune (sinon la sim ramène stage à "baby")
+  L.state.hatchedAt = Date.now() - 25 * 3600 * 1000;
+  L.state.stage = 'child';
+  L.state.sleeping = false;
+  tick();
+  assert.equal(L.state.stage, 'child', 'stade stable après tick');
+  $('b-battle').click();
+  assert.ok(!$('ovl-battle').classList.contains('hidden'));
+  $('bt-foecode').value = $('bt-mycode').value; // duel miroir : code valide garanti
+  $('bt-start').click();
+  assert.ok(L.battle, 'combat démarré');
+  assert.ok($('screenwrap').classList.contains('shake'), 'écran secoué au gong');
+  $('bt-close').click();
+  renderOnce(); // un rendu passe (confettis/particules éventuels) sans erreur
+});
