@@ -2,13 +2,15 @@
 // Le rendu s'appuie dessus pour choisir yeux, bouche et animations d'attente.
 
 /**
- * Humeur affichée, par priorité décroissante.
+ * Humeur affichée, par priorité décroissante. Une bouderie de réveil forcé
+ * (s.grumpyUntil) impose le visage renfrogné, quelles que soient les jauges.
  * @returns {'dodo'|'malade'|'affamee'|'boudeuse'|'contente'|'neutre'|null}
  */
-export function moodOf(s) {
+export function moodOf(s, now = Date.now()) {
   if (!s || s.stage === 'egg' || s.gameOver) return null;
   if (s.sleeping) return 'dodo';
   if (s.sick) return 'malade';
+  if ((s.grumpyUntil || 0) > now) return 'boudeuse';
   if (s.hunger < 30) return 'affamee';
   if (s.fun < 30) return 'boudeuse';
   if (s.fun >= 70 && s.hunger >= 45 && s.health >= 60) return 'contente';

@@ -228,3 +228,48 @@ test('carte photo : refusée tant que l\'œuf n\'a pas éclos', () => {
   assert.ok($('ovl-photo').classList.contains('hidden'), 'pas de photo d\'un œuf');
   assert.match($('toast').textContent, /née/);
 });
+
+/* ---------------- v2.4.1 : œuf à bercer, réveil boudeur ---------------- */
+
+test('œuf : secouer le téléphone rapproche l\'éclosion (avec anti-spam)', () => {
+  assert.equal(L.state.stage, 'egg'); // hérité du test précédent
+  const born0 = L.state.born;
+  const ev = new window.Event('devicemotion');
+  ev.accelerationIncludingGravity = { x: 24, y: 3, z: 10 }; // vraie secousse (~26 m/s²)
+  window.dispatchEvent(ev);
+  assert.ok(L.state.born < born0, 'l\'éclosion se rapproche');
+  const born1 = L.state.born;
+  window.dispatchEvent(ev); // immédiatement après
+  assert.equal(L.state.born, born1, 'throttle : secouer comme un fou ne compte pas double');
+  const calm = new window.Event('devicemotion');
+  calm.accelerationIncludingGravity = { x: 0, y: 0, z: 9.8 }; // téléphone posé
+  window.dispatchEvent(calm);
+  assert.equal(L.state.born, born1, 'immobile : rien ne se passe');
+});
+
+test('réveil anticipé : elle boude (visage, HUD, humeur), un câlin la déride', () => {
+  L.forceHatch();
+  $('name-input').value = 'Plume';
+  $('btn-name').click();
+  L.state.energy = 30;
+  $('b-sleep').click(); // dodo
+  assert.equal(L.state.sleeping, true);
+  const fun0 = L.state.fun;
+  $('b-sleep').click(); // réveillée en plein rêve !
+  assert.equal(L.state.sleeping, false);
+  assert.ok(L.state.grumpyUntil > Date.now(), 'bouderie enclenchée');
+  assert.ok(L.state.fun < fun0, 'humeur entamée');
+  assert.match($('log').textContent, /boude/);
+  assert.match($('hud-stage').textContent, /😾/);
+  L.pet(); // on se fait pardonner
+  assert.equal(L.state.grumpyUntil, 0, 'câlin accepté, bouderie levée');
+});
+
+test('réveil au bon moment : pas de bouderie', () => {
+  L.state.energy = 90;
+  $('b-sleep').click();
+  assert.equal(L.state.sleeping, true);
+  $('b-sleep').click();
+  assert.equal(L.state.sleeping, false);
+  assert.equal(L.state.grumpyUntil, 0, 'énergie haute : réveil serein');
+});

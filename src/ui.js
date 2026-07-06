@@ -57,7 +57,8 @@ export function shake() {
 export function updateHUD(s, mg) {
   if (!s) return;
   $('hud-name').textContent = s.name ? s.name.toUpperCase() : '???';
-  $('hud-stage').textContent = STAGES[s.stage] + (s.sick ? ' 🤒' : '') + (s.sleeping ? ' 💤' : '');
+  const grumpy = !s.sick && !s.sleeping && (s.grumpyUntil || 0) > Date.now();
+  $('hud-stage').textContent = STAGES[s.stage] + (s.sick ? ' 🤒' : '') + (s.sleeping ? ' 💤' : '') + (grumpy ? ' 😾' : '');
   $('hud-age').textContent = fmtAge(s);
 
   const isEgg = s.stage === 'egg';

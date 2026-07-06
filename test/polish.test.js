@@ -6,6 +6,7 @@ import { squashScale, SQUASH_MS, makeRenderer } from '../src/render.js';
 import { moodOf, pickIdle, canIdle, IDLES, IDLE_FRAMES } from '../src/mood.js';
 import { cardData, drawCard, makeCard, CARD_W, CARD_H, CARD_URL } from '../src/photocard.js';
 import { newState } from '../src/state.js';
+import { stepSim } from '../src/sim.js';
 
 const T0 = 1_750_000_000_000;
 
@@ -74,6 +75,21 @@ test('humeur : contente seulement si tout va vraiment bien', () => {
   assert.equal(moodOf(otter({ fun: 90, hunger: 30 })), 'neutre', 'petit creux : plus de grand sourire');
   assert.equal(moodOf(otter({ fun: 50, hunger: 80 })), 'neutre');
   assert.equal(moodOf(otter({ fun: 90, hunger: 80, health: 40 })), 'neutre', 'santé fragile');
+});
+
+test('humeur : réveil forcé -> bouderie temporaire, prioritaire sur les jauges', () => {
+  const s = otter({ fun: 90, hunger: 80, grumpyUntil: T0 + 5 * 60000 });
+  assert.equal(moodOf(s, T0), 'boudeuse', 'boude malgré des jauges au vert');
+  assert.equal(moodOf(s, T0 + 11 * 60000), 'contente', 'la bouderie finit par passer');
+  const sick = otter({ sick: true, grumpyUntil: T0 + 5 * 60000 });
+  assert.equal(moodOf(sick, T0), 'malade', 'la maladie prime sur la bouderie');
+});
+
+test('sommeil v2.4.1 : une heure de sieste recharge à vue d\'œil', () => {
+  const s = otter({ sleeping: true, energy: 20 });
+  stepSim(s, 3600 * 1000, { simNow: T0 + 3600 * 1000, rnd: () => 0.5 });
+  assert.ok(s.energy >= 55, 'au moins +35 d\'énergie par heure (' + s.energy + ')');
+  assert.equal(s.sleeping, true, 'elle dort encore, réveil auto seulement à 100');
 });
 
 test('humeur : œuf, partie finie et état absent -> null', () => {

@@ -11,10 +11,13 @@ export const MAX_OFFLINE = 7 * 24 * H;  // rattrapage hors-ligne plafonné
 
 // Décroissance par heure (éveillée) — v2.3 : rythme plus nerveux
 export const R = { hunger: 6, fun: 5, energy: 3, clean: 2.5 };
-// Pendant le sommeil (récupération plus rapide -> on revient vite jouer)
-export const RS = { hunger: 2, fun: 0.5, energyGain: 22, clean: 1 };
+// Pendant le sommeil — v2.4.1 : sieste vraiment réparatrice (0 -> 100 en 2 h 30,
+// la jauge bouge à vue d'œil) ; réveil auto à 100
+export const RS = { hunger: 2, fun: 0.5, energyGain: 40, clean: 1 };
 export const TREAT_CD = 45 * 60 * 1000;   // friandise : 45 min
 export const DIVE_MS = 15 * 60 * 1000;    // plongée : 15 min
+export const GRUMPY_MS = 10 * MIN;        // bouderie après un réveil forcé
+export const WAKE_OK_ENERGY = 60;         // en-dessous : réveillée trop tôt -> elle boude
 
 export const STAGES = { egg: 'ŒUF', baby: 'BÉBÉ', child: 'JEUNE LOUTRE', adult: 'LOUTRE ADULTE' };
 

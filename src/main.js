@@ -1,5 +1,5 @@
 // Orchestrateur : relie simulation, rendu, UI, audio et PWA.
-import { SEC, MIN, clamp, TREAT_CD, DIVE_MS } from './constants.js';
+import { SEC, MIN, clamp, TREAT_CD, DIVE_MS, GRUMPY_MS, WAKE_OK_ENERGY } from './constants.js';
 import { bumpQuest, completedQuests, ensureDaily } from './quests.js';
 import {
   newState, saveState, loadState, clearSave,
@@ -79,6 +79,7 @@ function actTreat() {
   s.lastTreat = t;
   s.hunger = clamp(s.hunger + 10, 0, 100);
   s.fun = clamp(s.fun + 8, 0, 100);
+  s.grumpyUntil = 0; // une brochette de baies répare toutes les bouderies
   R.spawn('heart', s.stage); R.spawn('heart', s.stage); R.spawn('heart', s.stage);
   R.burst('sparkle', 5, s.stage);
   sfx.happy();
@@ -152,7 +153,15 @@ function actSleep() {
     quest('sleeps');
     return;
   }
-  sfx.press(); ui.log(s.name + ' se réveille et s\'étire.');
+  if (s.energy < WAKE_OK_ENERGY) {
+    // réveillée en plein rêve : elle boude (un câlin ou une friandise la déride)
+    s.grumpyUntil = now() + GRUMPY_MS;
+    s.fun = clamp(s.fun - 8, 0, 100);
+    sfx.sad();
+    ui.log(s.name + ' est réveillée en plein rêve… elle boude ! 😾');
+  } else {
+    sfx.press(); ui.log(s.name + ' se réveille et s\'étire.');
+  }
   afterAct();
   checkUnlocks();
 }
@@ -174,6 +183,7 @@ function actHeal() {
 
 function actWarm() {
   if (!s || s.stage !== 'egg' || s.gameOver) return;
+  enableMotion(); // geste utilisateur : le bon moment pour la permission iOS
   const t = now();
   if (t - lastWarm < 700) return;
   lastWarm = t;
@@ -184,11 +194,45 @@ function actWarm() {
   ui.log('Tu réchauffes doucement l\'œuf… il frémit !');
 }
 
+/* ---------------- Secouer le téléphone berce l'œuf ---------------- */
+// iOS 13+ exige une permission demandée pendant un geste ; ailleurs c'est direct.
+let motionReady = !(typeof DeviceMotionEvent !== 'undefined'
+  && typeof DeviceMotionEvent.requestPermission === 'function');
+let lastShake = 0;
+
+function enableMotion() {
+  if (motionReady) return;
+  try {
+    DeviceMotionEvent.requestPermission()
+      .then(st => { if (st === 'granted') motionReady = true; })
+      .catch(() => {});
+  } catch (e) {}
+}
+
+function onMotion(e) {
+  if (!motionReady || !s || s.stage !== 'egg' || s.gameOver) return;
+  const a = e.accelerationIncludingGravity;
+  if (!a) return;
+  const mag = Math.sqrt((a.x || 0) ** 2 + (a.y || 0) ** 2 + (a.z || 0) ** 2);
+  const t = now();
+  if (mag > 19 && t - lastShake > 350) { // ~9.8 au repos, >19 = vraie secousse
+    lastShake = t;
+    s.born -= 4 * SEC; // bercer l'œuf rapproche l'éclosion
+    wobbleUntil = t + 450;
+    sfx.warm(); vibrate(8);
+    if (Math.random() < 0.18) ui.log('L\'œuf se balance joyeusement… ça lui plaît !');
+  }
+}
+
 function pet() {
   if (busy() || s.sleeping) return;
   const t = now();
   R.squash(); // la loutre s'écrase puis rebondit sous la caresse
   R.spawn('heart', s.stage);
+  if (s.grumpyUntil) {
+    s.grumpyUntil = 0; // un câlin, et la bouderie s'envole
+    ui.log(s.name + ' te pardonne… mais ne recommence pas ! 💛');
+  }
   if (t - lastPet > 20 * SEC) {
     lastPet = t;
     s.fun = clamp(s.fun + 3, 0, 100);
@@ -352,7 +396,7 @@ function startNew() {
   setMuted(s.mute);
   mg = null;
   ui.hideAllOverlays();
-  ui.log('Garde l\'œuf au chaud… (touche-le ou utilise le bouton)');
+  ui.log('Garde l\'œuf au chaud : touche-le, réchauffe-le… ou secoue doucement ton téléphone pour le bercer !');
   persist();
   ui.updateHUD(s, mg);
 }
@@ -429,7 +473,8 @@ function boot() {
   }
   ui.updateHUD(s, mg);
 
-  $('btn-start').addEventListener('click', () => { sfx.press(); vibrate(15); startNew(); });
+  $('btn-start').addEventListener('click', () => { sfx.press(); vibrate(15); enableMotion(); startNew(); });
+  window.addEventListener('devicemotion', onMotion);
   $('btn-name').addEventListener('click', () => {
     let n = $('name-input').value.trim();
     if (!n) n = 'Loutrette';
@@ -609,7 +654,7 @@ window.__loutre = {
     }
   },
   step(ms) { applyEvents(stepSim(s, ms, { simNow: now() })); ui.updateHUD(s, mg); },
-  startNew, actFeed, actWash, actSleep, actHeal, actPlay, actTreat, actDive,
+  startNew, actFeed, actWash, actSleep, actHeal, actPlay, actTreat, actDive, pet,
   get battle() { return battle; }
 };
 

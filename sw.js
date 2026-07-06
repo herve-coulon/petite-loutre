@@ -1,6 +1,6 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v2.4.0';
+const VERSION = 'v2.4.1';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [
@@ -50,16 +50,23 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
 
-  // Navigation : réseau d'abord (pour récupérer les mises à jour), cache en secours.
+  // Navigation : cache immédiat (lancement instantané), mise à jour en arrière-plan.
+  // La nouvelle version s'affiche au lancement suivant — le rattrapage hors-ligne
+  // du jeu rend ce léger différé invisible pour le joueur.
   if (req.mode === 'navigate') {
     e.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put('./index.html', copy));
-          return res;
-        })
-        .catch(() => caches.match('./index.html'))
+      caches.match('./index.html').then((hit) => {
+        const refresh = fetch(req)
+          .then((res) => {
+            if (res.ok) {
+              const copy = res.clone();
+              caches.open(CACHE).then((c) => c.put('./index.html', copy));
+            }
+            return res;
+          })
+          .catch(() => hit);
+        return hit || refresh;
+      })
     );
     return;
   }

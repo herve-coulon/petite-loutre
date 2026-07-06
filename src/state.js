@@ -25,6 +25,7 @@ export function newState(now = Date.now(), rnd = Math.random) {
     decor: 'aucun',
     lastTreat: 0,
     divingUntil: 0,
+    grumpyUntil: 0,
     fed: 0, played: 0, washed: 0, healed: 0,
     lastTick: now
   };
@@ -40,6 +41,7 @@ function normalizeState(o) {
   if (o.decor === undefined) o.decor = 'aucun';
   if (typeof o.lastTreat !== 'number') o.lastTreat = 0;
   if (typeof o.divingUntil !== 'number') o.divingUntil = 0;
+  if (typeof o.grumpyUntil !== 'number') o.grumpyUntil = 0;
   if (!Array.isArray(o.poops)) o.poops = [];
   for (const k of ['fed', 'played', 'washed', 'healed']) {
     if (typeof o[k] !== 'number') o[k] = 0;

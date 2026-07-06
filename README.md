@@ -45,7 +45,7 @@ L'app se lance alors en plein écran, fonctionne hors-ligne, et la loutre vit sa
 
 | Élément | Détail |
 |---|---|
-| Éclosion | 2 min après adoption (accélérable en réchauffant l'œuf) |
+| Éclosion | 2 min après adoption — accélérable en réchauffant l'œuf, en le touchant… ou en secouant le téléphone pour le bercer 📳 |
 | Croissance | Bébé → jeune loutre à J+1 → adulte à J+3 |
 | Jauges | Faim, humeur, énergie, propreté + santé |
 | Actions | Manger 🐟, pêche 🎣 (mini-jeu), bain 🧼, dodo 💤, soin 💊, caresses (toucher la loutre), friandise 🍡 (jeune+), plongée au trésor 🤿 (adulte) |
@@ -53,7 +53,7 @@ L'app se lance alors en plein écran, fonctionne hors-ligne, et la loutre vit sa
 | Quêtes 🏆 | 3 micro-objectifs par jour, identiques pour tout le monde |
 | Risques | Cacas à nettoyer, maladie, départ si la santé tombe à 0 |
 | Ambiance | Ciel jour/crépuscule/nuit selon l'heure réelle, sons 8-bit, vibrations, libellule et poissons sauteurs, confettis et squash & stretch |
-| Expressivité 🦦 | Le visage suit l'humeur (contente, affamée, boudeuse, malade) ; elle se gratte, bâille et jongle avec un caillou quand tout va bien |
+| Expressivité 🦦 | Le visage suit l'humeur (contente, affamée, boudeuse, malade) ; elle se gratte, bâille et jongle avec un caillou quand tout va bien — et boude 10 min si on la réveille trop tôt (un câlin ou une friandise la déride) |
 | Carte photo 📸 | Carte souvenir générée (nom, chapeau, exploits du jour) à partager sur WhatsApp/Insta via le partage natif |
 | Garde-robe 🎩 | 6 chapeaux, 6 pelages, 5 décors de berge à débloquer (records globaux, conservés entre les vies) |
 | Succès 🏆 | 12 succès + records (longévité, poissons, repas…) |
@@ -123,4 +123,6 @@ Les dossiers `android/` et `ios/` générés sont déjà dans le `.gitignore`. P
 *Fait en v2.1 : accessoires, succès + records, export/import. v2.2 : pelages,
 décors, combats par code. v2.3 : rythme resserré, quêtes du jour. v2.4 : game
 feel (confettis, squash & stretch, jauges qui pulsent), loutre expressive
-(humeurs, manies, décor vivant), carte photo partageable 📸.*
+(humeurs, manies, décor vivant), carte photo partageable 📸. v2.4.1 : œuf à
+bercer en secouant le téléphone, bouderie de réveil forcé, sieste vraiment
+réparatrice, lancement instantané (cache d'abord).*
