@@ -52,7 +52,7 @@ L'app se lance alors en plein écran, fonctionne hors-ligne, et la loutre vit sa
 | Combats ⚔️ | Duels par code de défi à s'échanger entre amis (dès le stade jeune) |
 | Quêtes 🏆 | 3 micro-objectifs par jour, identiques pour tout le monde |
 | Risques | Cacas à nettoyer, maladie, départ si la santé tombe à 0 |
-| Ambiance | Ciel jour/crépuscule/nuit selon l'heure réelle, sons 8-bit, vibrations, libellule et poissons sauteurs, confettis et squash & stretch |
+| Ambiance | Ciel jour/crépuscule/nuit selon l'heure réelle, musique chiptune (enjouée le jour, berceuse la nuit — désactivable dans ⚙️), sons 8-bit, vibrations, libellule et poissons sauteurs, confettis et squash & stretch |
 | Expressivité 🦦 | Le visage suit l'humeur (contente, affamée, boudeuse, malade) ; elle se gratte, bâille et jongle avec un caillou quand tout va bien — et boude 10 min si on la réveille trop tôt (un câlin ou une friandise la déride) |
 | Carte photo 📸 | Carte souvenir générée (nom, chapeau, exploits du jour) à partager sur WhatsApp/Insta via le partage natif |
 | Garde-robe 🎩 | 6 chapeaux, 6 pelages, 5 décors de berge à débloquer (records globaux, conservés entre les vies) |
@@ -82,6 +82,7 @@ src/
   minigame.js         pêche (logique pure)
   render.js           rendu canvas 160×120 (expressions, particules, squash)
   audio.js            bips 8-bit WebAudio + vibrations
+  music.js            boucle chiptune jour/nuit (partition pure testée)
   ui.js               DOM : HUD, jauges, overlays
   pwa.js              service worker, bouton installer, persistance
   main.js             orchestrateur
@@ -125,4 +126,6 @@ décors, combats par code. v2.3 : rythme resserré, quêtes du jour. v2.4 : game
 feel (confettis, squash & stretch, jauges qui pulsent), loutre expressive
 (humeurs, manies, décor vivant), carte photo partageable 📸. v2.4.1 : œuf à
 bercer en secouant le téléphone, bouderie de réveil forcé, sieste vraiment
-réparatrice, lancement instantané (cache d'abord).*
+réparatrice, lancement instantané (cache d'abord). v2.5 : musique chiptune
+jour/nuit, éclosion active bien plus payante (10 s par réchauffage, 8 s par
+secousse), permission capteurs iOS demandée au premier toucher.*

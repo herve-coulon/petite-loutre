@@ -20,6 +20,7 @@ export function newState(now = Date.now(), rnd = Math.random) {
     nextPoop: now + (3 + rnd() * 2) * H,
     gameOver: false,
     mute: false,
+    music: true,
     hat: null,
     fur: 'roux',
     decor: 'aucun',
@@ -42,6 +43,7 @@ function normalizeState(o) {
   if (typeof o.lastTreat !== 'number') o.lastTreat = 0;
   if (typeof o.divingUntil !== 'number') o.divingUntil = 0;
   if (typeof o.grumpyUntil !== 'number') o.grumpyUntil = 0;
+  if (typeof o.music !== 'boolean') o.music = true;
   if (!Array.isArray(o.poops)) o.poops = [];
   for (const k of ['fed', 'played', 'washed', 'healed']) {
     if (typeof o[k] !== 'number') o[k] = 0;

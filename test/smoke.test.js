@@ -231,13 +231,13 @@ test('carte photo : refusée tant que l\'œuf n\'a pas éclos', () => {
 
 /* ---------------- v2.4.1 : œuf à bercer, réveil boudeur ---------------- */
 
-test('œuf : secouer le téléphone rapproche l\'éclosion (avec anti-spam)', () => {
+test('œuf : secouer le téléphone rapproche l\'éclosion (avec anti-spam)', async () => {
   assert.equal(L.state.stage, 'egg'); // hérité du test précédent
   const born0 = L.state.born;
   const ev = new window.Event('devicemotion');
   ev.accelerationIncludingGravity = { x: 24, y: 3, z: 10 }; // vraie secousse (~26 m/s²)
   window.dispatchEvent(ev);
-  assert.ok(L.state.born < born0, 'l\'éclosion se rapproche');
+  assert.equal(born0 - L.state.born, 8000, 'chaque secousse rapporte 8 s');
   const born1 = L.state.born;
   window.dispatchEvent(ev); // immédiatement après
   assert.equal(L.state.born, born1, 'throttle : secouer comme un fou ne compte pas double');
@@ -245,6 +245,11 @@ test('œuf : secouer le téléphone rapproche l\'éclosion (avec anti-spam)', ()
   calm.accelerationIncludingGravity = { x: 0, y: 0, z: 9.8 }; // téléphone posé
   window.dispatchEvent(calm);
   assert.equal(L.state.born, born1, 'immobile : rien ne se passe');
+  await new Promise(r => setTimeout(r, 300)); // le throttle expire
+  const soft = new window.Event('devicemotion');
+  soft.accelerationIncludingGravity = { x: 14, y: 2, z: 9.8 }; // secousse modérée (~17 m/s²)
+  window.dispatchEvent(soft);
+  assert.equal(born1 - L.state.born, 8000, 'une secousse modérée compte aussi (seuil 16)');
 });
 
 test('réveil anticipé : elle boude (visage, HUD, humeur), un câlin la déride', () => {
@@ -292,4 +297,21 @@ test('réveil au bon moment : pas de bouderie', () => {
   $('b-sleep').click();
   assert.equal(L.state.sleeping, false);
   assert.equal(L.state.grumpyUntil, 0, 'énergie haute : réveil serein');
+});
+
+/* ---------------- v2.5 : musique ---------------- */
+
+test('musique : le réglage 🎵 bascule et se sauvegarde', () => {
+  $('b-gear').click();
+  assert.match($('b-music').textContent, /OUI/);
+  $('b-music').click();
+  assert.match($('b-music').textContent, /NON/);
+  assert.equal(L.state.music, false);
+  const saved = JSON.parse(window.localStorage.getItem('petite_loutre_v2'));
+  assert.equal(saved.music, false, 'préférence persistée');
+  $('b-music').click();
+  assert.equal(L.state.music, true);
+  assert.match($('b-music').textContent, /OUI/);
+  $('btn-set-close').click();
+  tick(); // la synchro musique tourne sans AudioContext (no-op propre)
 });

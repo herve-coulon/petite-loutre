@@ -17,6 +17,9 @@ function ctx() {
   return AC;
 }
 
+/** Contexte audio partagé (musique + sfx : un seul AudioContext, iOS oblige). */
+export function audioCtx() { return ctx(); }
+
 export function beep(freq, dur = 0.09, delay = 0, type = 'square', vol = 0.045) {
   if (muted) return;
   const ac = ctx(); if (!ac) return;

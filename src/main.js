@@ -1,5 +1,9 @@
 // Orchestrateur : relie simulation, rendu, UI, audio et PWA.
-import { SEC, MIN, clamp, TREAT_CD, DIVE_MS, GRUMPY_MS, WAKE_OK_ENERGY } from './constants.js';
+import {
+  SEC, MIN, clamp, TREAT_CD, DIVE_MS, GRUMPY_MS, WAKE_OK_ENERGY,
+  WARM_BOOST, WARM_CD, SHAKE_BOOST, SHAKE_CD, SHAKE_G
+} from './constants.js';
+import * as music from './music.js';
 import { bumpQuest, completedQuests, ensureDaily } from './quests.js';
 import {
   newState, saveState, loadState, clearSave,
@@ -183,30 +187,34 @@ function actHeal() {
 
 function actWarm() {
   if (!s || s.stage !== 'egg' || s.gameOver) return;
-  enableMotion(); // geste utilisateur : le bon moment pour la permission iOS
   const t = now();
-  if (t - lastWarm < 700) return;
+  if (t - lastWarm < WARM_CD) return;
   lastWarm = t;
   press();
-  s.born -= 5 * SEC; // rapproche l'éclosion
+  s.born -= WARM_BOOST; // rapproche franchement l'éclosion
   wobbleUntil = t + 450;
+  R.burst('sparkle', 2, 'egg');
   sfx.warm();
   ui.log('Tu réchauffes doucement l\'œuf… il frémit !');
 }
 
 /* ---------------- Secouer le téléphone berce l'œuf ---------------- */
-// iOS 13+ exige une permission demandée pendant un geste ; ailleurs c'est direct.
+// iOS 13+ exige une permission demandée pendant un geste utilisateur.
+// v2.5 : on la demande au TOUT PREMIER toucher, où qu'il soit — sinon un joueur
+// qui secoue sans avoir touché ADOPTER/RÉCHAUFFER n'obtenait jamais le popup.
 let motionReady = !(typeof DeviceMotionEvent !== 'undefined'
   && typeof DeviceMotionEvent.requestPermission === 'function');
+let motionAsked = false;
 let lastShake = 0;
 
 function enableMotion() {
-  if (motionReady) return;
+  if (motionReady || motionAsked) return;
+  motionAsked = true;
   try {
     DeviceMotionEvent.requestPermission()
       .then(st => { if (st === 'granted') motionReady = true; })
-      .catch(() => {});
-  } catch (e) {}
+      .catch(() => { motionAsked = false; }); // pas un vrai geste ? on retentera
+  } catch (e) { motionAsked = false; }
 }
 
 function onMotion(e) {
@@ -215,10 +223,11 @@ function onMotion(e) {
   if (!a) return;
   const mag = Math.sqrt((a.x || 0) ** 2 + (a.y || 0) ** 2 + (a.z || 0) ** 2);
   const t = now();
-  if (mag > 19 && t - lastShake > 350) { // ~9.8 au repos, >19 = vraie secousse
+  if (mag > SHAKE_G && t - lastShake > SHAKE_CD) {
     lastShake = t;
-    s.born -= 4 * SEC; // bercer l'œuf rapproche l'éclosion
+    s.born -= SHAKE_BOOST; // bercer l'œuf rapproche l'éclosion, et pas qu'un peu
     wobbleUntil = t + 450;
+    R.burst('sparkle', 3, 'egg');
     sfx.warm(); vibrate(8);
     if (Math.random() < 0.18) ui.log('L\'œuf se balance joyeusement… ça lui plaît !');
   }
@@ -292,6 +301,11 @@ function onCanvasPointer(e) {
     const ox = OTTER_X, oy = otterY(s.stage);
     if (x >= ox - 4 && x <= ox + 36 && y >= oy - 4 && y <= oy + 40) pet();
   }
+}
+
+/** La musique joue quand : loutre en vie, option activée, pas coupé, app visible. */
+function syncMusic() {
+  music.setActive(!!(s && s.music !== false && !s.mute && !s.gameOver && !document.hidden));
 }
 
 /* ---------------- Persistance ---------------- */
@@ -419,6 +433,7 @@ function tick() {
   if (s.divingUntil && t >= s.divingUntil && !s.gameOver) resolveDive();
   if (s.stage !== 'egg' && ensureDaily(s, t)) persist(); // nouvelles quêtes du jour
   ui.updateHUD(s, mg);
+  syncMusic(); // (re)démarre dès que l'audio est débloqué, coupe si veille/fin
   if (t - lastSave > 5 * SEC) {
     lastSave = t;
     persist();
@@ -544,7 +559,12 @@ function boot() {
   $('bt-calin').addEventListener('click', () => doMove('calin'));
 
   $('b-mute').addEventListener('click', () => {
-    s.mute = !s.mute; setMuted(s.mute); persist(); ui.updateHUD(s, mg);
+    s.mute = !s.mute; setMuted(s.mute); syncMusic(); persist(); ui.updateHUD(s, mg);
+  });
+  $('b-music').addEventListener('click', () => {
+    s.music = s.music === false; // toggle
+    $('b-music').textContent = '🎵 MUSIQUE : ' + (s.music ? 'OUI' : 'NON');
+    syncMusic(); persist(); sfx.press();
   });
   $('b-reset').addEventListener('click', () => {
     ui.askConfirm('Recommencer avec un nouvel œuf ? La loutre actuelle sera perdue (chapeaux et succès conservés).', () => {
@@ -601,6 +621,7 @@ function boot() {
     sfx.press();
     $('exp-code').value = s ? exportSave(s, rec) : '';
     $('imp-code').value = '';
+    $('b-music').textContent = '🎵 MUSIQUE : ' + (s && s.music !== false ? 'OUI' : 'NON');
     ui.showOverlay('ovl-set');
   });
   $('btn-set-close').addEventListener('click', () => ui.hideOverlay('ovl-set'));
@@ -635,7 +656,9 @@ function boot() {
   cv.addEventListener('pointerdown', onCanvasPointer);
   cv.addEventListener('contextmenu', e => e.preventDefault());
   window.addEventListener('beforeunload', persist);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) persist(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) persist(); syncMusic(); });
+  // premier toucher, où qu'il soit : permission capteurs iOS + déblocage audio
+  document.addEventListener('pointerdown', () => { enableMotion(); syncMusic(); });
 
   setInterval(tick, 1000);
   requestAnimationFrame(loop);

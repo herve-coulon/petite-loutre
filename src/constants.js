@@ -19,6 +19,13 @@ export const DIVE_MS = 15 * 60 * 1000;    // plongée : 15 min
 export const GRUMPY_MS = 10 * MIN;        // bouderie après un réveil forcé
 export const WAKE_OK_ENERGY = 60;         // en-dessous : réveillée trop tôt -> elle boude
 
+// Éclosion active — v2.5 : s'occuper de l'œuf doit VRAIMENT payer
+export const WARM_BOOST = 10 * SEC;       // par réchauffage (bouton ou toucher)
+export const WARM_CD = 500;               // délai entre deux réchauffages (ms)
+export const SHAKE_BOOST = 8 * SEC;       // par secousse du téléphone
+export const SHAKE_CD = 250;              // délai entre deux secousses comptées (ms)
+export const SHAKE_G = 16;                // m/s² : au-delà, c'est une vraie secousse (~9.8 au repos)
+
 export const STAGES = { egg: 'ŒUF', baby: 'BÉBÉ', child: 'JEUNE LOUTRE', adult: 'LOUTRE ADULTE' };
 
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
