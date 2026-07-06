@@ -51,6 +51,9 @@ L'app se lance alors en plein écran, fonctionne hors-ligne, et la loutre vit sa
 | Actions | Manger 🐟, pêche 🎣 (mini-jeu), bain 🧼, dodo 💤, soin 💊, caresses (toucher la loutre) |
 | Risques | Cacas à nettoyer, maladie, départ si la santé tombe à 0 |
 | Ambiance | Ciel jour/crépuscule/nuit selon l'heure réelle, sons 8-bit, vibrations |
+| Accessoires 🎩 | 4 chapeaux à débloquer (records globaux, conservés entre les vies) |
+| Succès 🏆 | 8 succès + records (longévité, poissons, repas…) |
+| Sauvegarde ⚙️ | Export/import par code pour changer de téléphone |
 
 Équilibrage : toutes les constantes sont dans `src/constants.js`.
 
@@ -65,6 +68,8 @@ src/
   state.js            état + sauvegarde (stockage injecté)
   sim.js              moteur PUR (horloge et hasard injectés, événements)
   sprites.js          pixel art (grilles de caractères)
+  accessories.js      chapeaux à débloquer (conditions sur records)
+  achievements.js     succès globaux
   minigame.js         pêche (logique pure)
   render.js           rendu canvas 160×120
   audio.js            bips 8-bit WebAudio + vibrations
@@ -102,7 +107,7 @@ Les dossiers `android/` et `ios/` générés sont déjà dans le `.gitignore`. P
 ## Feuille de route (idées)
 
 - Notifications locales « ta loutre a faim » (simple via Capacitor, sinon Web Push + serveur)
-- Export/import de la sauvegarde (changement de téléphone)
-- Accessoires à débloquer (chapeaux !), succès, records
 - Deuxième mini-jeu (toboggan de rivière)
 - i18n (en/es)
+
+*Fait en v2.1 : accessoires à débloquer, succès + records, export/import de sauvegarde.*
