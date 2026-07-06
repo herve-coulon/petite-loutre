@@ -1,6 +1,7 @@
 // Succès (globaux, conservés d'une loutre à l'autre via les records).
 import { H } from './constants.js';
 import { HATS, unlockedHats } from './accessories.js';
+import { FURS, unlockedFurs } from './skins.js';
 
 export const ACHIEVEMENTS = [
   { id: 'naissance', icon: '🥚', name: 'Première éclosion', desc: 'Faire éclore un œuf',
@@ -18,7 +19,13 @@ export const ACHIEVEMENTS = [
   { id: 'doyenne', icon: '🏵️', name: 'Doyenne de la rivière', desc: 'Garder une loutre en vie 5 jours',
     test: (s, r) => r.bestAge >= 5 * 24 * H },
   { id: 'fashion', icon: '🎩', name: 'Fashionista', desc: 'Débloquer tous les accessoires',
-    test: (s, r) => unlockedHats(r).length === HATS.length }
+    test: (s, r) => unlockedHats(r).length === HATS.length },
+  { id: 'combattante', icon: '⚔️', name: 'Première victoire', desc: 'Gagner un combat de loutres',
+    test: (s, r) => r.wins >= 1 },
+  { id: 'plongeuse', icon: '🤿', name: 'Chasseuse de trésors', desc: 'Rapporter un trésor de plongée',
+    test: (s, r) => r.treasures >= 1 },
+  { id: 'collection', icon: '🌈', name: 'Collectionneuse', desc: 'Débloquer tous les pelages',
+    test: (s, r) => unlockedFurs(r).length === FURS.length }
 ];
 
 /** Marque les succès nouvellement obtenus dans rec et les retourne. */

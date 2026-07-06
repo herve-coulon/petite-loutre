@@ -71,6 +71,31 @@
       <button class="act ghost" id="btn-ach-close">FERMER</button>
     </div>
 
+    <div id="ovl-battle" class="ovl scroll hidden">
+      <p class="big">⚔️ Combat de loutres</p>
+      <div id="bt-setup" style="width:100%">
+        <p class="small">Ton code de combat — envoie-le à ton adversaire :</p>
+        <textarea id="bt-mycode" readonly rows="2"></textarea>
+        <button class="act" id="bt-copy" style="width:100%">COPIER MON CODE</button>
+        <p class="small">Colle ici le code de ton adversaire :</p>
+        <textarea id="bt-foecode" rows="2" placeholder="LBATTLE1…"></textarea>
+        <button class="act" id="bt-start" style="width:100%">COMBATTRE !</button>
+      </div>
+      <div id="bt-arena" class="hidden" style="width:100%">
+        <div class="bar"><label id="bt-mename" style="width:auto;min-width:70px">Moi</label>
+          <div class="track"><div class="fill" id="bt-mehp" style="background-color:#8ad05f"></div></div></div>
+        <div class="bar"><label id="bt-foename" style="width:auto;min-width:70px">Adv.</label>
+          <div class="track"><div class="fill" id="bt-foehp" style="background-color:#e5484d"></div></div></div>
+        <p id="bt-log" class="small" style="min-height:56px"></p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          <button class="act" id="bt-splash">💦 Splash</button>
+          <button class="act" id="bt-roulade">🌀 Roulade</button>
+          <button class="act" id="bt-calin">💛 Câlin</button>
+        </div>
+      </div>
+      <button class="act ghost" id="bt-close">FERMER</button>
+    </div>
+
     <div id="ovl-set" class="ovl scroll hidden">
       <p class="big">⚙️ Réglages</p>
       <p class="small">Code de sauvegarde (pour changer de téléphone) :</p>
@@ -108,6 +133,9 @@
     <button class="act" id="b-wash"><span class="ic">🧼</span>Laver</button>
     <button class="act" id="b-sleep"><span class="ic">💤</span>Dodo</button>
     <button class="act" id="b-heal"><span class="ic">💊</span>Soigner</button>
+    <button class="act" id="b-treat"><span class="ic">🍡</span>Friandise</button>
+    <button class="act" id="b-dive"><span class="ic">🤿</span>Plongée</button>
+    <button class="act" id="b-battle"><span class="ic">⚔️</span>Combat</button>
   </div>
 
   <div id="foot">

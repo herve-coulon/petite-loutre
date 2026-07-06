@@ -45,6 +45,28 @@ export const HATS = [
       '....YRYYYYRY....',
       '....YYYYYYYY....'
     ]
+  },
+  {
+    id: 'bonnet', icon: '🌙', name: 'Bonnet de nuit',
+    cond: 'Border la loutre 10 fois',
+    test: r => r.sleepsTotal >= 10,
+    rows: [
+      '...........WW...',
+      '.....UUUUUW.....',
+      '....UUUUUUU.....',
+      '...UUUUUUUUU....'
+    ]
+  },
+  {
+    id: 'hautform', icon: '🎩', name: 'Haut-de-forme',
+    cond: 'Gagner 5 combats',
+    test: r => r.wins >= 5,
+    rows: [
+      '.....KKKKKK.....',
+      '.....KKKKKK.....',
+      '.....KRRRRK.....',
+      '...KKKKKKKKKK...'
+    ]
   }
 ];
 

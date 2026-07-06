@@ -2,6 +2,7 @@
 import { PAL, SPRITES } from './sprites.js';
 import { HATCH_MS, MIN, SEC } from './constants.js';
 import { hatById } from './accessories.js';
+import { furById } from './skins.js';
 
 export const CANVAS_W = 160, CANVAS_H = 120;
 export const OTTER_X = 64;
@@ -16,15 +17,44 @@ export function makeRenderer(cv) {
   const ctx = cv.getContext('2d');
   let particles = [];
 
-  function drawSprite(rows, x, y, sc = 2) {
+  function drawSprite(rows, x, y, sc = 2, palOver = null, flip = false) {
     for (let j = 0; j < rows.length; j++) {
       const row = rows[j];
-      for (let i = 0; i < row.length; i++) {
-        const c = PAL[row[i]];
-        if (!c) continue;
+      const w = row.length;
+      for (let i = 0; i < w; i++) {
+        const ch = row[flip ? w - 1 - i : i];
+        const c = (palOver && palOver[ch]) || PAL[ch];
+        if (!c || ch === '.') continue;
         ctx.fillStyle = c;
         ctx.fillRect(x + i * sc, y + j * sc, sc, sc);
       }
+    }
+  }
+
+  function drawDecor(id, c, frame) {
+    if (id === 'nenuphars') {
+      ctx.fillStyle = '#4f9134';
+      const b = (frame >> 4) % 2;
+      ctx.fillRect(18, 106 + b, 9, 3); ctx.fillRect(21, 105 + b, 3, 1);
+      ctx.fillRect(132, 111 - b, 8, 3);
+      ctx.fillStyle = '#f0a1a1'; ctx.fillRect(21, 103 + b, 3, 3);
+    } else if (id === 'lanterne') {
+      ctx.fillStyle = '#3b2416'; ctx.fillRect(146, 74, 2, 24);
+      ctx.fillStyle = '#e5484d'; ctx.fillRect(142, 66, 10, 10);
+      ctx.fillStyle = (frame >> 3) % 2 ? '#ffd94a' : '#f2913d';
+      ctx.fillRect(145, 69, 4, 4);
+    } else if (id === 'fanions') {
+      ctx.fillStyle = '#3b2416'; ctx.fillRect(4, 58, 152, 1);
+      const cols = ['#e5484d', '#f2c14e', '#5fc9e0', '#8ad05f', '#e8608a'];
+      for (let i = 0; i < 8; i++) {
+        ctx.fillStyle = cols[i % cols.length];
+        ctx.fillRect(10 + i * 19, 59, 5, 4); ctx.fillRect(11 + i * 19, 63, 3, 2);
+      }
+    } else if (id === 'baies') {
+      ctx.fillStyle = '#3f6d2c';
+      ctx.fillRect(6, 82, 18, 12); ctx.fillRect(9, 78, 12, 6);
+      ctx.fillStyle = '#5a4a9e';
+      ctx.fillRect(10, 84, 2, 2); ctx.fillRect(17, 81, 2, 2); ctx.fillRect(14, 88, 2, 2);
     }
   }
 
@@ -86,8 +116,36 @@ export function makeRenderer(cv) {
 
     if (!s) return;
 
+    // décor de berge choisi
+    if (s.decor && s.decor !== 'aucun') drawDecor(s.decor, c, frame);
+
     if (s.gameOver) {
       if ((frame >> 4) % 2 === 0) drawSprite(SPRITES.heart, 74, 100, 1);
+      drawParticles();
+      return;
+    }
+
+    const fur = furById(s.fur).map;
+
+    // adversaire de combat (dessiné à droite, en miroir)
+    if (fx.foe) {
+      const fspr = SPRITES[fx.foe.stage] || SPRITES.baby;
+      const fy = GROUND_Y - fspr.length * 2 + ((frame >> 4) % 2 ? -2 : 0);
+      drawSprite(fspr, 112, fy, 2, furById(fx.foe.fur).map, true);
+      const fhat = fx.foe.hat && hatById(fx.foe.hat);
+      if (fhat) drawSprite(fhat.rows, 112, fy - fhat.rows.length * 2 + 4, 2, null, true);
+    }
+
+    // plongée : la loutre est sous l'eau, on ne voit que des bulles
+    if (fx.diving) {
+      ctx.fillStyle = 'rgba(210,240,255,.9)';
+      const ph = (frame >> 3) % 8;
+      ctx.fillRect(70, 112 - ph, 3, 3);
+      ctx.fillRect(78, 116 - ((frame >> 2) % 6), 2, 2);
+      ctx.fillRect(64, 114 - ((frame >> 4) % 4), 2, 2);
+      ctx.fillStyle = 'rgba(15,18,26,.65)'; ctx.fillRect(40, 18, 80, 12);
+      ctx.fillStyle = '#ffe9a8'; ctx.font = '8px monospace';
+      ctx.fillText('🤿 plongée en cours…', 44, 27);
       drawParticles();
       return;
     }
@@ -109,7 +167,7 @@ export function makeRenderer(cv) {
     let ox = OTTER_X, oy = otterY(s.stage) + bounce;
     if (s.stage === 'egg' && fx.wobble) ox += ((frame >> 1) % 2 === 0 ? -2 : 2);
     if (s.sick && (frame >> 2) % 6 === 0) ox += 1;
-    drawSprite(spr, ox, oy, 2);
+    drawSprite(spr, ox, oy, 2, s.stage === 'egg' ? null : fur);
 
     // chapeau équipé (posé sur la tête, suit le rebond)
     if (s.stage !== 'egg' && s.hat) {
@@ -122,9 +180,9 @@ export function makeRenderer(cv) {
       const blink = !s.sleeping && (frame % 90) < 6;
       if (s.sleeping || blink) {
         const ey = oy + (s.stage === 'baby' ? 10 : 8);
-        ctx.fillStyle = PAL.B;
+        ctx.fillStyle = (fur && fur.B) || PAL.B;
         ctx.fillRect(ox + 4, ey, 6, 2); ctx.fillRect(ox + 22, ey, 6, 2);
-        ctx.fillStyle = PAL.D;
+        ctx.fillStyle = (fur && fur.D) || PAL.D;
         ctx.fillRect(ox + 4, ey + 1, 6, 1); ctx.fillRect(ox + 22, ey + 1, 6, 1);
       }
     }

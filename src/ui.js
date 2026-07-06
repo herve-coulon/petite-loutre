@@ -2,6 +2,7 @@
 import { STAGES, H, MIN, clamp } from './constants.js';
 import { ageMs } from './sim.js';
 import { HATS, unlockedHats } from './accessories.js';
+import { FURS, DECORS, unlockedFurs, unlockedDecors } from './skins.js';
 import { ACHIEVEMENTS } from './achievements.js';
 
 const $ = id => document.getElementById(id);
@@ -57,6 +58,25 @@ export function updateHUD(s, mg) {
     $('b-sleep').innerHTML = s.sleeping
       ? '<span class="ic">☀️</span>Réveil'
       : '<span class="ic">💤</span>Dodo';
+
+    // actions à débloquer avec la progression
+    const child = s.stage === 'child' || s.stage === 'adult';
+    const adult = s.stage === 'adult';
+    const diving = (s.divingUntil || 0) > Date.now();
+    const lock = (id, locked, label, html) => {
+      const b = $(id);
+      const want = locked ? '<span class="ic">🔒</span>' + label : html;
+      if (b.innerHTML !== want) b.innerHTML = want;
+    };
+    lock('b-treat', !child, 'Jeune', '<span class="ic">🍡</span>Friandise');
+    lock('b-dive', !adult, 'Adulte', '<span class="ic">🤿</span>Plongée');
+    lock('b-battle', !child, 'Jeune', '<span class="ic">⚔️</span>Combat');
+    $('b-treat').disabled = dis || s.sleeping || !child || diving;
+    $('b-dive').disabled = dis || s.sleeping || !adult || diving;
+    $('b-battle').disabled = dis || s.sleeping || !child || diving;
+    if (diving) {
+      ['b-feed', 'b-play', 'b-wash', 'b-sleep', 'b-heal'].forEach(id => { $(id).disabled = true; });
+    }
   }
   $('b-mute').textContent = s.mute ? '🔇' : '🔊';
 }
@@ -64,7 +84,7 @@ export function updateHUD(s, mg) {
 export function showOverlay(id) { $(id).classList.remove('hidden'); }
 export function hideOverlay(id) { $(id).classList.add('hidden'); }
 export function hideAllOverlays() {
-  ['ovl-intro', 'ovl-name', 'ovl-over', 'ovl-confirm', 'ovl-hats', 'ovl-ach', 'ovl-set']
+  ['ovl-intro', 'ovl-name', 'ovl-over', 'ovl-confirm', 'ovl-hats', 'ovl-ach', 'ovl-set', 'ovl-battle']
     .forEach(hideOverlay);
 }
 
@@ -76,23 +96,55 @@ export function fmtDur(ms) {
   return m + ' min';
 }
 
-/* ---------------- Garde-robe ---------------- */
-export function renderWardrobe(s, rec, onEquip) {
-  const list = $('hat-list');
-  list.innerHTML = '';
-  const unlocked = unlockedHats(rec);
-  for (const hat of HATS) {
-    const ok = unlocked.includes(hat.id);
-    const equipped = s && s.hat === hat.id;
+/* ---------------- Garde-robe (chapeaux, pelages, décors) ---------------- */
+function sectionRows(list, items, unlocked, currentId, onPick, removable) {
+  for (const it of items) {
+    const ok = unlocked.includes(it.id);
+    const on = currentId === it.id;
     const btn = document.createElement('button');
-    btn.className = 'row-item' + (ok ? '' : ' locked') + (equipped ? ' equipped' : '');
+    btn.className = 'row-item' + (ok ? '' : ' locked') + (on ? ' equipped' : '');
     btn.innerHTML =
-      '<span class="ic2">' + (ok ? hat.icon : '🔒') + '</span>' +
-      '<div>' + hat.name + '<small>' + (ok ? 'Touché pour ' + (equipped ? 'retirer' : 'porter') : hat.cond) + '</small></div>' +
-      (equipped ? '<span class="tag">PORTÉ</span>' : '');
-    if (ok) btn.addEventListener('click', () => onEquip(hat.id));
+      '<span class="ic2">' + (ok ? it.icon : '🔒') + '</span>' +
+      '<div>' + it.name + '<small>' + (ok ? (on ? (removable ? 'Touché pour retirer' : 'Actuel') : 'Touché pour choisir') : it.cond) + '</small></div>' +
+      (on ? '<span class="tag">✓</span>' : '');
+    if (ok) btn.addEventListener('click', () => onPick(it.id));
     list.appendChild(btn);
   }
+}
+
+export function renderWardrobe(s, rec, h) {
+  const list = $('hat-list');
+  list.innerHTML = '';
+  const title = (t) => {
+    const p = document.createElement('p');
+    p.className = 'small'; p.style.marginTop = '4px'; p.textContent = t;
+    list.appendChild(p);
+  };
+  title('— Chapeaux —');
+  sectionRows(list, HATS, unlockedHats(rec), s && s.hat, h.onHat, true);
+  title('— Pelages —');
+  sectionRows(list, FURS, unlockedFurs(rec), s && s.fur, h.onFur, false);
+  title('— Décor de berge —');
+  sectionRows(list, DECORS, unlockedDecors(rec), s && s.decor, h.onDecor, false);
+}
+
+/* ---------------- Combat ---------------- */
+export function resetBattleUI(myCode) {
+  $('bt-setup').classList.remove('hidden');
+  $('bt-arena').classList.add('hidden');
+  $('bt-mycode').value = myCode;
+  $('bt-foecode').value = '';
+}
+
+export function updateBattleUI(b) {
+  $('bt-setup').classList.add('hidden');
+  $('bt-arena').classList.remove('hidden');
+  $('bt-mename').textContent = b.me.name + ' ' + b.me.hp + '/' + b.me.maxHp;
+  $('bt-foename').textContent = b.foe.name + ' ' + b.foe.hp + '/' + b.foe.maxHp;
+  $('bt-mehp').style.width = (b.me.hp / b.me.maxHp * 100) + '%';
+  $('bt-foehp').style.width = (b.foe.hp / b.foe.maxHp * 100) + '%';
+  $('bt-log').innerHTML = b.log.slice(-4).join('<br>');
+  ['bt-splash', 'bt-roulade', 'bt-calin'].forEach(id => { $(id).disabled = b.over; });
 }
 
 /* ---------------- Succès & records ---------------- */

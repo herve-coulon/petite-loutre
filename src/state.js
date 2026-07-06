@@ -21,6 +21,10 @@ export function newState(now = Date.now(), rnd = Math.random) {
     gameOver: false,
     mute: false,
     hat: null,
+    fur: 'roux',
+    decor: 'aucun',
+    lastTreat: 0,
+    divingUntil: 0,
     fed: 0, played: 0, washed: 0, healed: 0,
     lastTick: now
   };
@@ -32,6 +36,10 @@ function normalizeState(o) {
   o.v = 2;
   if (o.diedAt === undefined) o.diedAt = null;
   if (o.hat === undefined) o.hat = null;
+  if (o.fur === undefined) o.fur = 'roux';
+  if (o.decor === undefined) o.decor = 'aucun';
+  if (typeof o.lastTreat !== 'number') o.lastTreat = 0;
+  if (typeof o.divingUntil !== 'number') o.divingUntil = 0;
   if (!Array.isArray(o.poops)) o.poops = [];
   for (const k of ['fed', 'played', 'washed', 'healed']) {
     if (typeof o[k] !== 'number') o[k] = 0;
@@ -73,6 +81,10 @@ export function newRecords() {
     gamesTotal: 0,
     fishTotal: 0,
     perfectGames: 0,
+    sleepsTotal: 0,
+    treasures: 0,
+    wins: 0,
+    battles: 0,
     achievements: []
   };
 }

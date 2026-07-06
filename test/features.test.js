@@ -22,6 +22,8 @@ test('chapeaux : verrouillés au départ, débloqués par les records', () => {
   rec.gamesTotal = 10;
   rec.bathsTotal = 10;
   rec.bestAge = 72 * H;
+  rec.sleepsTotal = 10;
+  rec.wins = 5;
   assert.equal(unlockedHats(rec).length, HATS.length, 'tout débloqué');
 });
 
@@ -56,6 +58,7 @@ test('succès : détectés une seule fois, persistés dans rec', () => {
 test('succès : fashionista exige tous les chapeaux', () => {
   const rec = newRecords();
   rec.mealsTotal = 5; rec.gamesTotal = 10; rec.bathsTotal = 10;
+  rec.sleepsTotal = 10; rec.wins = 5;
   newAchievements(null, rec);
   assert.ok(!rec.achievements.includes('fashion'));
   rec.bestAge = 72 * H;

@@ -147,7 +147,7 @@ test('garde-robe : déblocage par records + équipement', () => {
   $('b-hats').click();
   assert.ok(!$('ovl-hats').classList.contains('hidden'));
   const rows = [...$('hat-list').querySelectorAll('.row-item')];
-  assert.equal(rows.length, 4);
+  assert.equal(rows.length, 17, '6 chapeaux + 6 pelages + 5 décors');
   const noeud = rows[0];
   assert.ok(!noeud.classList.contains('locked'), 'nœud débloqué');
   assert.ok(rows[3].classList.contains('locked'), 'couronne verrouillée');
@@ -159,7 +159,7 @@ test('garde-robe : déblocage par records + équipement', () => {
 test('succès : écran + records affichés', () => {
   $('b-ach').click();
   assert.ok(!$('ovl-ach').classList.contains('hidden'));
-  assert.equal($('ach-list').querySelectorAll('.row-item').length, 8);
+  assert.equal($('ach-list').querySelectorAll('.row-item').length, 11);
   assert.match($('rec-line').textContent, /Records/);
   $('btn-ach-close').click();
 });

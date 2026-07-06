@@ -11,7 +11,9 @@ import { sfx, vibrate, setMuted } from './audio.js';
 import * as ui from './ui.js';
 import { registerSW, setupInstall, requestPersistentStorage } from './pwa.js';
 import { unlockedHats, hatById } from './accessories.js';
+import { unlockedFurs, unlockedDecors } from './skins.js';
 import { newAchievements } from './achievements.js';
+import { encodeCard, decodeCard, newBattle, playTurn } from './battle.js';
 
 const $ = id => document.getElementById(id);
 const now = () => Date.now();
@@ -21,6 +23,7 @@ let s = null;
 let rec = null;               // records globaux (toutes loutres confondues)
 let prevHats = new Set();     // pour détecter les nouveaux déblocages
 let mg = null;
+let battle = null;
 let frame = 0;
 let wobbleUntil = 0, lastWarm = 0, lastPet = 0, lastSave = 0, lastTickAt = now();
 
@@ -48,8 +51,50 @@ function applyEvents(events, offline = false) {
 }
 
 /* ---------------- Actions ---------------- */
-function busy() { return !s || s.gameOver || s.stage === 'egg' || mg; }
+function diving() { return s && (s.divingUntil || 0) > now(); }
+function busy() { return !s || s.gameOver || s.stage === 'egg' || mg || diving(); }
 function press() { vibrate(10); }
+const isChildPlus = () => s && (s.stage === 'child' || s.stage === 'adult');
+
+function actTreat() {
+  if (busy() || s.sleeping || !isChildPlus()) return;
+  const t = now();
+  const CD = 2 * 60 * MIN;
+  if (t - (s.lastTreat || 0) < CD) {
+    const left = Math.ceil((CD - (t - s.lastTreat)) / MIN);
+    ui.log('Plus de friandises pour l\'instant… (encore ' + left + ' min)');
+    return;
+  }
+  press();
+  s.lastTreat = t;
+  s.hunger = clamp(s.hunger + 10, 0, 100);
+  s.fun = clamp(s.fun + 8, 0, 100);
+  R.spawn('heart', s.stage); R.spawn('heart', s.stage);
+  sfx.happy();
+  ui.log(s.name + ' savoure sa brochette de baies ! 🍡');
+  afterAct();
+}
+
+function actDive() {
+  if (busy() || s.sleeping || s.stage !== 'adult') return;
+  press();
+  s.divingUntil = now() + 30 * MIN;
+  sfx.wash();
+  ui.log(s.name + ' plonge chercher un trésor… retour dans 30 min ! 🤿');
+  afterAct();
+}
+
+function resolveDive() {
+  s.divingUntil = 0;
+  rec.treasures++;
+  s.fun = clamp(s.fun + 15, 0, 100);
+  s.hunger = clamp(s.hunger - 8, 0, 100);
+  const finds = ['une perle nacrée 🦪', 'un coquillage rare 🐚', 'une pièce ancienne 🪙', 'un caillou qui brille ✨'];
+  ui.log(s.name + ' remonte avec ' + finds[Math.floor(Math.random() * finds.length)] + ' !');
+  sfx.hatch(); vibrate([15, 30, 15]);
+  persist();
+  checkUnlocks();
+}
 
 function actFeed() {
   if (busy() || s.sleeping) return;
@@ -86,9 +131,12 @@ function actSleep() {
   if (busy()) return;
   press();
   s.sleeping = !s.sleeping;
-  if (s.sleeping) { sfx.sleep(); ui.log(s.name + ' se blottit pour dormir… 💤'); }
-  else { sfx.press(); ui.log(s.name + ' se réveille et s\'étire.'); }
+  if (s.sleeping) {
+    rec.sleepsTotal++;
+    sfx.sleep(); ui.log(s.name + ' se blottit pour dormir… 💤');
+  } else { sfx.press(); ui.log(s.name + ' se réveille et s\'étire.'); }
   afterAct();
+  checkUnlocks();
 }
 
 function actHeal() {
@@ -228,6 +276,7 @@ function tick() {
   } else {
     applyEvents(stepSim(s, rawDt, { simNow: t }));
   }
+  if (s.divingUntil && t >= s.divingUntil && !s.gameOver) resolveDive();
   ui.updateHUD(s, mg);
   if (t - lastSave > 5 * SEC) {
     lastSave = t;
@@ -246,7 +295,11 @@ function loop() {
     const res = tickGame(mg, now());
     if (res) endGame(res);
   }
-  R.render(s, mg, frame, { wobble: s && now() < wobbleUntil });
+  R.render(s, mg, frame, {
+    wobble: s && now() < wobbleUntil,
+    diving: diving(),
+    foe: battle ? battle.foe : null
+  });
   requestAnimationFrame(loop);
 }
 
@@ -299,6 +352,52 @@ function boot() {
   $('b-sleep').addEventListener('click', actSleep);
   $('b-heal').addEventListener('click', actHeal);
   $('b-warm').addEventListener('click', actWarm);
+  $('b-treat').addEventListener('click', actTreat);
+  $('b-dive').addEventListener('click', actDive);
+
+  // Combat de loutres (par code de défi)
+  $('b-battle').addEventListener('click', () => {
+    if (busy() || s.sleeping || !isChildPlus()) return;
+    sfx.press();
+    battle = null;
+    ui.resetBattleUI(encodeCard(s));
+    ui.showOverlay('ovl-battle');
+  });
+  $('bt-close').addEventListener('click', () => { battle = null; ui.hideOverlay('ovl-battle'); });
+  $('bt-copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($('bt-mycode').value); ui.toast('📋 Code copié !'); }
+    catch (e) { try { $('bt-mycode').select(); document.execCommand('copy'); ui.toast('📋 Code copié !'); } catch (e2) {} }
+  });
+  $('bt-start').addEventListener('click', () => {
+    const card = decodeCard($('bt-foecode').value);
+    if (!card) { ui.toast('❌ Code de combat invalide'); return; }
+    battle = newBattle(s, card, encodeCard(s) + $('bt-foecode').value.trim());
+    battle.log.push('Le combat commence ! ' + battle.me.name + ' vs ' + battle.foe.name);
+    rec.battles++;
+    persistRec();
+    sfx.evolve(); vibrate([20, 40, 20]);
+    ui.updateBattleUI(battle);
+  });
+  const doMove = (id) => {
+    if (!battle || battle.over) return;
+    playTurn(battle, id);
+    vibrate(8); sfx.press();
+    ui.updateBattleUI(battle);
+    if (battle.over) {
+      if (battle.winner === 'me') {
+        rec.wins++;
+        s.fun = clamp(s.fun + 12, 0, 100);
+        sfx.happy(); ui.toast('🏆 Victoire de ' + battle.me.name + ' !');
+      } else {
+        s.fun = clamp(s.fun + 2, 0, 100);
+        sfx.sad(); ui.toast('💔 Défaite… ça se rejouera !');
+      }
+      persist(); persistRec(); checkUnlocks();
+    }
+  };
+  $('bt-splash').addEventListener('click', () => doMove('splash'));
+  $('bt-roulade').addEventListener('click', () => doMove('roulade'));
+  $('bt-calin').addEventListener('click', () => doMove('calin'));
 
   $('b-mute').addEventListener('click', () => {
     s.mute = !s.mute; setMuted(s.mute); persist(); ui.updateHUD(s, mg);
@@ -310,17 +409,30 @@ function boot() {
     });
   });
 
-  // Garde-robe
-  function equipHat(id) {
-    if (!s || !unlockedHats(rec).includes(id)) return;
-    s.hat = (s.hat === id ? null : id);
-    sfx.press(); vibrate(10);
-    persist();
-    ui.renderWardrobe(s, rec, equipHat);
-  }
+  // Garde-robe (chapeaux, pelages, décors)
+  const wardrobeHandlers = {
+    onHat(id) {
+      if (!s || !unlockedHats(rec).includes(id)) return;
+      s.hat = (s.hat === id ? null : id);
+      sfx.press(); vibrate(10); persist();
+      ui.renderWardrobe(s, rec, wardrobeHandlers);
+    },
+    onFur(id) {
+      if (!s || !unlockedFurs(rec).includes(id)) return;
+      s.fur = id;
+      sfx.press(); vibrate(10); persist();
+      ui.renderWardrobe(s, rec, wardrobeHandlers);
+    },
+    onDecor(id) {
+      if (!s || !unlockedDecors(rec).includes(id)) return;
+      s.decor = id;
+      sfx.press(); vibrate(10); persist();
+      ui.renderWardrobe(s, rec, wardrobeHandlers);
+    }
+  };
   $('b-hats').addEventListener('click', () => {
     sfx.press();
-    ui.renderWardrobe(s, rec, equipHat);
+    ui.renderWardrobe(s, rec, wardrobeHandlers);
     ui.showOverlay('ovl-hats');
   });
   $('btn-hats-close').addEventListener('click', () => ui.hideOverlay('ovl-hats'));
@@ -391,7 +503,8 @@ window.__loutre = {
     }
   },
   step(ms) { applyEvents(stepSim(s, ms, { simNow: now() })); ui.updateHUD(s, mg); },
-  startNew, actFeed, actWash, actSleep, actHeal, actPlay
+  startNew, actFeed, actWash, actSleep, actHeal, actPlay, actTreat, actDive,
+  get battle() { return battle; }
 };
 
 boot();
