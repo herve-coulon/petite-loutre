@@ -1,0 +1,17 @@
+{
+  "name": "petite-loutre",
+  "version": "2.0.0",
+  "description": "Ma Petite Loutre — tamagotchi pixel art en temps réel, PWA installable sur mobile",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "python3 -m http.server 8080 || npx serve .",
+    "test": "npm run test:sim && npm run test:dom",
+    "test:sim": "node --test test/sim.test.js",
+    "test:dom": "node --test test/smoke.test.js",
+    "icons": "python3 scripts/gen-icons.py"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}
