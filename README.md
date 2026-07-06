@@ -48,11 +48,15 @@ L'app se lance alors en plein écran, fonctionne hors-ligne, et la loutre vit sa
 | Éclosion | 2 min après adoption (accélérable en réchauffant l'œuf) |
 | Croissance | Bébé → jeune loutre à J+1 → adulte à J+3 |
 | Jauges | Faim, humeur, énergie, propreté + santé |
-| Actions | Manger 🐟, pêche 🎣 (mini-jeu), bain 🧼, dodo 💤, soin 💊, caresses (toucher la loutre) |
+| Actions | Manger 🐟, pêche 🎣 (mini-jeu), bain 🧼, dodo 💤, soin 💊, caresses (toucher la loutre), friandise 🍡 (jeune+), plongée au trésor 🤿 (adulte) |
+| Combats ⚔️ | Duels par code de défi à s'échanger entre amis (dès le stade jeune) |
+| Quêtes 🏆 | 3 micro-objectifs par jour, identiques pour tout le monde |
 | Risques | Cacas à nettoyer, maladie, départ si la santé tombe à 0 |
-| Ambiance | Ciel jour/crépuscule/nuit selon l'heure réelle, sons 8-bit, vibrations |
-| Accessoires 🎩 | 4 chapeaux à débloquer (records globaux, conservés entre les vies) |
-| Succès 🏆 | 8 succès + records (longévité, poissons, repas…) |
+| Ambiance | Ciel jour/crépuscule/nuit selon l'heure réelle, sons 8-bit, vibrations, libellule et poissons sauteurs, confettis et squash & stretch |
+| Expressivité 🦦 | Le visage suit l'humeur (contente, affamée, boudeuse, malade) ; elle se gratte, bâille et jongle avec un caillou quand tout va bien |
+| Carte photo 📸 | Carte souvenir générée (nom, chapeau, exploits du jour) à partager sur WhatsApp/Insta via le partage natif |
+| Garde-robe 🎩 | 6 chapeaux, 6 pelages, 5 décors de berge à débloquer (records globaux, conservés entre les vies) |
+| Succès 🏆 | 12 succès + records (longévité, poissons, repas…) |
 | Sauvegarde ⚙️ | Export/import par code pour changer de téléphone |
 
 Équilibrage : toutes les constantes sont dans `src/constants.js`.
@@ -70,15 +74,19 @@ src/
   sprites.js          pixel art (grilles de caractères)
   accessories.js      chapeaux à débloquer (conditions sur records)
   achievements.js     succès globaux
+  skins.js            pelages (palette swap) et décors de berge
+  battle.js           combats par code de défi (pur, RNG seedé)
+  quests.js           quêtes du jour (déterministes par date)
+  mood.js             humeurs et manies de la loutre (pur)
+  photocard.js        carte photo partageable (dessin autonome)
   minigame.js         pêche (logique pure)
-  render.js           rendu canvas 160×120
+  render.js           rendu canvas 160×120 (expressions, particules, squash)
   audio.js            bips 8-bit WebAudio + vibrations
   ui.js               DOM : HUD, jauges, overlays
   pwa.js              service worker, bouton installer, persistance
   main.js             orchestrateur
-test/
-  sim.test.js         23 tests du moteur (node --test, zéro dépendance)
-  smoke.test.js       9 tests du parcours joueur complet (jsdom)
+test/                 71 tests : moteur, features, combats, polish (node --test)
+                      + parcours joueur complet en jsdom (smoke)
 scripts/gen-icons.py  régénère les icônes depuis le sprite
 ```
 
@@ -106,8 +114,13 @@ Les dossiers `android/` et `ios/` générés sont déjà dans le `.gitignore`. P
 
 ## Feuille de route (idées)
 
+- Éclosion cinématique (fissures progressives, mini-tutoriel)
+- Vraie police pixel embarquée (remplacer Courier)
 - Notifications locales « ta loutre a faim » (simple via Capacitor, sinon Web Push + serveur)
 - Deuxième mini-jeu (toboggan de rivière)
 - i18n (en/es)
 
-*Fait en v2.1 : accessoires à débloquer, succès + records, export/import de sauvegarde.*
+*Fait en v2.1 : accessoires, succès + records, export/import. v2.2 : pelages,
+décors, combats par code. v2.3 : rythme resserré, quêtes du jour. v2.4 : game
+feel (confettis, squash & stretch, jauges qui pulsent), loutre expressive
+(humeurs, manies, décor vivant), carte photo partageable 📸.*
