@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 
 import { squashScale, SQUASH_MS, makeRenderer } from '../src/render.js';
 import { moodOf, pickIdle, canIdle, IDLES, IDLE_FRAMES } from '../src/mood.js';
+import { cardData, drawCard, makeCard, CARD_W, CARD_H, CARD_URL } from '../src/photocard.js';
 import { newState } from '../src/state.js';
 
 const T0 = 1_750_000_000_000;
@@ -110,6 +111,69 @@ test('rendu : chaque humeur peint un visage différent', () => {
       assert.notEqual(faces[i], faces[j], 'humeurs ' + i + ' et ' + j + ' identiques à l\'écran');
     }
   }
+});
+
+/* ---------------- carte photo ---------------- */
+
+test('carte : textes fidèles à la loutre (nom, stade, exploits du jour, url)', () => {
+  const s = otter({ name: 'Kiwi', stage: 'child' });
+  s.qDaily = { date: '2026-07-06', progress: { fish: 7, meals: 2 }, done: ['a', 'b'] };
+  const rec = { bestAge: 26 * 3600 * 1000 };
+  const d = cardData(s, rec, T0 + 3 * 3600 * 1000);
+  assert.equal(d.name, 'KIWI');
+  assert.match(d.stageLine, /JEUNE LOUTRE/);
+  assert.match(d.stageLine, /3 h/);
+  assert.match(d.lines[0], /7 poissons/);
+  assert.match(d.lines[0], /2 repas/);
+  assert.match(d.lines[1], /2\/3/);
+  assert.match(d.lines[2], /1 j 2 h/);
+  assert.match(d.url, /petite-loutre/);
+  assert.ok(CARD_URL.startsWith('https://') && CARD_URL.includes(d.url), 'lien de partage cohérent');
+});
+
+test('carte : sans nom ni quêtes du jour, textes de repli propres', () => {
+  const d = cardData(otter({ name: null }), { bestAge: 0 }, T0);
+  assert.equal(d.name, 'LOUTRE MYSTÈRE');
+  assert.match(d.lines[0], /0 poisson ·/);
+  assert.match(d.lines[1], /0\/3/);
+  assert.match(d.lines[2], /aventure/);
+});
+
+test('carte : tout le dessin tient dans 480x600, nom et url bien écrits', () => {
+  const rects = [], texts = [];
+  const ctx = {
+    fillStyle: '', font: '', textAlign: '',
+    fillRect(x, y, w, h) { rects.push([x, y, w, h]); },
+    fillText(str, x, y) { texts.push({ str, x, y }); }
+  };
+  const s = otter({ name: 'Perle', stage: 'adult', hat: 'couronne', fur: 'doree' });
+  drawCard(ctx, s, { bestAge: 80 * 3600 * 1000 }, T0);
+  assert.ok(rects.length > 200, 'la carte est richement peinte (' + rects.length + ' rects)');
+  for (const [x, y, w, h] of rects) {
+    assert.ok(x >= 0 && y >= 0 && x + w <= CARD_W && y + h <= CARD_H,
+      'rect hors carte : ' + [x, y, w, h].join(','));
+  }
+  for (const t of texts) {
+    assert.ok(t.x >= 0 && t.x <= CARD_W && t.y >= 0 && t.y <= CARD_H, 'texte hors carte : ' + t.str);
+  }
+  assert.ok(texts.some(t => t.str === 'PERLE'), 'le nom est sur la carte');
+  assert.ok(texts.some(t => /petite-loutre/.test(t.str)), 'l\'invitation est sur la carte');
+});
+
+test('carte : makeCard fabrique un canvas aux bonnes dimensions (document injecté)', () => {
+  const calls = [];
+  const fakeDoc = {
+    createElement() {
+      return {
+        width: 0, height: 0,
+        getContext: () => ({ fillStyle: '', font: '', textAlign: '', fillRect() { calls.push(1); }, fillText() {} })
+      };
+    }
+  };
+  const cv2 = makeCard(otter(), { bestAge: 0 }, fakeDoc, T0);
+  assert.equal(cv2.width, CARD_W);
+  assert.equal(cv2.height, CARD_H);
+  assert.ok(calls.length > 0, 'le dessin a bien eu lieu');
 });
 
 test('rendu : 1500 frames (manies, libellule, poissons sauteurs) sans erreur', () => {

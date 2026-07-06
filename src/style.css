@@ -148,6 +148,13 @@ button.mini:active{color:var(--txt);}
 #b-install{background:linear-gradient(180deg,var(--accent),var(--accent2)); color:#241b06; font-weight:bold;}
 #ios-hint{font-size:9.5px; color:var(--dim); letter-spacing:.5px; text-align:center; margin:4px 0 0; flex:none;}
 
+/* v2.4 — carte photo */
+#photo-img{
+  width:78%; max-width:280px; display:block;
+  image-rendering:pixelated; image-rendering:crisp-edges;
+  border:3px solid var(--ink); background:#141822;
+}
+
 /* v2.4 — game feel */
 .fill.up{animation:barup .55s steps(3);}
 @keyframes barup{

@@ -15,6 +15,7 @@ import { unlockedHats, hatById } from './accessories.js';
 import { unlockedFurs, unlockedDecors } from './skins.js';
 import { newAchievements } from './achievements.js';
 import { encodeCard, decodeCard, newBattle, playTurn } from './battle.js';
+import { makeCard, CARD_URL } from './photocard.js';
 
 const $ = id => document.getElementById(id);
 const now = () => Date.now();
@@ -292,6 +293,54 @@ function quest(key, n = 1) {
   checkUnlocks();
 }
 
+/* ---------------- Carte photo partageable ---------------- */
+let cardCv = null; // canvas de la dernière carte générée
+
+function openPhoto() {
+  if (!s || s.gameOver) { ui.toast('📸 Pas de loutre à photographier…'); return; }
+  if (s.stage === 'egg') { ui.toast('📸 Attends que ta loutre soit née !'); return; }
+  sfx.press(); vibrate(10);
+  cardCv = makeCard(s, rec, document);
+  let url = '';
+  try { url = cardCv && cardCv.toDataURL('image/png'); } catch (e) {}
+  $('photo-img').src = url || '';
+  // le partage natif n'existe pas partout (desktop) -> bouton masqué, il reste "Enregistrer"
+  $('btn-photo-share').classList.toggle('hidden', typeof navigator.share !== 'function');
+  ui.showOverlay('ovl-photo');
+}
+
+async function sharePhoto() {
+  if (!s) return;
+  const text = 'Voici ' + (s.name || 'ma loutre') + ', ma petite loutre 🦦 Viens élever la tienne : ' + CARD_URL;
+  try {
+    let files = null;
+    if (cardCv && cardCv.toBlob && typeof File === 'function') {
+      const blob = await new Promise(res => { try { cardCv.toBlob(res, 'image/png'); } catch (e) { res(null); } });
+      if (blob) files = [new File([blob], 'ma-petite-loutre.png', { type: 'image/png' })];
+    }
+    if (files && navigator.canShare && navigator.canShare({ files })) {
+      await navigator.share({ files, title: 'Ma Petite Loutre', text });
+    } else {
+      await navigator.share({ title: 'Ma Petite Loutre', text, url: CARD_URL });
+    }
+    ui.toast('📸 Carte partagée !');
+  } catch (e) { /* partage annulé par le joueur : silence */ }
+}
+
+function savePhoto() {
+  const url = $('photo-img').src;
+  if (!url || !url.startsWith('data:')) { ui.toast('Image indisponible sur cet appareil…'); return; }
+  try {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'loutre-' + (s && s.name ? s.name.toLowerCase() : 'souvenir') + '.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    ui.toast('💾 Carte enregistrée !');
+  } catch (e) { ui.toast('Enregistrement impossible ici — fais une capture d\'écran !'); }
+}
+
 /* ---------------- Cycle de vie ---------------- */
 function startNew() {
   s = newState(now());
@@ -481,6 +530,12 @@ function boot() {
     ui.showOverlay('ovl-hats');
   });
   $('btn-hats-close').addEventListener('click', () => ui.hideOverlay('ovl-hats'));
+
+  // Carte photo
+  $('b-photo').addEventListener('click', openPhoto);
+  $('btn-photo-share').addEventListener('click', sharePhoto);
+  $('btn-photo-save').addEventListener('click', savePhoto);
+  $('btn-photo-close').addEventListener('click', () => { cardCv = null; ui.hideOverlay('ovl-photo'); });
 
   // Succès
   $('b-ach').addEventListener('click', () => {

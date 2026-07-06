@@ -29,6 +29,7 @@ before(async () => {
     set: () => true
   });
   window.HTMLCanvasElement.prototype.getContext = () => ctx;
+  window.HTMLCanvasElement.prototype.toDataURL = () => 'data:image/png;base64,STUB';
 
   // Globaux pour les modules (exécutés dans le contexte node)
   global.window = window;
@@ -204,4 +205,26 @@ test('game feel : le début de combat secoue l\'écran', () => {
   assert.ok($('screenwrap').classList.contains('shake'), 'écran secoué au gong');
   $('bt-close').click();
   renderOnce(); // un rendu passe (confettis/particules éventuels) sans erreur
+});
+
+/* ---------------- v2.4 : carte photo ---------------- */
+
+test('carte photo : aperçu généré, partage masqué sans API native, fermeture', () => {
+  $('b-photo').click();
+  assert.ok(!$('ovl-photo').classList.contains('hidden'), 'overlay ouvert');
+  assert.match($('photo-img').getAttribute('src') || '', /^data:image/, 'aperçu de la carte affiché');
+  assert.ok($('btn-photo-share').classList.contains('hidden'),
+    'pas de navigator.share dans jsdom -> bouton partager masqué, reste "Enregistrer"');
+  assert.ok(!$('btn-photo-save').classList.contains('hidden'));
+  $('btn-photo-close').click();
+  assert.ok($('ovl-photo').classList.contains('hidden'));
+});
+
+test('carte photo : refusée tant que l\'œuf n\'a pas éclos', () => {
+  $('b-reset').click();
+  $('btn-confirm-yes').click(); // nouvel œuf
+  assert.equal(L.state.stage, 'egg');
+  $('b-photo').click();
+  assert.ok($('ovl-photo').classList.contains('hidden'), 'pas de photo d\'un œuf');
+  assert.match($('toast').textContent, /née/);
 });
