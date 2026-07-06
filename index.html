@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Ma Petite Loutre</title>
+<meta name="description" content="Élève ta petite loutre pixel art : nourris-la, joue avec elle, garde-la propre — elle vit en temps réel, même quand l'app est fermée.">
+<meta name="theme-color" content="#2e3346">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/favicon.png" type="image/png">
+<!-- iOS -->
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Loutre">
+<link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+<div id="app">
+  <h1>MA PETITE LOUTRE</h1>
+
+  <div id="hud">
+    <div><b id="hud-name">???</b></div>
+    <div id="hud-stage">ŒUF</div>
+    <div id="hud-age">—</div>
+  </div>
+
+  <div id="screenwrap">
+    <canvas id="cv" width="160" height="120"></canvas>
+
+    <div id="ovl-intro" class="ovl hidden">
+      <p class="big">Un matin, au bord de la rivière…</p>
+      <p>…tu découvres un œuf abandonné,<br>encore tiède, posé sur la mousse.</p>
+      <p>Il bouge ! Quelque chose vit là-dedans.</p>
+      <button class="act" id="btn-start" style="padding:12px 22px;">ADOPTER L'ŒUF</button>
+    </div>
+
+    <div id="ovl-name" class="ovl hidden">
+      <p class="big">✨ L'œuf a éclos ! ✨</p>
+      <p>Une petite loutre te regarde<br>avec de grands yeux…</p>
+      <p>Comment vas-tu l'appeler ?</p>
+      <input id="name-input" maxlength="12" placeholder="SON NOM" autocomplete="off">
+      <button class="act" id="btn-name" style="padding:12px 22px;">C'EST PARTI !</button>
+    </div>
+
+    <div id="ovl-over" class="ovl hidden">
+      <p class="big">🌊</p>
+      <p id="over-text"></p>
+      <button class="act" id="btn-restart" style="padding:12px 22px;">RECOMMENCER</button>
+    </div>
+
+    <div id="ovl-confirm" class="ovl hidden">
+      <p id="confirm-text"></p>
+      <div style="display:flex; gap:10px;">
+        <button class="act" id="btn-confirm-yes" style="padding:12px 18px;">OUI</button>
+        <button class="act ghost" id="btn-confirm-no" style="padding:12px 18px;">NON</button>
+      </div>
+    </div>
+
+    <div id="toast"></div>
+  </div>
+
+  <p id="log">…</p>
+
+  <div id="bars">
+    <div class="bar"><label>Faim</label><div class="track"><div class="fill" id="f-hunger"></div></div></div>
+    <div class="bar"><label>Humeur</label><div class="track"><div class="fill" id="f-fun"></div></div></div>
+    <div class="bar"><label>Énergie</label><div class="track"><div class="fill" id="f-energy"></div></div></div>
+    <div class="bar"><label>Propreté</label><div class="track"><div class="fill" id="f-clean"></div></div></div>
+    <div class="bar"><label>Santé</label><div class="track"><div class="fill" id="f-health"></div></div></div>
+  </div>
+
+  <div id="spacer"></div>
+
+  <div id="btnrow-egg" class="hidden">
+    <button class="act" id="b-warm"><span class="ic">🔥</span>RÉCHAUFFER L'ŒUF</button>
+  </div>
+
+  <div id="buttons" class="hidden">
+    <button class="act" id="b-feed"><span class="ic">🐟</span>Manger</button>
+    <button class="act" id="b-play"><span class="ic">🎣</span>Jouer</button>
+    <button class="act" id="b-wash"><span class="ic">🧼</span>Laver</button>
+    <button class="act" id="b-sleep"><span class="ic">💤</span>Dodo</button>
+    <button class="act" id="b-heal"><span class="ic">💊</span>Soigner</button>
+  </div>
+
+  <div id="foot">
+    <button class="mini" id="b-mute" aria-label="Son">🔊</button>
+    <button class="mini hidden" id="b-install">📲 INSTALLER</button>
+    <button class="mini" id="b-reset">↺ RESET</button>
+  </div>
+  <p id="ios-hint" class="hidden">📲 Pour installer : Partager <b>⎋</b> puis « Sur l'écran d'accueil »</p>
+</div>
+
+<noscript><p style="text-align:center;padding:20px;">Ce jeu a besoin de JavaScript.</p></noscript>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
