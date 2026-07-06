@@ -50,14 +50,6 @@
       <button class="act" id="btn-restart" style="padding:12px 22px;">RECOMMENCER</button>
     </div>
 
-    <div id="ovl-confirm" class="ovl hidden">
-      <p id="confirm-text"></p>
-      <div style="display:flex; gap:10px;">
-        <button class="act" id="btn-confirm-yes" style="padding:12px 18px;">OUI</button>
-        <button class="act ghost" id="btn-confirm-no" style="padding:12px 18px;">NON</button>
-      </div>
-    </div>
-
     <div id="ovl-hats" class="ovl scroll hidden">
       <p class="big">🎩 Garde-robe</p>
       <div id="hat-list" class="list"></div>
@@ -114,6 +106,16 @@
       <button class="act" id="btn-import">IMPORTER</button>
       <button class="act ghost" id="b-reset">↺ RECOMMENCER À ZÉRO</button>
       <button class="act ghost" id="btn-set-close">FERMER</button>
+    </div>
+
+    <!-- dernier overlay du DOM + z-index dédié : la confirmation passe devant tout
+         (elle peut être appelée depuis les Réglages : reset, import) -->
+    <div id="ovl-confirm" class="ovl hidden">
+      <p id="confirm-text"></p>
+      <div style="display:flex; gap:10px;">
+        <button class="act" id="btn-confirm-yes" style="padding:12px 18px;">OUI</button>
+        <button class="act ghost" id="btn-confirm-no" style="padding:12px 18px;">NON</button>
+      </div>
     </div>
 
     <div id="toast"></div>

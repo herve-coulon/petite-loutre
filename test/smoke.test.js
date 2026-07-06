@@ -265,6 +265,26 @@ test('réveil anticipé : elle boude (visage, HUD, humeur), un câlin la déride
   assert.equal(L.state.grumpyUntil, 0, 'câlin accepté, bouderie levée');
 });
 
+test('remise à zéro depuis les réglages : la confirmation passe DEVANT (régression)', () => {
+  // le bug : ovl-confirm avant ovl-set dans le DOM -> peinte derrière, "bouton mort"
+  const ids = [...document.querySelectorAll('.ovl')].map(e => e.id);
+  assert.ok(ids.indexOf('ovl-confirm') > ids.indexOf('ovl-set'),
+    'ovl-confirm doit être après ovl-set dans le DOM (empilement)');
+  // parcours réel du joueur : ⚙️ -> ↺ -> OUI
+  $('b-gear').click();
+  assert.ok(!$('ovl-set').classList.contains('hidden'));
+  $('b-reset').click();
+  assert.ok(!$('ovl-confirm').classList.contains('hidden'), 'confirmation affichée');
+  $('btn-confirm-yes').click();
+  assert.equal(L.state.stage, 'egg', 'nouvel œuf');
+  assert.ok($('ovl-set').classList.contains('hidden'), 'réglages refermés');
+  assert.ok($('ovl-confirm').classList.contains('hidden'));
+  // on redonne une loutre aux tests suivants
+  L.forceHatch();
+  $('name-input').value = 'Rebond';
+  $('btn-name').click();
+});
+
 test('réveil au bon moment : pas de bouderie', () => {
   L.state.energy = 90;
   $('b-sleep').click();

@@ -148,6 +148,9 @@ button.mini:active{color:var(--txt);}
 #b-install{background:linear-gradient(180deg,var(--accent),var(--accent2)); color:#241b06; font-weight:bold;}
 #ios-hint{font-size:9.5px; color:var(--dim); letter-spacing:.5px; text-align:center; margin:4px 0 0; flex:none;}
 
+/* La confirmation (reset, import) doit passer devant les autres overlays */
+#ovl-confirm{z-index:7;}
+
 /* v2.4 — carte photo */
 #photo-img{
   width:78%; max-width:280px; display:block;
