@@ -1,18 +1,25 @@
 // Orchestrateur : relie simulation, rendu, UI, audio et PWA.
 import { SEC, MIN, clamp } from './constants.js';
-import { newState, saveState, loadState, clearSave } from './state.js';
-import { stepSim, simulateOffline } from './sim.js';
+import {
+  newState, saveState, loadState, clearSave,
+  loadRecords, saveRecords, exportSave, importSave
+} from './state.js';
+import { stepSim, simulateOffline, ageMs } from './sim.js';
 import { newGame, tickGame, clickGame } from './minigame.js';
 import { makeRenderer, OTTER_X, otterY } from './render.js';
 import { sfx, vibrate, setMuted } from './audio.js';
 import * as ui from './ui.js';
 import { registerSW, setupInstall, requestPersistentStorage } from './pwa.js';
+import { unlockedHats, hatById } from './accessories.js';
+import { newAchievements } from './achievements.js';
 
 const $ = id => document.getElementById(id);
 const now = () => Date.now();
 const storage = (() => { try { return window.localStorage; } catch (e) { return null; } })();
 
 let s = null;
+let rec = null;               // records globaux (toutes loutres confondues)
+let prevHats = new Set();     // pour détecter les nouveaux déblocages
 let mg = null;
 let frame = 0;
 let wobbleUntil = 0, lastWarm = 0, lastPet = 0, lastSave = 0, lastTickAt = now();
@@ -24,7 +31,14 @@ const R = makeRenderer(cv);
 function applyEvents(events, offline = false) {
   for (const ev of events) {
     if (ev.type === 'hatch') { ui.showNaming(); if (!offline) sfx.hatch(); continue; }
-    if (ev.type === 'die') { ui.showGameOver(s); if (!offline) sfx.over(); continue; }
+    if (ev.type === 'die') {
+      rec.otters++;
+      rec.bestAge = Math.max(rec.bestAge, ageMs(s, s.diedAt || now()));
+      checkUnlocks();
+      ui.showGameOver(s);
+      if (!offline) sfx.over();
+      continue;
+    }
     if (offline) continue; // le reste est résumé au retour
     const msg = ui.liveEventMessage(ev, s);
     if (msg) ui.log(msg);
@@ -44,11 +58,13 @@ function actFeed() {
   s.hunger = clamp(s.hunger + 30, 0, 100);
   s.fun = clamp(s.fun + 2, 0, 100);
   s.fed++;
+  rec.mealsTotal++;
   s.nextPoop = Math.min(s.nextPoop, now() + (2 + Math.random() * 2) * 60 * MIN);
   R.spawn('fish', s.stage); R.spawn('heart', s.stage);
   sfx.eat();
   ui.log('Miam ! ' + s.name + ' dévore un poisson frais. 🐟');
   afterAct();
+  checkUnlocks();
 }
 
 function actWash() {
@@ -58,10 +74,12 @@ function actWash() {
   s.poops = [];
   s.clean = 100;
   s.washed++;
+  rec.bathsTotal++;
   for (let i = 0; i < 6; i++) R.spawn('bubble', s.stage);
   sfx.wash();
   ui.log(hadPoop ? 'Grand nettoyage ! Tout est propre. ✨' : s.name + ' barbote dans son bain. 🫧');
   afterAct();
+  checkUnlocks();
 }
 
 function actSleep() {
@@ -128,12 +146,16 @@ function endGame(res) {
   s.energy = clamp(s.energy - 8, 0, 100);
   s.hunger = clamp(s.hunger - 4, 0, 100);
   s.played++;
+  rec.gamesTotal++;
+  rec.fishTotal += sc;
+  if (sc >= tot && tot >= 5) rec.perfectGames++;
   mg = null;
   if (sc >= tot - 1) { sfx.happy(); ui.log('Pêche royale : ' + sc + ' poisson' + (sc > 1 ? 's' : '') + ' ! ' + s.name + ' est ravie ! 🎉'); }
   else if (sc > 0) { sfx.eat(); ui.log(sc + ' poisson' + (sc > 1 ? 's' : '') + ' attrapé' + (sc > 1 ? 's' : '') + ' ! Pas mal !'); }
   else { sfx.sad(); ui.log('Aucun poisson… ils étaient rusés aujourd\'hui.'); }
   persist();
   ui.updateHUD(s, mg);
+  checkUnlocks();
 }
 
 /* ---------------- Canvas (pêche, caresses, œuf) ---------------- */
@@ -156,8 +178,29 @@ function onCanvasPointer(e) {
 
 /* ---------------- Persistance ---------------- */
 function persist() { saveState(s, storage, now()); }
+function persistRec() { saveRecords(rec, storage); }
 /** Après chaque action joueur : sauvegarde + HUD à jour immédiatement. */
 function afterAct() { persist(); ui.updateHUD(s, mg); }
+
+/** Détecte chapeaux et succès nouvellement débloqués -> toast + son. */
+function checkUnlocks() {
+  const nowUnlocked = unlockedHats(rec);
+  for (const id of nowUnlocked) {
+    if (!prevHats.has(id)) {
+      const h = hatById(id);
+      ui.toast('🎩 Débloqué : ' + h.name + ' !');
+      sfx.evolve(); vibrate([15, 30, 15]);
+    }
+  }
+  prevHats = new Set(nowUnlocked);
+
+  const got = newAchievements(s, rec);
+  for (const a of got) {
+    ui.toast(a.icon + ' Succès : ' + a.name + ' !');
+    sfx.happy(); vibrate(20);
+  }
+  persistRec();
+}
 
 /* ---------------- Cycle de vie ---------------- */
 function startNew() {
@@ -186,7 +229,15 @@ function tick() {
     applyEvents(stepSim(s, rawDt, { simNow: t }));
   }
   ui.updateHUD(s, mg);
-  if (t - lastSave > 5 * SEC) { lastSave = t; persist(); }
+  if (t - lastSave > 5 * SEC) {
+    lastSave = t;
+    persist();
+    // record de longévité mis à jour en continu
+    if (s.stage !== 'egg' && !s.gameOver) {
+      const a = ageMs(s, t);
+      if (a > rec.bestAge) { rec.bestAge = a; checkUnlocks(); }
+    }
+  }
 }
 
 function loop() {
@@ -204,6 +255,9 @@ function boot() {
   registerSW();
   requestPersistentStorage();
   setupInstall($('b-install'), $('ios-hint'));
+
+  rec = loadRecords(storage);
+  prevHats = new Set(unlockedHats(rec));
 
   const prev = loadState(storage);
   if (prev) {
@@ -250,9 +304,68 @@ function boot() {
     s.mute = !s.mute; setMuted(s.mute); persist(); ui.updateHUD(s, mg);
   });
   $('b-reset').addEventListener('click', () => {
-    ui.askConfirm('Recommencer avec un nouvel œuf ? La loutre actuelle sera perdue.', () => {
+    ui.askConfirm('Recommencer avec un nouvel œuf ? La loutre actuelle sera perdue (chapeaux et succès conservés).', () => {
       clearSave(storage);
       startNew();
+    });
+  });
+
+  // Garde-robe
+  function equipHat(id) {
+    if (!s || !unlockedHats(rec).includes(id)) return;
+    s.hat = (s.hat === id ? null : id);
+    sfx.press(); vibrate(10);
+    persist();
+    ui.renderWardrobe(s, rec, equipHat);
+  }
+  $('b-hats').addEventListener('click', () => {
+    sfx.press();
+    ui.renderWardrobe(s, rec, equipHat);
+    ui.showOverlay('ovl-hats');
+  });
+  $('btn-hats-close').addEventListener('click', () => ui.hideOverlay('ovl-hats'));
+
+  // Succès
+  $('b-ach').addEventListener('click', () => {
+    sfx.press();
+    ui.renderAchievements(rec);
+    ui.showOverlay('ovl-ach');
+  });
+  $('btn-ach-close').addEventListener('click', () => ui.hideOverlay('ovl-ach'));
+
+  // Réglages : export / import / reset
+  $('b-gear').addEventListener('click', () => {
+    sfx.press();
+    $('exp-code').value = s ? exportSave(s, rec) : '';
+    $('imp-code').value = '';
+    ui.showOverlay('ovl-set');
+  });
+  $('btn-set-close').addEventListener('click', () => ui.hideOverlay('ovl-set'));
+  $('btn-copy').addEventListener('click', async () => {
+    const code = $('exp-code').value;
+    let ok = false;
+    try { await navigator.clipboard.writeText(code); ok = true; } catch (e) {
+      try { $('exp-code').select(); ok = document.execCommand('copy'); } catch (e2) {}
+    }
+    ui.toast(ok ? '📋 Code copié !' : 'Copie impossible — sélectionne le texte à la main.');
+  });
+  $('btn-import').addEventListener('click', () => {
+    const r = importSave($('imp-code').value);
+    if (!r) { ui.toast('❌ Code invalide'); return; }
+    ui.askConfirm('Remplacer la partie actuelle par celle du code ?', () => {
+      s = r.s;
+      rec = r.rec;
+      setMuted(s.mute);
+      prevHats = new Set(unlockedHats(rec));
+      const { events } = simulateOffline(s, now());
+      applyEvents(events, true);
+      persist(); persistRec();
+      ui.hideAllOverlays();
+      if (s.gameOver) ui.showGameOver(s);
+      else if (s.stage !== 'egg' && !s.name) ui.showNaming();
+      ui.updateHUD(s, mg);
+      ui.log('Sauvegarde importée. Re-bonjour, ' + (s.name || 'petit œuf') + ' ! 💛');
+      sfx.happy();
     });
   });
 
@@ -268,6 +381,7 @@ function boot() {
 // Hooks de debug / tests automatisés
 window.__loutre = {
   get state() { return s; },
+  get records() { return rec; },
   get minigame() { return mg; },
   forceHatch() {
     if (s && s.stage === 'egg') {

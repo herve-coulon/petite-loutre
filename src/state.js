@@ -1,5 +1,9 @@
-// État du jeu + persistance. Aucune dépendance DOM : le stockage est injecté.
+// État du jeu + records globaux + persistance + export/import.
+// Aucune dépendance DOM : le stockage est injecté.
 import { SAVE_KEY, H } from './constants.js';
+
+export const REC_KEY = 'petite_loutre_records_v1';
+const EXPORT_PREFIX = 'LOUTRE1.';
 
 export function newState(now = Date.now(), rnd = Math.random) {
   return {
@@ -16,9 +20,23 @@ export function newState(now = Date.now(), rnd = Math.random) {
     nextPoop: now + (3 + rnd() * 2) * H,
     gameOver: false,
     mute: false,
+    hat: null,
     fed: 0, played: 0, washed: 0, healed: 0,
     lastTick: now
   };
+}
+
+/** Complète une sauvegarde d'une version antérieure avec les champs manquants. */
+function normalizeState(o) {
+  if (!o || (o.v !== 2 && o.v !== 1)) return null;
+  o.v = 2;
+  if (o.diedAt === undefined) o.diedAt = null;
+  if (o.hat === undefined) o.hat = null;
+  if (!Array.isArray(o.poops)) o.poops = [];
+  for (const k of ['fed', 'played', 'washed', 'healed']) {
+    if (typeof o[k] !== 'number') o[k] = 0;
+  }
+  return o;
 }
 
 export function saveState(s, storage, now = Date.now()) {
@@ -35,13 +53,84 @@ export function loadState(storage) {
   try {
     const raw = storage.getItem(SAVE_KEY);
     if (!raw) return null;
-    const o = JSON.parse(raw);
-    if (!o || (o.v !== 2 && o.v !== 1)) return null;
-    if (o.v === 1) { o.v = 2; o.diedAt = o.diedAt || null; } // migration v1
-    return o;
+    return normalizeState(JSON.parse(raw));
   } catch (e) { return null; }
 }
 
 export function clearSave(storage) {
   try { storage.removeItem(SAVE_KEY); } catch (e) {}
+}
+
+/* ---------------- Records globaux (conservés entre les vies) ---------------- */
+
+export function newRecords() {
+  return {
+    v: 1,
+    bestAge: 0,        // plus longue vie (ms)
+    otters: 0,         // loutres parties
+    mealsTotal: 0,
+    bathsTotal: 0,
+    gamesTotal: 0,
+    fishTotal: 0,
+    perfectGames: 0,
+    achievements: []
+  };
+}
+
+function normalizeRecords(o) {
+  if (!o || o.v !== 1) return null;
+  const base = newRecords();
+  for (const k of Object.keys(base)) {
+    if (o[k] === undefined) o[k] = base[k];
+  }
+  if (!Array.isArray(o.achievements)) o.achievements = [];
+  return o;
+}
+
+export function loadRecords(storage) {
+  if (!storage) return newRecords();
+  try {
+    const raw = storage.getItem(REC_KEY);
+    if (!raw) return newRecords();
+    return normalizeRecords(JSON.parse(raw)) || newRecords();
+  } catch (e) { return newRecords(); }
+}
+
+export function saveRecords(rec, storage) {
+  if (!rec || !storage) return false;
+  try {
+    storage.setItem(REC_KEY, JSON.stringify(rec));
+    return true;
+  } catch (e) { return false; }
+}
+
+/* ---------------- Export / import (transfert de téléphone) ---------------- */
+
+function toB64(str) {
+  // btoa n'accepte pas l'Unicode brut (noms avec accents/emoji)
+  if (typeof btoa === 'function') return btoa(unescape(encodeURIComponent(str)));
+  return Buffer.from(str, 'utf8').toString('base64');
+}
+function fromB64(b64) {
+  if (typeof atob === 'function') return decodeURIComponent(escape(atob(b64)));
+  return Buffer.from(b64, 'base64').toString('utf8');
+}
+
+/** Sérialise l'état + records en un code copiable. */
+export function exportSave(s, rec) {
+  const payload = JSON.stringify({ s, rec, t: Date.now() });
+  return EXPORT_PREFIX + toB64(payload);
+}
+
+/** @returns {{s: object, rec: object}|null} */
+export function importSave(code) {
+  try {
+    const trimmed = String(code).trim();
+    if (!trimmed.startsWith(EXPORT_PREFIX)) return null;
+    const payload = JSON.parse(fromB64(trimmed.slice(EXPORT_PREFIX.length)));
+    const s = normalizeState(payload.s);
+    const rec = normalizeRecords(payload.rec) || newRecords();
+    if (!s) return null;
+    return { s, rec };
+  } catch (e) { return null; }
 }

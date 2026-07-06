@@ -3,7 +3,8 @@
 export const PAL = {
   D: '#3b2416', B: '#8a5a34', C: '#ecd7ae', K: '#20160f',
   W: '#ffffff', G: '#7d93a6', g: '#c6d3dd', q: '#6f4623',
-  O: '#f2913d', R: '#e5484d', P: '#f0a1a1'
+  O: '#f2913d', R: '#e5484d', P: '#f0a1a1',
+  U: '#4a6fae', Y: '#f2c14e'
 };
 
 export const SPRITES = {

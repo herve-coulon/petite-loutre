@@ -1,6 +1,8 @@
 // Couche DOM : HUD, jauges, overlays, messages. Aucune logique de jeu ici.
 import { STAGES, H, MIN, clamp } from './constants.js';
 import { ageMs } from './sim.js';
+import { HATS, unlockedHats } from './accessories.js';
+import { ACHIEVEMENTS } from './achievements.js';
 
 const $ = id => document.getElementById(id);
 
@@ -62,7 +64,57 @@ export function updateHUD(s, mg) {
 export function showOverlay(id) { $(id).classList.remove('hidden'); }
 export function hideOverlay(id) { $(id).classList.add('hidden'); }
 export function hideAllOverlays() {
-  ['ovl-intro', 'ovl-name', 'ovl-over', 'ovl-confirm'].forEach(hideOverlay);
+  ['ovl-intro', 'ovl-name', 'ovl-over', 'ovl-confirm', 'ovl-hats', 'ovl-ach', 'ovl-set']
+    .forEach(hideOverlay);
+}
+
+/** Durée en clair : "2 j 5 h", "3 h 12 min", "8 min". */
+export function fmtDur(ms) {
+  const d = Math.floor(ms / (24 * H)), h = Math.floor((ms % (24 * H)) / H), m = Math.floor((ms % H) / MIN);
+  if (d > 0) return d + ' j ' + h + ' h';
+  if (h > 0) return h + ' h ' + m + ' min';
+  return m + ' min';
+}
+
+/* ---------------- Garde-robe ---------------- */
+export function renderWardrobe(s, rec, onEquip) {
+  const list = $('hat-list');
+  list.innerHTML = '';
+  const unlocked = unlockedHats(rec);
+  for (const hat of HATS) {
+    const ok = unlocked.includes(hat.id);
+    const equipped = s && s.hat === hat.id;
+    const btn = document.createElement('button');
+    btn.className = 'row-item' + (ok ? '' : ' locked') + (equipped ? ' equipped' : '');
+    btn.innerHTML =
+      '<span class="ic2">' + (ok ? hat.icon : '🔒') + '</span>' +
+      '<div>' + hat.name + '<small>' + (ok ? 'Touché pour ' + (equipped ? 'retirer' : 'porter') : hat.cond) + '</small></div>' +
+      (equipped ? '<span class="tag">PORTÉ</span>' : '');
+    if (ok) btn.addEventListener('click', () => onEquip(hat.id));
+    list.appendChild(btn);
+  }
+}
+
+/* ---------------- Succès & records ---------------- */
+export function renderAchievements(rec) {
+  const list = $('ach-list');
+  list.innerHTML = '';
+  for (const a of ACHIEVEMENTS) {
+    const ok = rec.achievements.includes(a.id);
+    const div = document.createElement('div');
+    div.className = 'row-item' + (ok ? '' : ' locked');
+    div.style.cursor = 'default';
+    div.innerHTML =
+      '<span class="ic2">' + (ok ? a.icon : '🔒') + '</span>' +
+      '<div>' + a.name + '<small>' + a.desc + '</small></div>' +
+      (ok ? '<span class="tag">✓</span>' : '');
+    list.appendChild(div);
+  }
+  $('rec-line').textContent =
+    'Records — Plus longue vie : ' + (rec.bestAge > 0 ? fmtDur(rec.bestAge) : '—') +
+    ' · Poissons : ' + rec.fishTotal +
+    ' · Repas : ' + rec.mealsTotal +
+    ' · Loutres élevées : ' + Math.max(rec.otters, rec.bestAge > 0 ? 1 : 0);
 }
 
 export function showNaming() {

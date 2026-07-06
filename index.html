@@ -58,6 +58,31 @@
       </div>
     </div>
 
+    <div id="ovl-hats" class="ovl scroll hidden">
+      <p class="big">🎩 Garde-robe</p>
+      <div id="hat-list" class="list"></div>
+      <button class="act ghost" id="btn-hats-close">FERMER</button>
+    </div>
+
+    <div id="ovl-ach" class="ovl scroll hidden">
+      <p class="big">🏆 Succès</p>
+      <div id="ach-list" class="list"></div>
+      <p id="rec-line" class="small"></p>
+      <button class="act ghost" id="btn-ach-close">FERMER</button>
+    </div>
+
+    <div id="ovl-set" class="ovl scroll hidden">
+      <p class="big">⚙️ Réglages</p>
+      <p class="small">Code de sauvegarde (pour changer de téléphone) :</p>
+      <textarea id="exp-code" readonly rows="3"></textarea>
+      <button class="act" id="btn-copy">COPIER LE CODE</button>
+      <p class="small">Importer un code :</p>
+      <textarea id="imp-code" rows="3" placeholder="LOUTRE1…"></textarea>
+      <button class="act" id="btn-import">IMPORTER</button>
+      <button class="act ghost" id="b-reset">↺ RECOMMENCER À ZÉRO</button>
+      <button class="act ghost" id="btn-set-close">FERMER</button>
+    </div>
+
     <div id="toast"></div>
   </div>
 
@@ -87,8 +112,10 @@
 
   <div id="foot">
     <button class="mini" id="b-mute" aria-label="Son">🔊</button>
+    <button class="mini" id="b-hats" aria-label="Garde-robe">🎩</button>
+    <button class="mini" id="b-ach" aria-label="Succès">🏆</button>
     <button class="mini hidden" id="b-install">📲 INSTALLER</button>
-    <button class="mini" id="b-reset">↺ RESET</button>
+    <button class="mini" id="b-gear" aria-label="Réglages">⚙️</button>
   </div>
   <p id="ios-hint" class="hidden">📲 Pour installer : Partager <b>⎋</b> puis « Sur l'écran d'accueil »</p>
 </div>

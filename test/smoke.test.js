@@ -137,3 +137,41 @@ test('reset : confirmation maison puis nouvel œuf', () => {
   $('btn-confirm-yes').click();
   assert.equal(L.state.stage, 'egg');
 });
+
+test('garde-robe : déblocage par records + équipement', () => {
+  L.forceHatch();
+  $('name-input').value = 'Némo';
+  $('btn-name').click();
+
+  L.records.mealsTotal = 5; // débloque le nœud
+  $('b-hats').click();
+  assert.ok(!$('ovl-hats').classList.contains('hidden'));
+  const rows = [...$('hat-list').querySelectorAll('.row-item')];
+  assert.equal(rows.length, 4);
+  const noeud = rows[0];
+  assert.ok(!noeud.classList.contains('locked'), 'nœud débloqué');
+  assert.ok(rows[3].classList.contains('locked'), 'couronne verrouillée');
+  noeud.click();
+  assert.equal(L.state.hat, 'noeud');
+  $('btn-hats-close').click();
+});
+
+test('succès : écran + records affichés', () => {
+  $('b-ach').click();
+  assert.ok(!$('ovl-ach').classList.contains('hidden'));
+  assert.equal($('ach-list').querySelectorAll('.row-item').length, 8);
+  assert.match($('rec-line').textContent, /Records/);
+  $('btn-ach-close').click();
+});
+
+test('réglages : export non vide, import round-trip', () => {
+  $('b-gear').click();
+  const code = $('exp-code').value;
+  assert.ok(code.startsWith('LOUTRE1.'));
+  $('imp-code').value = code;
+  $('btn-import').click();
+  assert.ok(!$('ovl-confirm').classList.contains('hidden'), 'confirmation demandée');
+  $('btn-confirm-yes').click();
+  assert.equal(L.state.name, 'Némo', 'état restauré depuis le code');
+  assert.ok($('ovl-set').classList.contains('hidden'));
+});

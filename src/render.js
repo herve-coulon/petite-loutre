@@ -1,6 +1,7 @@
 // Rendu canvas 160x120 (mis à l'échelle en CSS, image-rendering: pixelated).
 import { PAL, SPRITES } from './sprites.js';
 import { HATCH_MS, MIN, SEC } from './constants.js';
+import { hatById } from './accessories.js';
 
 export const CANVAS_W = 160, CANVAS_H = 120;
 export const OTTER_X = 64;
@@ -109,6 +110,12 @@ export function makeRenderer(cv) {
     if (s.stage === 'egg' && fx.wobble) ox += ((frame >> 1) % 2 === 0 ? -2 : 2);
     if (s.sick && (frame >> 2) % 6 === 0) ox += 1;
     drawSprite(spr, ox, oy, 2);
+
+    // chapeau équipé (posé sur la tête, suit le rebond)
+    if (s.stage !== 'egg' && s.hat) {
+      const hat = hatById(s.hat);
+      if (hat) drawSprite(hat.rows, ox, oy - hat.rows.length * 2 + 4, 2);
+    }
 
     // paupières (sommeil / clignement)
     if (s.stage !== 'egg') {
