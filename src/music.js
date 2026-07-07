@@ -1,19 +1,50 @@
-// Musique chiptune : petite boucle en fa majeur pentatonique, douce et discrète.
-// Deux ambiances : enjouée le jour, berceuse (plus lente, une octave plus bas) la nuit.
-// Tolérant : sans AudioContext (tests, vieux navigateurs), tout est no-op.
+// Musique chiptune. Le jour : thème d'aventure entraînant façon 8-bit
+// (132 bpm, mélodie pleine, basse qui pompe à la noire, chapeau rythmique).
+// La nuit : berceuse lente, une octave plus bas. Tolérant : sans AudioContext
+// (tests, vieux navigateurs), tout est no-op.
 import { audioCtx, isMuted } from './audio.js';
 
-/* ---------------- Partition (pure, testée) ---------------- */
-// 32 croches — 0 = silence. Fa majeur pentatonique : F G A C D.
-export const MELODY = [
+/* ---------------- Partitions (pures, testées) ---------------- */
+// Grille de croches, 0 = silence. Fa majeur. 64 pas = 8 mesures de 4/4.
+// Notes : F4 349, G4 392, A4 440, Bb4 466, C5 523, D5 587, E5 659, F5 698.
+
+// Thème du jour : « l'exploration de la rivière » — hook affirmé, montée, cadence.
+const DAY_MELODY = [
+  349, 0, 349, 440, 523, 0, 440, 523,   // ta·ta ta ta — le hook
+  587, 0, 523, 440, 392, 0, 440, 0,     // réponse descendante
+  349, 0, 349, 440, 523, 0, 440, 523,   // hook repris
+  587, 0, 659, 587, 523, 0, 0, 0,       // élan…
+  698, 0, 659, 587, 523, 0, 587, 659,   // sommet, on dévale
+  698, 0, 523, 0, 440, 0, 523, 0,       // écho du hook en haut
+  392, 440, 466, 0, 587, 0, 523, 466,   // couleur si bémol, tension…
+  440, 0, 523, 440, 349, 0, 0, 0        // …résolution en fa
+];
+// Basse à la noire (32 valeurs = 1 par 2 croches), fondamentale/quinte qui pompe.
+const DAY_BASS = [
+  87.31, 130.81, 87.31, 130.81,   // F
+  65.41, 98.00, 65.41, 98.00,     // C
+  87.31, 130.81, 87.31, 130.81,   // F
+  65.41, 98.00, 65.41, 98.00,     // C
+  73.42, 110.00, 73.42, 110.00,   // Dm
+  87.31, 130.81, 87.31, 130.81,   // F
+  116.54, 87.31, 65.41, 98.00,    // Bb -> C (cadence)
+  87.31, 130.81, 98.00, 87.31     // F final
+];
+
+// Berceuse de nuit : l'air pentatonique doux d'origine (répété pour remplir la boucle).
+const NIGHT_HALF = [
   349, 0, 440, 0, 523, 0, 440, 0, 392, 0, 440, 0, 349, 0, 0, 0,
   349, 0, 440, 0, 523, 0, 587, 0, 523, 0, 440, 0, 392, 0, 349, 0
 ];
-// Une note de basse toutes les 4 croches (blanches) : F2 C3 G2 F2 …
-export const BASS = [87.31, 130.81, 98, 87.31, 87.31, 130.81, 98, 87.31];
-export const LOOP = MELODY.length;
+const NIGHT_MELODY = [...NIGHT_HALF, ...NIGHT_HALF];
+const NIGHT_BASS_HALF = [87.31, 130.81, 98, 87.31, 87.31, 130.81, 98, 87.31];
+const NIGHT_BASS = NIGHT_BASS_HALF.flatMap(b => [b, b]);
 
-export const DAY_BPM = 96, NIGHT_BPM = 66;
+export const DAY = { mel: DAY_MELODY, bass: DAY_BASS };
+export const NIGHT = { mel: NIGHT_MELODY, bass: NIGHT_BASS };
+export const LOOP = DAY_MELODY.length;
+
+export const DAY_BPM = 132, NIGHT_BPM = 66;
 export const isNightHour = h => h >= 21 || h < 7;
 /** Durée d'une croche en secondes. */
 export const stepDur = night => 60 / (night ? NIGHT_BPM : DAY_BPM) / 2;
@@ -36,16 +67,23 @@ function schedule() {
   const ac = audioCtx();
   if (!ac) return;
   const night = isNightHour(new Date().getHours());
+  const score = night ? NIGHT : DAY;
   const dur = stepDur(night);
   while (nextT < ac.currentTime + 0.35) {
     if (nextT < ac.currentTime - 0.1) nextT = ac.currentTime + 0.05; // retard (onglet gelé)
     if (!isMuted()) {
-      const m = MELODY[step];
-      if (m) note(ac, night ? m / 2 : m, nextT, dur * 0.92, night ? 'triangle' : 'square', night ? 0.045 : 0.05);
-      if (step % 4 === 0) {
-        const b = BASS[(step / 4) | 0];
-        note(ac, b, nextT, dur * 3.6, 'triangle', 0.06);
+      const m = score.mel[step];
+      if (m) {
+        if (night) note(ac, m / 2, nextT, dur * 0.92, 'triangle', 0.045);
+        else note(ac, m, nextT, dur * 0.85, 'square', 0.05); // staccato punchy
       }
+      // basse : à la noire le jour (ça pompe), à la blanche la nuit (ça berce)
+      const bEvery = night ? 4 : 2;
+      if (step % bEvery === 0) {
+        note(ac, score.bass[(step / bEvery) | 0], nextT, dur * (night ? 3.6 : 1.7), 'triangle', 0.06);
+      }
+      // chapeau rythmique sur les temps, le jour seulement : la pulsation qui entraîne
+      if (!night && step % 2 === 0) note(ac, 5600, nextT, 0.03, 'square', 0.012);
     }
     nextT += dur;
     step = (step + 1) % LOOP;

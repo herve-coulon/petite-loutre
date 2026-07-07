@@ -7,7 +7,7 @@ import { moodOf, pickIdle, canIdle, IDLES, IDLE_FRAMES } from '../src/mood.js';
 import { cardData, drawCard, makeCard, CARD_W, CARD_H, CARD_URL } from '../src/photocard.js';
 import { newState } from '../src/state.js';
 import { stepSim } from '../src/sim.js';
-import { MELODY, BASS, LOOP, stepDur, isNightHour, DAY_BPM, NIGHT_BPM } from '../src/music.js';
+import { DAY, NIGHT, LOOP, stepDur, isNightHour, DAY_BPM, NIGHT_BPM } from '../src/music.js';
 
 const T0 = 1_750_000_000_000;
 
@@ -132,16 +132,23 @@ test('rendu : chaque humeur peint un visage différent', () => {
 
 /* ---------------- musique ---------------- */
 
-test('musique : partition cohérente (boucle, notes valides, basse alignée)', () => {
-  assert.equal(MELODY.length, LOOP, 'la mélodie remplit exactement la boucle');
-  assert.equal(LOOP % 4, 0, 'boucle découpable en blanches');
-  assert.equal(BASS.length, LOOP / 4, 'une note de basse par blanche');
-  for (const f of MELODY) assert.ok(f === 0 || (f > 80 && f < 2000), 'note audible ou silence : ' + f);
-  for (const f of BASS) assert.ok(f > 40 && f < 400, 'basse dans le grave : ' + f);
-  assert.ok(MELODY.filter(Boolean).length >= 12, 'assez de notes pour faire un air');
+test('musique : partitions cohérentes (boucle, notes valides, basse à la noire)', () => {
+  for (const score of [DAY, NIGHT]) {
+    assert.equal(score.mel.length, LOOP, 'la mélodie remplit exactement la boucle');
+    assert.equal(LOOP % 4, 0, 'boucle découpable en mesures');
+    for (const f of score.mel) assert.ok(f === 0 || (f > 80 && f < 2000), 'note audible ou silence : ' + f);
+    for (const f of score.bass) assert.ok(f > 40 && f < 400, 'basse dans le grave : ' + f);
+  }
+  assert.equal(DAY.bass.length, LOOP / 2, 'jour : une basse par noire (ça pompe)');
+  assert.equal(NIGHT.bass.length, LOOP / 4, 'nuit : une basse par blanche (ça berce)');
+  assert.ok(DAY.mel.filter(Boolean).length >= 40, 'thème du jour bien rempli : ça doit entraîner');
+  assert.ok(DAY.mel.filter(Boolean).length > NIGHT.mel.filter(Boolean).length,
+    'le jour est plus dense que la berceuse');
+  assert.notDeepEqual(DAY.mel, NIGHT.mel, 'deux ambiances distinctes');
 });
 
-test('musique : berceuse la nuit (plus lente), enjouée le jour', () => {
+test('musique : berceuse la nuit (lente), aventure le jour (132 bpm)', () => {
+  assert.ok(DAY_BPM >= 120, 'tempo du jour entraînant (' + DAY_BPM + ' bpm)');
   assert.ok(DAY_BPM > NIGHT_BPM);
   assert.ok(stepDur(true) > stepDur(false));
   assert.ok(isNightHour(23) && isNightHour(3), 'nuit à 23 h et 3 h');
