@@ -49,6 +49,7 @@ export const sfx = {
   heal:   () => { beep(440, 0.08); beep(554, 0.08, 0.09); beep(659, 0.12, 0.18); },
   hatch:  () => { [523, 587, 659, 784, 1047].forEach((f, i) => beep(f, 0.09, i * 0.09)); },
   evolve: () => { [392, 523, 659, 784].forEach((f, i) => beep(f, 0.1, i * 0.1)); },
+  levelup: () => { [523, 659, 784, 1047].forEach((f, i) => beep(f, 0.08, i * 0.07)); beep(1319, 0.16, 0.3); },
   sad:    () => { beep(294, 0.12); beep(220, 0.2, 0.14); },
   catch:  () => beep(988, 0.06),
   warm:   () => beep(600 + Math.random() * 100, 0.05),

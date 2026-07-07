@@ -2,6 +2,7 @@
 import { H } from './constants.js';
 import { HATS, unlockedHats } from './accessories.js';
 import { FURS, unlockedFurs } from './skins.js';
+import { levelFromXp } from './level.js';
 
 export const ACHIEVEMENTS = [
   { id: 'naissance', icon: '🥚', name: 'Première éclosion', desc: 'Faire éclore un œuf',
@@ -27,7 +28,11 @@ export const ACHIEVEMENTS = [
   { id: 'collection', icon: '🌈', name: 'Collectionneuse', desc: 'Débloquer tous les pelages',
     test: (s, r) => unlockedFurs(r).length === FURS.length },
   { id: 'assidue', icon: '📅', name: 'Assidue', desc: 'Terminer 10 quêtes du jour',
-    test: (s, r) => (r.questsDone || 0) >= 10 }
+    test: (s, r) => (r.questsDone || 0) >= 10 },
+  { id: 'niv5', icon: '⭐', name: 'Étoile montante', desc: 'Atteindre le niveau 5',
+    test: (s, r) => levelFromXp(r.xp || 0).level >= 5 },
+  { id: 'niv12', icon: '🌟', name: 'Murmureur', desc: 'Atteindre le niveau 12',
+    test: (s, r) => levelFromXp(r.xp || 0).level >= 12 }
 ];
 
 /** Marque les succès nouvellement obtenus dans rec et les retourne. */

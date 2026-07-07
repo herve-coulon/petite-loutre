@@ -6,6 +6,7 @@ import { STAGES, H, MIN } from './constants.js';
 import { hatById } from './accessories.js';
 import { furById } from './skins.js';
 import { ageMs } from './sim.js';
+import { levelFromXp, titleFor } from './level.js';
 
 export const CARD_W = 480, CARD_H = 600; // portrait 4:5, parfait pour les stories
 export const CARD_URL = 'https://herve-coulon.github.io/petite-loutre/';
@@ -22,10 +23,12 @@ export function cardData(s, rec, now = Date.now()) {
   const p = (s.qDaily && s.qDaily.progress) || {};
   const done = (s.qDaily && s.qDaily.done && s.qDaily.done.length) || 0;
   const fish = p.fish || 0, meals = p.meals || 0;
+  const lvl = levelFromXp((rec && rec.xp) || 0).level;
   return {
     title: 'MA PETITE LOUTRE',
     name: (s.name || 'Loutre mystère').toUpperCase(),
     stageLine: (STAGES[s.stage] || '') + ' · ' + fmtShort(ageMs(s, now)),
+    levelLine: 'NIV ' + lvl + ' · ' + titleFor(lvl),
     lines: [
       '🐟 Aujourd\'hui : ' + fish + ' poisson' + (fish > 1 ? 's' : '') + ' · ' + meals + ' repas',
       '🏆 Quêtes du jour : ' + done + '/3 réussies',
@@ -97,21 +100,24 @@ export function drawCard(ctx, s, rec, now = Date.now()) {
   // identité
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 32px "Courier New", Courier, monospace';
-  ctx.fillText(d.name, CARD_W / 2, 416);
+  ctx.fillText(d.name, CARD_W / 2, 410);
   ctx.fillStyle = '#f4c14f';
   ctx.font = 'bold 15px "Courier New", Courier, monospace';
-  ctx.fillText(d.stageLine, CARD_W / 2, 442);
+  ctx.fillText(d.stageLine, CARD_W / 2, 432);
+  ctx.fillStyle = '#ffe9a8';
+  ctx.font = 'bold 13px "Courier New", Courier, monospace';
+  ctx.fillText('⭐ ' + d.levelLine, CARD_W / 2, 452);
 
   // exploits
-  ctx.fillStyle = '#141822'; ctx.fillRect(40, 452, CARD_W - 80, 96);
+  ctx.fillStyle = '#141822'; ctx.fillRect(40, 460, CARD_W - 80, 88);
   ctx.fillStyle = '#e8e4d8';
   ctx.font = '16px "Courier New", Courier, monospace';
-  d.lines.forEach((line, i) => ctx.fillText(line, CARD_W / 2, 480 + i * 28));
+  d.lines.forEach((line, i) => ctx.fillText(line, CARD_W / 2, 486 + i * 26));
 
   // invitation
   ctx.fillStyle = '#9aa0b4';
   ctx.font = '14px "Courier New", Courier, monospace';
-  ctx.fillText('🦦 ' + d.url, CARD_W / 2, 568);
+  ctx.fillText('🦦 ' + d.url, CARD_W / 2, 566);
 }
 
 /** Fabrique le canvas de la carte (document injecté -> testable en jsdom). */

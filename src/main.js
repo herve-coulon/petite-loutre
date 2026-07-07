@@ -4,6 +4,7 @@ import {
   WARM_BOOST, WARM_CD, SHAKE_BOOST, SHAKE_CD, SHAKE_G
 } from './constants.js';
 import * as music from './music.js';
+import { XP, levelFromXp, titleFor } from './level.js';
 import { bumpQuest, completedQuests, ensureDaily } from './quests.js';
 import {
   newState, saveState, loadState, clearSave,
@@ -41,7 +42,7 @@ function applyEvents(events, offline = false) {
   for (const ev of events) {
     if (ev.type === 'hatch') {
       ui.showNaming();
-      if (!offline) { sfx.hatch(); R.burst('confetti', 26, 'egg'); }
+      if (!offline) { sfx.hatch(); R.burst('confetti', 26, 'egg'); gainXp(XP.hatch); }
       continue;
     }
     if (ev.type === 'die') {
@@ -59,6 +60,7 @@ function applyEvents(events, offline = false) {
       ui.toast('✨ ' + s.name + ' a grandi ! ✨');
       sfx.evolve();
       R.burst('confetti', 40, s.stage); // pluie de confettis d'évolution
+      gainXp(XP.evolve);
     }
     if (ev.type === 'sick') sfx.sad();
   }
@@ -88,6 +90,7 @@ function actTreat() {
   R.burst('sparkle', 5, s.stage);
   sfx.happy();
   ui.log(s.name + ' savoure sa brochette de baies ! 🍡');
+  gainXp(XP.treat);
   afterAct();
   quest('treats');
 }
@@ -110,6 +113,7 @@ function resolveDive() {
   ui.log(s.name + ' remonte avec ' + finds[Math.floor(Math.random() * finds.length)] + ' !');
   R.burst('sparkle', 10, s.stage);
   sfx.hatch(); vibrate([15, 30, 15]);
+  gainXp(XP.dive);
   persist();
   checkUnlocks();
 }
@@ -126,6 +130,7 @@ function actFeed() {
   R.spawn('fish', s.stage); R.spawn('heart', s.stage); R.spawn('heart', s.stage);
   sfx.eat();
   ui.log('Miam ! ' + s.name + ' dévore un poisson frais. 🐟');
+  gainXp(XP.meal);
   afterAct();
   quest('meals');
 }
@@ -142,6 +147,7 @@ function actWash() {
   R.burst('sparkle', 4, s.stage);
   sfx.wash();
   ui.log(hadPoop ? 'Grand nettoyage ! Tout est propre. ✨' : s.name + ' barbote dans son bain. 🫧');
+  gainXp(XP.wash);
   afterAct();
   quest('washes');
 }
@@ -248,6 +254,7 @@ function pet() {
     R.spawn('heart', s.stage);
     sfx.happy();
     ui.log(s.name + ' adore les caresses ! 💛');
+    gainXp(XP.pet);
     quest('pets');
   } else {
     sfx.press();
@@ -279,6 +286,7 @@ function endGame(res) {
   if (sc >= tot - 1) { sfx.happy(); ui.log('Pêche royale : ' + sc + ' poisson' + (sc > 1 ? 's' : '') + ' ! ' + s.name + ' est ravie ! 🎉'); }
   else if (sc > 0) { sfx.eat(); ui.log(sc + ' poisson' + (sc > 1 ? 's' : '') + ' attrapé' + (sc > 1 ? 's' : '') + ' ! Pas mal !'); }
   else { sfx.sad(); ui.log('Aucun poisson… ils étaient rusés aujourd\'hui.'); }
+  gainXp(XP.game + sc * XP.fish);
   persist();
   ui.updateHUD(s, mg);
   quest('games');
@@ -336,6 +344,29 @@ function checkUnlocks() {
   persistRec();
 }
 
+/** XP du soigneur : chaque geste compte. Montée de niveau = fête + friandise rechargée. */
+function gainXp(n) {
+  if (!rec || !n) return;
+  const before = levelFromXp(rec.xp || 0).level;
+  rec.xp = (rec.xp || 0) + n;
+  const L = levelFromXp(rec.xp);
+  if (s && !s.gameOver && s.stage !== 'egg') R.xpText('+' + n, s.stage);
+  if (L.level > before) {
+    if (s) {
+      s.lastTreat = 0; // récompense immédiate : friandise rechargée
+      s.fun = clamp(s.fun + 15, 0, 100);
+      if (!s.gameOver && s.stage !== 'egg') R.burst('confetti', 30, s.stage);
+      persist();
+    }
+    checkUnlocks(); // cosmétiques et succès de palier viennent d'apparaître
+    ui.toast('⭐ NIVEAU ' + L.level + ' · ' + titleFor(L.level) + ' !');
+    ui.log('Niveau ' + L.level + ' ! Récompense : friandise rechargée. 🍡');
+    sfx.levelup(); vibrate([20, 40, 20]);
+  }
+  ui.renderLevel(rec);
+  persistRec();
+}
+
 /** Progression de quête + récompense immédiate si terminée. */
 function quest(key, n = 1) {
   if (!s || s.stage === 'egg' || s.gameOver) return;
@@ -344,6 +375,7 @@ function quest(key, n = 1) {
     s.fun = clamp(s.fun + 10, 0, 100);
     R.spawn('heart', s.stage);
     R.burst('sparkle', 10, s.stage);
+    gainXp(XP.quest);
     ui.toast(q.icon + ' Quête du jour réussie : ' + q.label + ' !');
     sfx.hatch(); vibrate([10, 30, 10]);
   }
@@ -467,6 +499,7 @@ function boot() {
 
   rec = loadRecords(storage);
   prevHats = new Set(unlockedHats(rec));
+  ui.renderLevel(rec);
 
   const prev = loadState(storage);
   if (prev) {
@@ -535,6 +568,7 @@ function boot() {
     ui.shake(); // l'arène tremble !
     sfx.evolve(); vibrate([20, 40, 20]);
     ui.updateBattleUI(battle);
+    gainXp(XP.battle);
     quest('battles');
   });
   const doMove = (id) => {
@@ -546,6 +580,7 @@ function boot() {
       if (battle.winner === 'me') {
         rec.wins++;
         s.fun = clamp(s.fun + 12, 0, 100);
+        gainXp(XP.win);
         sfx.happy(); ui.toast('🏆 Victoire de ' + battle.me.name + ' !');
       } else {
         s.fun = clamp(s.fun + 2, 0, 100);
@@ -644,6 +679,7 @@ function boot() {
       const { events } = simulateOffline(s, now());
       applyEvents(events, true);
       persist(); persistRec();
+      ui.renderLevel(rec);
       ui.hideAllOverlays();
       if (s.gameOver) ui.showGameOver(s);
       else if (s.stage !== 'egg' && !s.name) ui.showNaming();

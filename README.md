@@ -51,6 +51,7 @@ L'app se lance alors en plein écran, fonctionne hors-ligne, et la loutre vit sa
 | Actions | Manger 🐟, pêche 🎣 (mini-jeu), bain 🧼, dodo 💤, soin 💊, caresses (toucher la loutre), friandise 🍡 (jeune+), plongée au trésor 🤿 (adulte) |
 | Combats ⚔️ | Duels par code de défi à s'échanger entre amis (dès le stade jeune) |
 | Quêtes 🏆 | 3 micro-objectifs par jour, identiques pour tout le monde |
+| Niveaux ⭐ | Chaque geste rapporte de l'XP (« +5 » à l'écran) : niveaux, titres honorifiques, friandise rechargée à chaque montée, cosmétiques exclusifs aux paliers 3/5/10 — le niveau survit aux loutres |
 | Risques | Cacas à nettoyer, maladie, départ si la santé tombe à 0 |
 | Ambiance | Ciel jour/crépuscule/nuit selon l'heure réelle, musique chiptune (enjouée le jour, berceuse la nuit — désactivable dans ⚙️), sons 8-bit, vibrations, libellule et poissons sauteurs, confettis et squash & stretch |
 | Expressivité 🦦 | Le visage suit l'humeur (contente, affamée, boudeuse, malade) ; elle se gratte, bâille et jongle avec un caillou quand tout va bien — et boude 10 min si on la réveille trop tôt (un câlin ou une friandise la déride) |
@@ -77,6 +78,7 @@ src/
   skins.js            pelages (palette swap) et décors de berge
   battle.js           combats par code de défi (pur, RNG seedé)
   quests.js           quêtes du jour (déterministes par date)
+  level.js            XP, niveaux et titres du soigneur (pur)
   mood.js             humeurs et manies de la loutre (pur)
   photocard.js        carte photo partageable (dessin autonome)
   minigame.js         pêche (logique pure)
@@ -128,4 +130,5 @@ feel (confettis, squash & stretch, jauges qui pulsent), loutre expressive
 bercer en secouant le téléphone, bouderie de réveil forcé, sieste vraiment
 réparatrice, lancement instantané (cache d'abord). v2.5 : musique chiptune
 jour/nuit, éclosion active bien plus payante (10 s par réchauffage, 8 s par
-secousse), permission capteurs iOS demandée au premier toucher.*
+secousse), permission capteurs iOS demandée au premier toucher. v2.6 : niveaux
+du soigneur (XP visible, titres, récompenses de palier, barre permanente).*

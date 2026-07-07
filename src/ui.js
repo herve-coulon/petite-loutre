@@ -1,6 +1,7 @@
 // Couche DOM : HUD, jauges, overlays, messages. Aucune logique de jeu ici.
 import { STAGES, H, MIN, clamp } from './constants.js';
 import { ageMs } from './sim.js';
+import { levelFromXp, titleFor } from './level.js';
 import { HATS, unlockedHats } from './accessories.js';
 import { FURS, DECORS, unlockedFurs, unlockedDecors } from './skins.js';
 import { ACHIEVEMENTS } from './achievements.js';
@@ -41,6 +42,14 @@ function setBar(id, v) {
     el._up = setTimeout(() => el.classList.remove('up'), 700);
   }
   barPrev[id] = v;
+}
+
+/** Bandeau de niveau : NIV, titre honorifique, progression vers le suivant. */
+export function renderLevel(rec) {
+  const L = levelFromXp((rec && rec.xp) || 0);
+  $('lvl-label').textContent = 'NIV ' + L.level + ' · ' + titleFor(L.level);
+  $('lvl-fill').style.width = Math.round(L.cur / L.next * 100) + '%';
+  $('lvl-num').textContent = L.cur + '/' + L.next + ' XP';
 }
 
 /** Micro-tremblement de l'écran de jeu (début de combat…). */

@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { JSDOM } from 'jsdom';
+import { dailyQuests, dayKey } from '../src/quests.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const html = readFileSync(join(root, 'index.html'), 'utf8');
@@ -148,7 +149,7 @@ test('garde-robe : déblocage par records + équipement', () => {
   $('b-hats').click();
   assert.ok(!$('ovl-hats').classList.contains('hidden'));
   const rows = [...$('hat-list').querySelectorAll('.row-item')];
-  assert.equal(rows.length, 17, '6 chapeaux + 6 pelages + 5 décors');
+  assert.equal(rows.length, 20, '8 chapeaux + 6 pelages + 6 décors');
   const noeud = rows[0];
   assert.ok(!noeud.classList.contains('locked'), 'nœud débloqué');
   assert.ok(rows[3].classList.contains('locked'), 'couronne verrouillée');
@@ -160,7 +161,7 @@ test('garde-robe : déblocage par records + équipement', () => {
 test('succès : écran + records affichés', () => {
   $('b-ach').click();
   assert.ok(!$('ovl-ach').classList.contains('hidden'));
-  assert.equal($('ach-list').querySelectorAll('.row-item').length, 15, '3 quêtes + 12 succès');
+  assert.equal($('ach-list').querySelectorAll('.row-item').length, 17, '3 quêtes + 14 succès');
   assert.match($('rec-line').textContent, /Records/);
   $('btn-ach-close').click();
 });
@@ -297,6 +298,42 @@ test('réveil au bon moment : pas de bouderie', () => {
   $('b-sleep').click();
   assert.equal(L.state.sleeping, false);
   assert.equal(L.state.grumpyUntil, 0, 'énergie haute : réveil serein');
+});
+
+/* ---------------- v2.6 : niveaux ---------------- */
+
+test('XP : nourrir rapporte 5 XP, la barre de niveau est affichée', () => {
+  const xp0 = L.records.xp || 0;
+  L.state.hunger = 50;
+  L.state.sleeping = false;
+  $('b-feed').click();
+  assert.equal(L.records.xp, xp0 + 5, '+5 XP par repas');
+  assert.match($('lvl-label').textContent, /NIV \d+ · /, 'bandeau NIV + titre');
+  assert.match($('lvl-num').textContent, /XP$/);
+  assert.match($('lvl-fill').style.width, /%$/);
+});
+
+test('montée de niveau : toast étoilé, friandise rechargée, sauvegardé', () => {
+  // neutralise les quêtes du jour pour un gain déterministe
+  L.state.qDaily = {
+    date: dayKey(),
+    progress: {},
+    done: dailyQuests(dayKey()).map(q => q.id)
+  };
+  const lv0 = $('lvl-label').textContent;
+  // se place juste sous le prochain niveau : le prochain repas le déclenche
+  const cur = L.records.xp || 0;
+  let total = 0, lvl = 1;
+  while (total + (40 + (lvl - 1) * 25) <= cur) { total += 40 + (lvl - 1) * 25; lvl++; }
+  L.records.xp = total + (40 + (lvl - 1) * 25) - 2; // à 2 XP du niveau suivant
+  L.state.lastTreat = Date.now(); // friandise en recharge
+  L.state.hunger = 50;
+  $('b-feed').click();
+  assert.match($('toast').textContent, /NIVEAU \d/, 'toast de montée de niveau');
+  assert.equal(L.state.lastTreat, 0, 'récompense : friandise rechargée');
+  assert.notEqual($('lvl-label').textContent, lv0, 'le bandeau a changé de niveau');
+  const savedRec = JSON.parse(window.localStorage.getItem('petite_loutre_records_v1'));
+  assert.equal(savedRec.xp, L.records.xp, 'XP persistée');
 });
 
 /* ---------------- v2.5 : musique ---------------- */

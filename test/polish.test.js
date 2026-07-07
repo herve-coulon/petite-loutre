@@ -8,6 +8,10 @@ import { cardData, drawCard, makeCard, CARD_W, CARD_H, CARD_URL } from '../src/p
 import { newState } from '../src/state.js';
 import { stepSim } from '../src/sim.js';
 import { DAY, NIGHT, LOOP, stepDur, isNightHour, DAY_BPM, NIGHT_BPM } from '../src/music.js';
+import { XP, xpCost, levelFromXp, titleFor, TITLES } from '../src/level.js';
+import { HATS, unlockedHats } from '../src/accessories.js';
+import { DECORS, unlockedDecors } from '../src/skins.js';
+import { newRecords } from '../src/state.js';
 
 const T0 = 1_750_000_000_000;
 
@@ -130,6 +134,58 @@ test('rendu : chaque humeur peint un visage différent', () => {
   }
 });
 
+/* ---------------- niveaux ---------------- */
+
+test('niveaux : départ niveau 1, seuils exacts, courbe croissante', () => {
+  assert.deepEqual(levelFromXp(0), { level: 1, cur: 0, next: 40 });
+  assert.equal(levelFromXp(39).level, 1);
+  assert.equal(levelFromXp(40).level, 2, 'niveau 2 pile à 40 XP');
+  assert.deepEqual(levelFromXp(40 + 65), { level: 3, cur: 0, next: xpCost(3) });
+  for (let n = 1; n < 30; n++) assert.ok(xpCost(n + 1) > xpCost(n), 'chaque niveau coûte plus cher');
+  assert.equal(levelFromXp(-50).level, 1, 'XP négative impossible');
+  assert.equal(levelFromXp(NaN).level, 1);
+});
+
+test('niveaux : titres définis, croissants, jamais vides', () => {
+  let prev = '';
+  for (let n = 1; n <= 20; n++) {
+    const t = titleFor(n);
+    assert.ok(t && t.length > 3, 'titre du niveau ' + n);
+    prev = t;
+  }
+  assert.equal(titleFor(1), TITLES[0][1]);
+  assert.equal(titleFor(5), 'Gardien de la rivière');
+  assert.equal(titleFor(99), TITLES[TITLES.length - 1][1]);
+});
+
+test('niveaux : barème XP complet, positif, hiérarchisé', () => {
+  for (const [k, v] of Object.entries(XP)) assert.ok(v > 0, k);
+  assert.ok(XP.quest > XP.meal, 'une quête vaut plus qu\'un repas');
+  assert.ok(XP.win > XP.battle, 'gagner vaut plus que participer');
+  assert.ok(XP.evolve >= XP.quest, 'grandir est un événement');
+});
+
+test('niveaux : les cosmétiques de palier se débloquent par l\'XP', () => {
+  const rec = newRecords();
+  assert.ok(!unlockedHats(rec).includes('etoile'));
+  assert.ok(!unlockedDecors(rec).includes('feu'));
+  rec.xp = 40 + 65; // niveau 3
+  assert.ok(unlockedDecors(rec).includes('feu'), 'feu de camp au niveau 3');
+  assert.ok(!unlockedHats(rec).includes('etoile'), 'étoile pas avant le niveau 5');
+  rec.xp = 40 + 65 + 90 + 115; // niveau 5
+  assert.ok(unlockedHats(rec).includes('etoile'));
+  rec.xp = 100000;
+  assert.ok(unlockedHats(rec).includes('aureole'));
+});
+
+test('niveaux : les sprites des nouveaux chapeaux sont valides', () => {
+  for (const id of ['etoile', 'aureole']) {
+    const hat = HATS.find(h => h.id === id);
+    assert.ok(hat, id);
+    hat.rows.forEach((r, i) => assert.equal(r.length, 16, id + ' ligne ' + i));
+  }
+});
+
 /* ---------------- musique ---------------- */
 
 test('musique : partitions cohérentes (boucle, notes valides, basse à la noire)', () => {
@@ -171,6 +227,7 @@ test('carte : textes fidèles à la loutre (nom, stade, exploits du jour, url)',
   assert.match(d.lines[2], /1 j 2 h/);
   assert.match(d.url, /petite-loutre/);
   assert.ok(CARD_URL.startsWith('https://') && CARD_URL.includes(d.url), 'lien de partage cohérent');
+  assert.match(d.levelLine, /NIV 1/, 'niveau du soigneur sur la carte');
 });
 
 test('carte : sans nom ni quêtes du jour, textes de repli propres', () => {

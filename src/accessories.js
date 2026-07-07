@@ -1,6 +1,7 @@
 // Accessoires (chapeaux) à débloquer — conditions basées sur les records GLOBAUX,
 // donc un chapeau gagné reste acquis même après avoir recommencé avec un nouvel œuf.
 import { H } from './constants.js';
+import { levelFromXp } from './level.js';
 
 export const HATS = [
   {
@@ -66,6 +67,28 @@ export const HATS = [
       '.....KKKKKK.....',
       '.....KRRRRK.....',
       '...KKKKKKKKKK...'
+    ]
+  },
+  {
+    id: 'etoile', icon: '⭐', name: 'Étoile dorée',
+    cond: 'Atteindre le niveau 5',
+    test: r => levelFromXp(r.xp || 0).level >= 5,
+    rows: [
+      '.......YY.......',
+      '......YYYY......',
+      '....YYYYYYYY....',
+      '......YYYY......',
+      '.....YY..YY.....'
+    ]
+  },
+  {
+    id: 'aureole', icon: '😇', name: 'Auréole',
+    cond: 'Atteindre le niveau 10',
+    test: r => levelFromXp(r.xp || 0).level >= 10,
+    rows: [
+      '....YYYYYYYY....',
+      '...Y........Y...',
+      '....YYYYYYYY....'
     ]
   }
 ];

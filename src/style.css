@@ -151,6 +151,16 @@ button.mini:active{color:var(--txt);}
 /* La confirmation (reset, import) doit passer devant les autres overlays */
 #ovl-confirm{z-index:7;}
 
+/* v2.6 — bandeau de niveau (XP du soigneur, global) */
+#lvl{
+  display:flex; align-items:center; gap:7px; flex:none;
+  margin:0 2px 6px; font-size:9px; letter-spacing:.5px; color:var(--accent);
+}
+#lvl .track{flex:1; height:8px; background:#141822; border:2px solid var(--ink); position:relative;}
+#lvl-fill{background-color:var(--accent); background-image:none; transition:width .4s;}
+#lvl-num{color:var(--dim);}
+#lvl-label{font-weight:bold; white-space:nowrap;}
+
 /* v2.4 — carte photo */
 #photo-img{
   width:78%; max-width:280px; display:block;

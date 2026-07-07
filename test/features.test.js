@@ -24,6 +24,7 @@ test('chapeaux : verrouillés au départ, débloqués par les records', () => {
   rec.bestAge = 72 * H;
   rec.sleepsTotal = 10;
   rec.wins = 5;
+  rec.xp = 100000; // v2.6 : l'étoile dorée et l'auréole sont des paliers de niveau
   assert.equal(unlockedHats(rec).length, HATS.length, 'tout débloqué');
 });
 
@@ -55,12 +56,12 @@ test('succès : détectés une seule fois, persistés dans rec', () => {
   assert.ok(rec.achievements.includes('gourmande'));
 });
 
-test('succès : fashionista exige tous les chapeaux', () => {
+test('succès : fashionista exige tous les chapeaux (paliers de niveau compris)', () => {
   const rec = newRecords();
   rec.mealsTotal = 5; rec.gamesTotal = 10; rec.bathsTotal = 10;
-  rec.sleepsTotal = 10; rec.wins = 5;
+  rec.sleepsTotal = 10; rec.wins = 5; rec.xp = 100000;
   newAchievements(null, rec);
-  assert.ok(!rec.achievements.includes('fashion'));
+  assert.ok(!rec.achievements.includes('fashion'), 'couronne manquante : pas fashionista');
   rec.bestAge = 72 * H;
   newAchievements(null, rec);
   assert.ok(rec.achievements.includes('fashion'));

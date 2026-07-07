@@ -73,6 +73,15 @@ export function makeRenderer(cv) {
       ctx.fillRect(6, 82, 18, 12); ctx.fillRect(9, 78, 12, 6);
       ctx.fillStyle = '#5a4a9e';
       ctx.fillRect(10, 84, 2, 2); ctx.fillRect(17, 81, 2, 2); ctx.fillRect(14, 88, 2, 2);
+    } else if (id === 'feu') {
+      // feu de camp qui crépite (récompense de niveau 3)
+      ctx.fillStyle = '#3b2416';
+      ctx.fillRect(100, 96, 12, 3); ctx.fillRect(102, 94, 8, 2);
+      const fl = (frame >> 2) % 3;
+      ctx.fillStyle = '#e5484d'; ctx.fillRect(103, 88 - fl, 6, 6 + fl);
+      ctx.fillStyle = '#f2913d'; ctx.fillRect(104, 90 - ((frame >> 3) % 2), 4, 4);
+      ctx.fillStyle = '#ffd94a'; ctx.fillRect(105, 92, 2, 2);
+      if ((frame >> 4) % 3 === 0) { ctx.fillStyle = '#f2c14e'; ctx.fillRect(107, 84 - fl, 1, 1); }
     }
   }
 
@@ -111,6 +120,14 @@ export function makeRenderer(cv) {
 
   /** Squash & stretch au prochain rendu (caresse, réception d'un soin…). */
   function squash() { squashUntil = Date.now() + SQUASH_MS; }
+
+  /** Petit « +5 » doré qui s'envole (gain d'XP). */
+  function xpText(txt, stage) {
+    particles.push({
+      x: OTTER_X + 34, y: otterY(stage) + 4,
+      vx: 0.12, vy: -0.45, life: 48, kind: 'xp', txt
+    });
+  }
 
   /* ---------------- Vie du décor : libellule, luciole, poissons sauteurs ---------------- */
   function drawAmbient(mg, frame, night) {
@@ -450,9 +467,13 @@ export function makeRenderer(cv) {
       } else if (p.kind === 'sparkle') {
         ctx.fillStyle = (p.life >> 2) % 2 ? '#ffe9a8' : '#ffffff';
         ctx.fillRect(p.x, p.y - 1, 1, 3); ctx.fillRect(p.x - 1, p.y, 3, 1);
+      } else if (p.kind === 'xp') {
+        ctx.fillStyle = p.life > 12 ? '#ffd94a' : '#c9a94a'; // s'estompe en fin de vie
+        ctx.font = 'bold 7px monospace';
+        ctx.fillText(p.txt, p.x, p.y);
       }
     });
   }
 
-  return { render, spawn, splashAt, burst, squash };
+  return { render, spawn, splashAt, burst, squash, xpText };
 }

@@ -90,6 +90,7 @@ export function newRecords() {
     wins: 0,
     battles: 0,
     questsDone: 0,
+    xp: 0,
     achievements: []
   };
 }

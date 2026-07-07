@@ -1,5 +1,6 @@
 // Skins : pelages (palette swap) et décors de berge, débloqués via les records.
 import { H } from './constants.js';
+import { levelFromXp } from './level.js';
 
 // Un pelage remplace des couleurs de la palette au dessin (B corps, C ventre, D contour).
 export const FURS = [
@@ -27,7 +28,9 @@ export const DECORS = [
   { id: 'fanions', icon: '🎏', name: 'Fanions de combat', cond: 'Livrer 5 combats',
     test: r => r.battles >= 5 },
   { id: 'baies', icon: '🫐', name: 'Bosquet à baies', cond: 'Vivre 5 jours',
-    test: r => r.bestAge >= 5 * 24 * H }
+    test: r => r.bestAge >= 5 * 24 * H },
+  { id: 'feu', icon: '🔥', name: 'Feu de camp', cond: 'Atteindre le niveau 3',
+    test: r => levelFromXp(r.xp || 0).level >= 3 }
 ];
 
 export const furById = id => FURS.find(f => f.id === id) || FURS[0];
