@@ -25,6 +25,8 @@ export const ACHIEVEMENTS = [
     test: (s, r) => r.wins >= 1 },
   { id: 'plongeuse', icon: '🤿', name: 'Chasseuse de trésors', desc: 'Rapporter un trésor de plongée',
     test: (s, r) => r.treasures >= 1 },
+  { id: 'toboggan', icon: '🛝', name: 'Reine du toboggan', desc: 'Réussir une descente parfaite (5 poissons, 0 rocher)',
+    test: (s, r) => (r.perfectSlides || 0) >= 1 },
   { id: 'collection', icon: '🌈', name: 'Collectionneuse', desc: 'Débloquer tous les pelages',
     test: (s, r) => unlockedFurs(r).length === FURS.length },
   { id: 'assidue', icon: '📅', name: 'Assidue', desc: 'Terminer 10 quêtes du jour',

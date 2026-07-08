@@ -7,6 +7,7 @@ import { moodOf, pickIdle, canIdle, IDLE_FRAMES } from './mood.js';
 import { dailyEvent, butterflyPos } from './events.js';
 import { dayKey } from './quests.js';
 import { seasonInfo } from './seasons.js';
+import { LANE_X, SLIDE_OTTER_Y } from './toboggan.js';
 
 export const CANVAS_W = 160, CANVAS_H = 120;
 export const OTTER_X = 64;
@@ -568,8 +569,10 @@ export function makeRenderer(cv) {
       }
     }
 
-    // mini-jeu pêche
-    if (mg) {
+    // mini-jeu : toboggan (esquive) ou pêche (cible)
+    if (mg && mg.mode === 'slide') {
+      drawSlide(mg, frame, s, fur);
+    } else if (mg) {
       ctx.fillStyle = 'rgba(20,30,60,.35)'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
       if (mg.fish) {
         const fy = mg.fish.y + ((frame >> 2) % 2);
@@ -582,6 +585,47 @@ export function makeRenderer(cv) {
     }
 
     drawParticles();
+  }
+
+  // Toboggan de rivière : rapides défilants, 3 couloirs, obstacles, la loutre glisse.
+  function drawSlide(mg, frame, s, fur) {
+    ctx.fillStyle = '#2f6db0'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    // courant qui file vers le bas (sensation de vitesse)
+    ctx.fillStyle = 'rgba(255,255,255,.16)';
+    const off = (frame * 4) % 24;
+    for (let y = -24 + off; y < CANVAS_H; y += 24) {
+      for (const lx of LANE_X) ctx.fillRect(lx - 1, y, 2, 12);
+    }
+    // écume qui sépare les couloirs
+    ctx.fillStyle = 'rgba(200,230,255,.22)';
+    for (const bx of [60, 100]) ctx.fillRect(bx, 0, 1, CANVAS_H);
+    // obstacles et poissons
+    for (const it of mg.items) {
+      const ix = LANE_X[it.lane];
+      if (it.kind === 'fish') {
+        drawSprite(SPRITES.fish, ix - 5, it.y - 2, 1);
+      } else {
+        ctx.fillStyle = '#6b6f78'; ctx.fillRect(ix - 6, it.y - 4, 12, 9);
+        ctx.fillStyle = '#8a909b'; ctx.fillRect(ix - 4, it.y - 4, 6, 3);
+        ctx.fillStyle = '#4c5058'; ctx.fillRect(ix - 6, it.y + 3, 12, 2);
+      }
+    }
+    // la loutre dans son couloir, avec un peu de ballotement + gerbe d'eau
+    const ox = LANE_X[mg.lane] - 16;
+    const oy = SLIDE_OTTER_Y - 22 + ((frame >> 2) % 2);
+    const spr = SPRITES[s.stage] || SPRITES.child;
+    ctx.fillStyle = 'rgba(255,255,255,.5)';
+    ctx.fillRect(ox + 6, oy + 26, 4, 3); ctx.fillRect(ox + 20, oy + 25, 4, 3);
+    drawSprite(spr, ox, oy, 2, fur);
+    // flash rouge bref sur un choc
+    if (mg.bumpAt && Date.now() - mg.bumpAt < 260) {
+      ctx.fillStyle = 'rgba(229,72,77,.28)'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    }
+    // bandeau : temps + score
+    const left = Math.max(0, (mg.endsAt - Date.now()) / SEC);
+    ctx.fillStyle = 'rgba(15,18,26,.8)'; ctx.fillRect(0, 0, CANVAS_W, 11);
+    ctx.fillStyle = '#ffe9a8'; ctx.font = '8px monospace';
+    ctx.fillText('TOBOGGAN  ' + left.toFixed(0) + 's   score:' + mg.score, 6, 9);
   }
 
   function drawParticles() {

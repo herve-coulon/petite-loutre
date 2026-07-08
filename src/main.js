@@ -19,6 +19,7 @@ import {
 } from './state.js';
 import { stepSim, simulateOffline, ageMs } from './sim.js';
 import { newGame, tickGame, clickGame } from './minigame.js';
+import { newSlide, tickSlide, setSlideLane, laneAt } from './toboggan.js';
 import { makeRenderer, OTTER_X, otterY } from './render.js';
 import { sfx, vibrate, setMuted } from './audio.js';
 import * as ui from './ui.js';
@@ -303,6 +304,45 @@ function endGame(res) {
   if (sc > 0) quest('fish', sc);
 }
 
+/* ---------------- Toboggan de rivière (2e mini-jeu) ---------------- */
+function actSlide() {
+  if (busy() || s.sleeping || !isChildPlus()) return;
+  if (s.energy < 14) { ui.log(s.name + ' est trop fatiguée pour le toboggan…'); return; }
+  press();
+  mg = newSlide(now());
+  sfx.press();
+  ui.log('Toboggan ! Tape le couloir pour gober les 🐟 et esquiver les 🪨 !');
+  ui.updateHUD(s, mg);
+}
+
+function endSlide(res) {
+  const sc = res.score, bumps = res.bumps;
+  s.fun = clamp(s.fun + 8 + sc * 4, 0, 100);
+  s.energy = clamp(s.energy - 10, 0, 100);
+  s.hunger = clamp(s.hunger - 5, 0, 100);
+  s.played++;
+  rec.gamesTotal++;
+  rec.slidesTotal = (rec.slidesTotal || 0) + 1;
+  rec.slideBest = Math.max(rec.slideBest || 0, sc);
+  const clean = bumps === 0 && sc >= 5;
+  if (clean) rec.perfectSlides = (rec.perfectSlides || 0) + 1;
+  mg = null;
+  if (clean) R.burst('confetti', 24, s.stage);
+  else if (sc > 0) R.burst('sparkle', 8, s.stage);
+  if (clean) { sfx.happy(); ui.log('Descente parfaite : ' + sc + ' poissons sans un rocher ! 🛝🎉'); }
+  else if (sc > 0) {
+    sfx.eat();
+    ui.log(sc + ' poisson' + (sc > 1 ? 's' : '') + ' ramassé' + (sc > 1 ? 's' : '') +
+      (bumps ? ' — aïe, ' + bumps + ' rocher' + (bumps > 1 ? 's' : '') + ' !' : ' !'));
+  } else { sfx.sad(); ui.log('Quelle descente mouvementée ! Les rochers ont gagné. 🪨'); }
+  gainXp(XP.game + sc * XP.fish);
+  checkUnlocks();
+  persist();
+  ui.updateHUD(s, mg);
+  quest('games');
+  if (sc > 0) quest('fish', sc);
+}
+
 /* ---------------- Canvas (pêche, caresses, œuf) ---------------- */
 function onCanvasPointer(e) {
   const r = cv.getBoundingClientRect();
@@ -311,7 +351,8 @@ function onCanvasPointer(e) {
   const pad = e.pointerType === 'touch' ? 8 : 4; // hitbox élargie au doigt
 
   if (mg) {
-    if (clickGame(mg, x, y, pad)) { R.splashAt(x, y); sfx.catch(); vibrate(8); }
+    if (mg.mode === 'slide') { setSlideLane(mg, laneAt(x)); vibrate(6); }
+    else if (clickGame(mg, x, y, pad)) { R.splashAt(x, y); sfx.catch(); vibrate(8); }
     return;
   }
   if (s && !s.gameOver) {
@@ -621,8 +662,8 @@ function tick() {
 function loop() {
   frame++;
   if (mg) {
-    const res = tickGame(mg, now());
-    if (res) endGame(res);
+    const res = mg.mode === 'slide' ? tickSlide(mg, now()) : tickGame(mg, now());
+    if (res) (mg.mode === 'slide' ? endSlide : endGame)(res);
   }
   R.render(s, mg, frame, {
     wobble: s && now() < wobbleUntil,
@@ -690,6 +731,7 @@ function boot() {
   $('b-warm').addEventListener('click', actWarm);
   $('b-treat').addEventListener('click', actTreat);
   $('b-dive').addEventListener('click', actDive);
+  $('b-slide').addEventListener('click', actSlide);
   $('b-care').addEventListener('click', actCare);
 
   // Combat de loutres (par code de défi)
@@ -930,7 +972,7 @@ window.__loutre = {
     }
   },
   step(ms) { applyEvents(stepSim(s, ms, { simNow: now() })); ui.updateHUD(s, mg); },
-  startNew, actFeed, actWash, actSleep, actHeal, actPlay, actTreat, actDive, actCare, pet,
+  startNew, actFeed, actWash, actSleep, actHeal, actPlay, actTreat, actDive, actSlide, actCare, pet,
   get battle() { return battle; }
 };
 

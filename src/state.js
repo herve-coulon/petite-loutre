@@ -101,6 +101,9 @@ export function newRecords() {
     gamesTotal: 0,
     fishTotal: 0,
     perfectGames: 0,
+    slidesTotal: 0,     // descentes de toboggan
+    slideBest: 0,       // meilleur score de descente
+    perfectSlides: 0,   // descentes sans toucher de rocher
     sleepsTotal: 0,
     treasures: 0,
     wins: 0,

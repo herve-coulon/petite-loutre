@@ -8,6 +8,7 @@ import { dirname, join } from 'node:path';
 import { JSDOM } from 'jsdom';
 import { dailyQuests, dayKey } from '../src/quests.js';
 import { seasonFor } from '../src/seasons.js';
+import { ACHIEVEMENTS } from '../src/achievements.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const html = readFileSync(join(root, 'index.html'), 'utf8');
@@ -222,7 +223,9 @@ test('garde-robe : déblocage par records + équipement', () => {
 test('succès : écran + records affichés', () => {
   $('b-ach').click();
   assert.ok(!$('ovl-ach').classList.contains('hidden'));
-  assert.equal($('ach-list').querySelectorAll('.row-item').length, 19, '3 quêtes + 16 succès');
+  // 3 quêtes du jour + tous les succès (dérivé des données, pas d'un nombre en dur)
+  const expected = 3 + ACHIEVEMENTS.length;
+  assert.equal($('ach-list').querySelectorAll('.row-item').length, expected, '3 quêtes + succès');
   assert.match($('rec-line').textContent, /Records/);
   $('btn-ach-close').click();
 });
@@ -488,4 +491,27 @@ test('musique : le réglage 🎵 bascule et se sauvegarde', () => {
   assert.match($('b-music').textContent, /OUI/);
   $('btn-set-close').click();
   tick(); // la synchro musique tourne sans AudioContext (no-op propre)
+});
+
+test('toboggan : verrouillé avant le stade jeune, sinon se lance, se termine et compte la descente', () => {
+  L.state.energy = 90; L.state.sleeping = false; L.state.divingUntil = 0; L.state.gameOver = false; L.state.away = false;
+
+  // verrou : pas de toboggan au stade bébé
+  L.state.stage = 'baby';
+  L.actSlide();
+  assert.equal(L.minigame, null, 'toboggan verrouillé au stade bébé');
+
+  // débloqué dès le stade jeune
+  L.state.stage = 'child';
+  const slidesBefore = L.records.slidesTotal || 0;
+  L.actSlide();
+  assert.equal(L.minigame && L.minigame.mode, 'slide', 'partie de toboggan lancée');
+
+  // on gagne quelques poissons puis on force la fin ; la boucle la clôt
+  L.minigame.score = 4;
+  L.minigame.endsAt = Date.now() - 1;
+  renderOnce();
+  assert.equal(L.minigame, null, 'partie terminée et nettoyée');
+  assert.equal(L.records.slidesTotal, slidesBefore + 1, 'descente comptée');
+  assert.ok(L.records.slideBest >= 4, 'meilleur score enregistré');
 });

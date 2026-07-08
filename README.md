@@ -51,6 +51,7 @@ L'app se lance alors en plein écran, fonctionne hors-ligne, et la loutre vit sa
 | Croissance | Bébé → jeune loutre à J+1 → adulte à J+3 |
 | Jauges | Faim, humeur, énergie, propreté + santé |
 | Actions | Manger 🐟, pêche 🎣 (mini-jeu), bain 🧼, dodo 💤, soin 💊, caresses (toucher la loutre), friandise 🍡 (jeune+), plongée au trésor 🤿 (adulte) |
+| Mini-jeux 🎮 | **Pêche** 🎣 : touche les poissons. **Toboggan de rivière** 🛝 (jeune+) : la loutre dévale les rapides sur 3 couloirs — tape le couloir voulu pour gober les 🐟 et esquiver les 🪨 (descente parfaite = 5 poissons sans un rocher) |
 | Combats ⚔️ | Duels par code de défi à s'échanger entre amis (dès le stade jeune) |
 | Quêtes 🏆 | 3 micro-objectifs par jour, identiques pour tout le monde |
 | Niveaux ⭐ | Chaque geste rapporte de l'XP (« +5 » à l'écran) : niveaux, titres honorifiques, friandise rechargée à chaque montée, cosmétiques exclusifs aux paliers 3/5/10 — le niveau survit aux loutres |
@@ -64,7 +65,7 @@ L'app se lance alors en plein écran, fonctionne hors-ligne, et la loutre vit sa
 | Expressivité 🦦 | Le visage suit l'humeur (contente, affamée, boudeuse, malade) ; elle se gratte, bâille et jongle avec un caillou quand tout va bien — et boude 10 min si on la réveille trop tôt (un câlin ou une friandise la déride) |
 | Carte photo 📸 | Carte souvenir générée (nom, chapeau, exploits du jour) à partager sur WhatsApp/Insta via le partage natif |
 | Garde-robe 🎩 | 6 chapeaux, 6 pelages, 5 décors de berge à débloquer (records globaux, conservés entre les vies) |
-| Succès 🏆 | 12 succès + records (longévité, poissons, repas…) |
+| Succès 🏆 | succès + records (longévité, poissons, repas, meilleur toboggan…) |
 | Sauvegarde ⚙️ | Export/import par code pour changer de téléphone |
 
 Équilibrage : toutes les constantes sont dans `src/constants.js`.
@@ -95,6 +96,7 @@ src/
   seasons.js          saisons réelles : teintes de berge + narration (pur)
   photocard.js        carte photo partageable (dessin autonome)
   minigame.js         pêche (logique pure)
+  toboggan.js         toboggan de rivière : 2e mini-jeu (logique pure)
   render.js           rendu canvas 160×120 (expressions, particules, squash)
   audio.js            bips 8-bit WebAudio + vibrations
   music.js            boucle chiptune jour/nuit (partition pure testée)
@@ -130,7 +132,7 @@ Les dossiers `android/` et `ios/` générés sont déjà dans le `.gitignore`. P
 
 ## Feuille de route (idées)
 
-- Deuxième mini-jeu (toboggan de rivière) et nouveaux lieux à explorer
+- Nouveaux lieux à explorer (forêt, mer) avec leurs activités
 - Événements et quêtes saisonniers (bonhomme de neige l'hiver, cueillette l'automne…)
 - Vraie police pixel embarquée (remplacer Courier)
 - i18n (en/es)
@@ -153,4 +155,6 @@ fil narratif en chapitres (naissance, jeune, adulte) et premiers pas guidés
 (le geste suivant est surligné et expliqué). v3.2 : monde vivant — les saisons
 réelles habillent la berge (printemps/été/automne/hiver, chacune sa teinte et
 son ambiance : pétales, feuilles, neige) et une carte d'histoire annonce chaque
-changement de saison.*
+changement de saison. v3.2.1 : cartes d'histoire redessinées (mieux
+dimensionnées, plus lisibles). v3.3 : second mini-jeu — le toboggan de rivière
+(esquive à 3 couloirs), débloqué au stade jeune, avec son succès et son record.*

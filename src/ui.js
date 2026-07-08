@@ -122,9 +122,11 @@ export function updateHUD(s, mg) {
     lock('b-treat', !child, 'Jeune', '<span class="ic">🍡</span>Friandise');
     lock('b-dive', !adult, 'Adulte', '<span class="ic">🤿</span>Plongée');
     lock('b-battle', !child, 'Jeune', '<span class="ic">⚔️</span>Combat');
+    lock('b-slide', !child, 'Jeune', '<span class="ic">🛝</span>Toboggan');
     $('b-treat').disabled = dis || s.sleeping || !child || diving;
     $('b-dive').disabled = dis || s.sleeping || !adult || diving;
     $('b-battle').disabled = dis || s.sleeping || !child || diving;
+    $('b-slide').disabled = dis || s.sleeping || !child || diving;
     if (diving) {
       ['b-feed', 'b-play', 'b-wash', 'b-sleep', 'b-heal'].forEach(id => { $(id).disabled = true; });
     }
@@ -271,6 +273,7 @@ export function renderAchievements(rec, s) {
     'Records — Plus longue vie : ' + (rec.bestAge > 0 ? fmtDur(rec.bestAge) : '—') +
     ' · Poissons : ' + rec.fishTotal +
     ' · Repas : ' + rec.mealsTotal +
+    (rec.slideBest > 0 ? ' · Toboggan : ' + rec.slideBest : '') +
     ' · Loutres élevées : ' + Math.max(rec.otters, rec.bestAge > 0 ? 1 : 0);
 }
 

@@ -5,7 +5,7 @@ export const GAME_DURATION = 12 * SEC;
 export const MAX_FISH = 8;
 
 export function newGame(now = Date.now()) {
-  return { score: 0, total: 0, endsAt: now + GAME_DURATION, fish: null, nextFish: now + 600 };
+  return { mode: 'fish', score: 0, total: 0, endsAt: now + GAME_DURATION, fish: null, nextFish: now + 600 };
 }
 
 /** @returns {null | {type:'end', score:number, total:number}} */

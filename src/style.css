@@ -134,7 +134,7 @@ input#name-input:focus{border-color:var(--accent);}
 
 #spacer{flex:1;}
 
-#buttons{display:grid; grid-template-columns:repeat(4,1fr); gap:7px; flex:none; margin-top:8px;}
+#buttons{display:grid; grid-template-columns:repeat(3,1fr); gap:7px; flex:none; margin-top:8px;}
 #btnrow-egg{display:grid; grid-template-columns:1fr; gap:7px; flex:none; margin-top:8px;}
 button.act{
   font-family:inherit;
