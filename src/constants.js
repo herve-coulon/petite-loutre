@@ -1,7 +1,7 @@
 // Constantes de jeu — ajuster ici pour équilibrer.
 // ⚠️ GAME_VERSION : à incrémenter avec package.json et sw.js à chaque release
 // (affichée dans ⚙️ Réglages pour vérifier ce que le téléphone exécute).
-export const GAME_VERSION = '3.3.1';
+export const GAME_VERSION = '3.4.0';
 export const SEC = 1000;
 export const MIN = 60 * SEC;
 export const H = 60 * MIN;
@@ -14,6 +14,23 @@ export const MAX_OFFLINE = 7 * 24 * H;  // rattrapage hors-ligne plafonné
 
 // Décroissance par heure (éveillée) — v2.3 : rythme plus nerveux
 export const R = { hunger: 6, fun: 5, energy: 3, clean: 2.5 };
+
+// v3.4 — les saisons pèsent sur la santé (« marqué » mais toujours télégraphié).
+// Été : la chaleur donne soif (faim ↑) et fatigue (humeur/énergie ↑) ; si elle
+// n'est pas rafraîchie (propreté basse), elle surchauffe et perd de la santé.
+// Hiver : le froid fait attraper froid — risque de maladie accru, pire si elle
+// est affaiblie (peu d'énergie/de nourriture). On contre avec les gestes
+// existants : Laver rafraîchit l'été, Manger/Dodo/câlins réchauffent l'hiver.
+export const SEASON_FX = {
+  HEAT_MULT: { hunger: 1.4, fun: 1.3, energy: 1.3 }, // décroissance ×… en été
+  HEAT_OVERHEAT_HP: 3,      // santé/h perdue si elle surchauffe (propreté < seuil)
+  HEAT_OVERHEAT_CLEAN: 30,
+  COLD_SICK: 0.02,          // maladie/h en plus l'hiver
+  COLD_SICK_TIRED: 0.03,    // … encore plus si énergie basse
+  COLD_SICK_HUNGRY: 0.02,   // … et si elle a faim
+  COLD_LOW_ENERGY: 40,
+  COLD_LOW_HUNGER: 40
+};
 // Pendant le sommeil — v2.4.1 : sieste vraiment réparatrice (0 -> 100 en 2 h 30,
 // la jauge bouge à vue d'œil) ; réveil auto à 100
 export const RS = { hunger: 2, fun: 0.5, energyGain: 40, clean: 1 };

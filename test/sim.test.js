@@ -8,7 +8,10 @@ import { stepSim, simulateOffline, stageFor, ageMs } from '../src/sim.js';
 import { newGame, tickGame, clickGame, GAME_DURATION } from '../src/minigame.js';
 import { PAL, SPRITES } from '../src/sprites.js';
 
-const T0 = 1_750_000_000_000; // horloge fixe
+// Horloge fixe en automne : saison NEUTRE (ni chaud ni froid) pour mesurer la
+// décroissance et la maladie de BASE, sans interférence saisonnière (v3.4).
+// Les effets de saison sont testés à part dans seasons.test.js.
+const T0 = new Date(2025, 9, 15, 12, 0, 0).getTime();
 const noLuck = () => 0.99;    // jamais malade
 const rndFix = () => 0.5;
 

@@ -2,7 +2,7 @@
 import {
   SEC, MIN, clamp, TREAT_CD, DIVE_MS, GRUMPY_MS, WAKE_OK_ENERGY,
   WARM_BOOST, WARM_CD, SHAKE_BOOST, SHAKE_CD, SHAKE_G,
-  AWAY_CARE_NEEDED, AWAY_CARE_CD, GAME_VERSION
+  AWAY_CARE_NEEDED, AWAY_CARE_CD, SEASON_FX, GAME_VERSION
 } from './constants.js';
 import { touchStreak } from './streak.js';
 import { greeting } from './mood.js';
@@ -45,6 +45,7 @@ let frame = 0;
 let wobbleUntil = 0, lastWarm = 0, lastPet = 0, lastSave = 0, lastTickAt = now();
 let storyOpen = false;        // une carte chapitre est à l'écran
 let coachTarget = null;       // bouton actuellement surligné par le tutoriel
+let lastSeasonHint = 0;       // throttle des rappels saisonniers (froid/chaud)
 
 const cv = $('cv');
 const R = makeRenderer(cv);
@@ -159,7 +160,11 @@ function actWash() {
   for (let i = 0; i < 10; i++) R.spawn('bubble', s.stage);
   R.burst('sparkle', 4, s.stage);
   sfx.wash();
-  ui.log(hadPoop ? 'Grand nettoyage ! Tout est propre. ✨' : s.name + ' barbote dans son bain. 🫧');
+  // été : le bain rafraîchit vraiment (contre la chaleur)
+  const summer = seasonFor(new Date(now())) === 'ete';
+  if (summer) { s.fun = clamp(s.fun + 10, 0, 100); s.energy = clamp(s.energy + 8, 0, 100); }
+  ui.log(summer ? 'Plouf ! Ça rafraîchit — ' + s.name + ' souffle enfin. 💧'
+    : hadPoop ? 'Grand nettoyage ! Tout est propre. ✨' : s.name + ' barbote dans son bain. 🫧');
   gainXp(XP.wash);
   afterAct();
   quest('washes');
@@ -433,6 +438,21 @@ function maybeSeasonCard() {
   });
 }
 
+/** Rappel doux (throttlé) du contre-geste quand la saison malmène la loutre. */
+function seasonHint() {
+  if (!s || s.coach || s.gameOver || s.away || s.stage === 'egg' || s.sleeping || mg || storyOpen) return;
+  const t = now();
+  if (t - lastSeasonHint < 110 * SEC) return;
+  const season = seasonFor(new Date(t));
+  let msg = null;
+  if (season === 'ete' && s.clean < SEASON_FX.HEAT_OVERHEAT_CLEAN) {
+    msg = s.name + ' a chaud… un bon bain la rafraîchirait ! 💧';
+  } else if (season === 'hiver' && !s.sick && (s.energy < SEASON_FX.COLD_LOW_ENERGY || s.hunger < SEASON_FX.COLD_LOW_HUNGER)) {
+    msg = s.name + ' grelotte… nourris-la et fais-lui un câlin pour la réchauffer. ❄️';
+  }
+  if (msg) { ui.log(msg); lastSeasonHint = t; }
+}
+
 /** Surligne/souffle le prochain geste du tutoriel, ou le clôt en beauté. */
 function updateCoach() {
   if (!s || !s.coach) { if (coachTarget) { ui.setCoach(null); coachTarget = null; } return; }
@@ -650,6 +670,7 @@ function tick() {
   maybeStory();      // un chapitre vient peut-être de se débloquer (évolution en direct/au retour)
   maybeSeasonCard(); // la saison a peut-être tourné (minuit / retour d'absence)
   updateCoach();     // garde le surlignage du tutoriel en phase (dodo, overlays…)
+  seasonHint();      // rappelle le contre-geste si le froid/la chaleur la malmène
   syncMusic(); // (re)démarre dès que l'audio est débloqué, coupe si veille/fin
   if (t - lastSave > 5 * SEC) {
     lastSave = t;

@@ -1,6 +1,6 @@
 // Rendu canvas 160x120 (mis à l'échelle en CSS, image-rendering: pixelated).
 import { PAL, SPRITES } from './sprites.js';
-import { HATCH_MS, MIN, SEC } from './constants.js';
+import { HATCH_MS, MIN, SEC, SEASON_FX } from './constants.js';
 import { hatById } from './accessories.js';
 import { furById } from './skins.js';
 import { moodOf, pickIdle, canIdle, IDLE_FRAMES } from './mood.js';
@@ -491,6 +491,12 @@ export function makeRenderer(cv) {
     if (s.sick && (frame >> 2) % 6 === 0) ox += 1;
     if (idleAnim && idleAnim.kind === 'gratte') ox += (frame >> 2) % 2; // frisson de grattage
 
+    // stress saisonnier (télégraphe l'effet santé) : froid -> grelotte, chaud -> transpire
+    const alive = s.stage !== 'egg' && !s.sleeping && !s.away && !s.gameOver && !mg;
+    const coldStress = alive && season.key === 'hiver' && (s.energy < SEASON_FX.COLD_LOW_ENERGY || s.sick);
+    const heatStress = alive && season.key === 'ete' && s.clean < SEASON_FX.HEAT_OVERHEAT_CLEAN;
+    if (coldStress) ox += (frame >> 1) % 2 === 0 ? -1 : 1; // grelottement rapide
+
     // squash & stretch (ancré aux pieds, tout le corps + chapeau suivent)
     const sqT = 1 - Math.max(0, squashUntil - Date.now()) / SQUASH_MS;
     const squashing = sqT < 1 && s.stage !== 'egg';
@@ -552,6 +558,26 @@ export function makeRenderer(cv) {
         ctx.fillStyle = '#e5484d';
         ctx.fillRect(ox + 36, oy - 14, 3, 8); ctx.fillRect(ox + 36, oy - 4, 3, 3);
       }
+    }
+
+    // froid : cristaux de givre + petit nuage de souffle glacé (contraste sur la neige)
+    if (coldStress) {
+      ctx.fillStyle = (frame >> 3) % 2 ? '#4f92c9' : '#3a6ea5';
+      const gy = oy + ((frame >> 3) % 2);
+      ctx.fillRect(ox - 8, gy + 2, 2, 2); ctx.fillRect(ox - 6, gy, 1, 1); ctx.fillRect(ox - 10, gy, 1, 1);
+      ctx.fillRect(ox + 34, gy + 6, 2, 2); ctx.fillRect(ox + 37, gy + 4, 1, 1);
+      // buée devant le museau, qui perle par bouffées
+      if ((frame >> 4) % 2 === 0) {
+        ctx.fillStyle = 'rgba(230,240,255,.75)';
+        ctx.fillRect(ox + 30, oy + 4, 3, 2); ctx.fillRect(ox + 33, oy + 3, 2, 2);
+      }
+    }
+    // chaud : gouttes de sueur qui perlent et tombent
+    if (heatStress) {
+      ctx.fillStyle = '#7ec8ff';
+      const d = (frame >> 2) % 6;
+      ctx.fillRect(ox + 30, oy + 2 + d, 2, 3);           // goutte qui glisse
+      if (d > 3) ctx.fillRect(ox - 2, oy + 4 + (d - 3) * 2, 2, 3);
     }
 
     if (squashing) ctx.restore();

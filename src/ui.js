@@ -314,7 +314,9 @@ export function liveEventMessage(ev, s) {
   switch (ev.type) {
     case 'wake': return s.name + ' se réveille en pleine forme !';
     case 'autosleep': return s.name + ' s\'endort, épuisée… 💤';
-    case 'sick': return 'Oh non… ' + s.name + ' est malade ! 🤒';
+    case 'sick': return seasonInfo().key === 'hiver'
+      ? 'Brrr… ' + s.name + ' a attrapé froid ! 🤒❄️ Garde-la au chaud (nourris-la, câline-la).'
+      : 'Oh non… ' + s.name + ' est malade ! 🤒';
     case 'evolve': return s.name + ' est devenue une ' + (ev.stage === 'child' ? 'jeune loutre' : 'loutre adulte') + ' !';
     default: return null;
   }
