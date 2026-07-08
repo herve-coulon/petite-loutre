@@ -21,6 +21,7 @@ export function newState(now = Date.now(), rnd = Math.random) {
     gameOver: false,
     mute: false,
     music: true,
+    push: false,
     hat: null,
     fur: 'roux',
     decor: 'aucun',
@@ -45,6 +46,7 @@ function normalizeState(o) {
   if (typeof o.divingUntil !== 'number') o.divingUntil = 0;
   if (typeof o.grumpyUntil !== 'number') o.grumpyUntil = 0;
   if (typeof o.music !== 'boolean') o.music = true;
+  if (typeof o.push !== 'boolean') o.push = false;
   if (typeof o.away !== 'boolean') o.away = false;
   for (const k of ['awayAt', 'awayCare', 'awayNextCare']) {
     if (typeof o[k] !== 'number') o[k] = 0;

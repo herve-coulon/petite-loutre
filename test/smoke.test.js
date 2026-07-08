@@ -316,6 +316,19 @@ test('réveil au bon moment : pas de bouderie', () => {
   assert.equal(L.state.grumpyUntil, 0, 'énergie haute : réveil serein');
 });
 
+/* ---------------- v3.0 : rappels push ---------------- */
+
+test('rappels 🔔 : bouton présent, indisponible en jsdom -> message propre, état intact', async () => {
+  $('b-gear').click();
+  assert.match($('b-push').textContent, /NON/);
+  $('b-push').click();
+  await new Promise(r => setTimeout(r, 20)); // gestionnaire asynchrone
+  assert.equal(L.state.push, false, 'pas de support push ici : rien n\'est activé');
+  assert.match($('toast').textContent, /indisponibles|refusées/i, 'explication affichée');
+  assert.match($('b-push').textContent, /NON/, 'le bouton reste à NON');
+  $('btn-set-close').click();
+});
+
 /* ---------------- v2.7.1 : fermer les menus sans scroller ---------------- */
 
 test('réglages : le numéro de version est affiché (cohérent avec package.json)', async () => {

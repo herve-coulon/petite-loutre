@@ -6,6 +6,7 @@ import {
 } from './constants.js';
 import { touchStreak } from './streak.js';
 import { greeting } from './mood.js';
+import * as push from './push.js';
 import { dailyShareText } from './share.js';
 import { dailyEvent, butterflyPos } from './events.js';
 import * as music from './music.js';
@@ -681,6 +682,29 @@ function boot() {
     $('b-music').textContent = '🎵 MUSIQUE : ' + (s.music ? 'OUI' : 'NON');
     syncMusic(); persist(); sfx.press();
   });
+  $('b-push').addEventListener('click', async () => {
+    sfx.press();
+    if (s.push) {
+      s.push = false;
+      $('b-push').textContent = '🔔 RAPPELS : NON';
+      persist();
+      push.disablePush();
+      ui.toast('🔕 Rappels coupés.');
+      return;
+    }
+    const res = await push.enablePush();
+    if (res === 'ok') {
+      s.push = true;
+      $('b-push').textContent = '🔔 RAPPELS : OUI';
+      persist();
+      push.syncReminders(s);
+      ui.toast('🔔 Rappels activés — elle saura te joindre !');
+    } else if (res === 'refuse') {
+      ui.toast('Notifications refusées — réactivable dans les réglages du navigateur.');
+    } else {
+      ui.toast('Rappels indisponibles ici (iPhone : app installée, iOS 16.4+).');
+    }
+  });
   $('b-reset').addEventListener('click', () => {
     ui.askConfirm('Recommencer avec un nouvel œuf ? La loutre actuelle sera perdue (chapeaux et succès conservés).', () => {
       clearSave(storage);
@@ -753,6 +777,7 @@ function boot() {
     $('exp-code').value = s ? exportSave(s, rec) : '';
     $('imp-code').value = '';
     $('b-music').textContent = '🎵 MUSIQUE : ' + (s && s.music !== false ? 'OUI' : 'NON');
+    $('b-push').textContent = '🔔 RAPPELS : ' + (s && s.push ? 'OUI' : 'NON');
     ui.showOverlay('ovl-set');
   });
   $('btn-set-close').addEventListener('click', () => ui.hideOverlay('ovl-set'));
@@ -788,7 +813,13 @@ function boot() {
   cv.addEventListener('pointerdown', onCanvasPointer);
   cv.addEventListener('contextmenu', e => e.preventDefault());
   window.addEventListener('beforeunload', persist);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) persist(); syncMusic(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      persist();
+      if (s && s.push) push.syncReminders(s); // on part : dépose les prochains rendez-vous
+    }
+    syncMusic();
+  });
   // premier toucher, où qu'il soit : permission capteurs iOS + déblocage audio
   document.addEventListener('pointerdown', () => { enableMotion(); syncMusic(); });
 
@@ -814,6 +845,7 @@ function boot() {
   }
 
   checkStreak(); // la visite du jour compte pour la série 🔥
+  if (s && s.push) push.syncReminders(s); // rafraîchit les rappels dès l'ouverture
 
   setInterval(tick, 1000);
   requestAnimationFrame(loop);

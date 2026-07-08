@@ -1,6 +1,6 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v2.7.4';
+const VERSION = 'v3.0.0';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [
@@ -23,6 +23,7 @@ const PRECACHE = [
   './src/share.js',
   './src/events.js',
   './src/mood.js',
+  './src/push.js',
   './src/photocard.js',
   './src/minigame.js',
   './src/render.js',
@@ -48,6 +49,28 @@ self.addEventListener('activate', (e) => {
     caches.keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
+  );
+});
+
+/* ---------------- Rappels push (v3.0) ---------------- */
+self.addEventListener('push', (e) => {
+  let data = {};
+  try { data = e.data ? e.data.json() : {}; } catch (err) {}
+  e.waitUntil(self.registration.showNotification(data.title || 'Ma Petite Loutre 🦦', {
+    body: data.body || '',
+    tag: data.tag || 'loutre',
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png'
+  }));
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) if ('focus' in c) return c.focus();
+      return self.clients.openWindow('./');
+    })
   );
 });
 

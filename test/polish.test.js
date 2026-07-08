@@ -16,6 +16,7 @@ import { touchStreak, STREAK_MILESTONES } from '../src/streak.js';
 import { dailyShareText, SHARE_URL } from '../src/share.js';
 import { dailyEvent, butterflyPos, DAILY_EVENTS } from '../src/events.js';
 import { dayKey, dailyQuests } from '../src/quests.js';
+import { nextReminders, VAPID_PUBLIC, PUSH_URL } from '../src/push.js';
 
 const T0 = 1_750_000_000_000;
 
@@ -167,6 +168,39 @@ test('rendu : chaque humeur peint un visage différent', () => {
       assert.notEqual(faces[i], faces[j], 'humeurs ' + i + ' et ' + j + ' identiques à l\'écran');
     }
   }
+});
+
+/* ---------------- rappels push ---------------- */
+
+test('rappels : la faim est estimée à la bonne heure, les quêtes du matin toujours prévues', () => {
+  const s = otter({ hunger: 45 }); // (45-15)/6 = 5 h avant d'avoir vraiment faim
+  const rs = nextReminders(s, T0);
+  const faim = rs.find(r => r.tag === 'faim');
+  assert.ok(faim, 'rappel de faim présent');
+  assert.equal(Math.round((faim.at - T0) / 3600000), 5, 'faim dans ~5 h');
+  assert.ok(rs.some(r => r.tag === 'quetes'), 'rappel des quêtes du matin');
+  assert.ok(rs.every(r => r.at > T0), 'tous dans le futur');
+  assert.deepEqual(rs, [...rs].sort((a, b) => a.at - b.at), 'triés chronologiquement');
+  assert.ok(rs.length <= 4, 'jamais plus de 4');
+});
+
+test('rappels : endormie -> réveil estimé ; chez le héron -> prochain poisson', () => {
+  const dodo = otter({ sleeping: true, energy: 60 }); // (100-60)/40 = 1 h
+  const r1 = nextReminders(dodo, T0).find(r => r.tag === 'reveil');
+  assert.ok(r1, 'rappel de réveil');
+  assert.equal(Math.round((r1.at - T0) / 3600000), 1);
+  const away = otter({ away: true, awayNextCare: T0 + 2 * 3600000, awayCare: 1 });
+  const r2 = nextReminders(away, T0).find(r => r.tag === 'heron');
+  assert.ok(r2, 'rappel héron');
+  assert.equal(r2.at, T0 + 2 * 3600000, 'au moment où le héron acceptera le poisson');
+  assert.match(r2.body, /1\/3/);
+});
+
+test('rappels : œuf et partie finie -> aucun ; clés publiques câblées', () => {
+  assert.deepEqual(nextReminders(otter({ stage: 'egg' }), T0), []);
+  assert.deepEqual(nextReminders(otter({ gameOver: true }), T0), []);
+  assert.ok(VAPID_PUBLIC.length > 80 && !VAPID_PUBLIC.includes(' '), 'clé VAPID publique embarquée');
+  assert.match(PUSH_URL, /^https:\/\/.+\/functions\/v1\/push$/, 'URL du serveur de rappels');
 });
 
 /* ---------------- streak ---------------- */
