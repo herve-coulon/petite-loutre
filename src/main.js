@@ -2,7 +2,7 @@
 import {
   SEC, MIN, clamp, TREAT_CD, DIVE_MS, GRUMPY_MS, WAKE_OK_ENERGY,
   WARM_BOOST, WARM_CD, SHAKE_BOOST, SHAKE_CD, SHAKE_G,
-  AWAY_CARE_NEEDED, AWAY_CARE_CD
+  AWAY_CARE_NEEDED, AWAY_CARE_CD, GAME_VERSION
 } from './constants.js';
 import { touchStreak } from './streak.js';
 import { dailyShareText } from './share.js';
@@ -572,6 +572,7 @@ function boot() {
   registerSW();
   requestPersistentStorage();
   setupInstall($('b-install'), $('ios-hint'));
+  $('ver').textContent = 'Ma Petite Loutre · v' + GAME_VERSION;
 
   rec = loadRecords(storage);
   prevHats = new Set(unlockedHats(rec));

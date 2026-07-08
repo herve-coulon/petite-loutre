@@ -318,6 +318,13 @@ test('réveil au bon moment : pas de bouderie', () => {
 
 /* ---------------- v2.7.1 : fermer les menus sans scroller ---------------- */
 
+test('réglages : le numéro de version est affiché (cohérent avec package.json)', async () => {
+  const { readFileSync: rf } = await import('node:fs');
+  const pkg = JSON.parse(rf(join(root, 'package.json'), 'utf8'));
+  assert.equal($('ver').textContent, 'Ma Petite Loutre · v' + pkg.version,
+    'la version affichée suit package.json (penser à GAME_VERSION dans constants.js)');
+});
+
 test('menus : ✕ collant présent partout, ferme sans scroller', () => {
   for (const id of ['ovl-hats', 'ovl-ach', 'ovl-set', 'ovl-photo', 'ovl-battle']) {
     const x = $(id).querySelector('.ovl-x');
