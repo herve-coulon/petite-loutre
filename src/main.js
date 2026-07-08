@@ -790,6 +790,27 @@ function boot() {
   // premier toucher, où qu'il soit : permission capteurs iOS + déblocage audio
   document.addEventListener('pointerdown', () => { enableMotion(); syncMusic(); });
 
+  // Fermer un menu sans scroller : ✕ collant en haut, ou toucher à côté du contenu.
+  // (le combat en cours ne se ferme pas sur un toucher malheureux — ✕ seulement)
+  const overlayClosers = {
+    'ovl-hats': () => ui.hideOverlay('ovl-hats'),
+    'ovl-ach': () => ui.hideOverlay('ovl-ach'),
+    'ovl-set': () => ui.hideOverlay('ovl-set'),
+    'ovl-photo': () => { cardCv = null; ui.hideOverlay('ovl-photo'); },
+    'ovl-battle': () => { battle = null; ui.hideOverlay('ovl-battle'); }
+  };
+  for (const [id, close] of Object.entries(overlayClosers)) {
+    const el = $(id);
+    el.addEventListener('click', (e) => {
+      if (e.target !== el) return; // un vrai toucher "à côté", pas sur un bouton
+      if (id === 'ovl-battle' && battle && !battle.over) return;
+      sfx.press();
+      close();
+    });
+    const x = el.querySelector('.ovl-x');
+    if (x) x.addEventListener('click', () => { sfx.press(); close(); });
+  }
+
   checkStreak(); // la visite du jour compte pour la série 🔥
 
   setInterval(tick, 1000);

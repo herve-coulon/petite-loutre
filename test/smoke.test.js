@@ -316,6 +316,32 @@ test('réveil au bon moment : pas de bouderie', () => {
   assert.equal(L.state.grumpyUntil, 0, 'énergie haute : réveil serein');
 });
 
+/* ---------------- v2.7.1 : fermer les menus sans scroller ---------------- */
+
+test('menus : ✕ collant présent partout, ferme sans scroller', () => {
+  for (const id of ['ovl-hats', 'ovl-ach', 'ovl-set', 'ovl-photo', 'ovl-battle']) {
+    const x = $(id).querySelector('.ovl-x');
+    assert.ok(x, id + ' a son ✕');
+  }
+  $('b-gear').click();
+  assert.ok(!$('ovl-set').classList.contains('hidden'));
+  $('ovl-set').querySelector('.ovl-x').click();
+  assert.ok($('ovl-set').classList.contains('hidden'), 'fermé par le ✕');
+});
+
+test('menus : toucher à côté du contenu ferme aussi', () => {
+  $('b-ach').click();
+  assert.ok(!$('ovl-ach').classList.contains('hidden'));
+  $('ovl-ach').click(); // clic sur le fond de l'overlay lui-même
+  assert.ok($('ovl-ach').classList.contains('hidden'), 'fermé au toucher à côté');
+  // mais un clic sur un élément INTERNE ne ferme pas
+  $('b-hats').click();
+  assert.ok(!$('ovl-hats').classList.contains('hidden'));
+  $('hat-list').click(); // la liste, pas le fond
+  assert.ok(!$('ovl-hats').classList.contains('hidden'), 'clic interne inoffensif');
+  $('ovl-hats').querySelector('.ovl-x').click();
+});
+
 /* ---------------- v2.7 : streak, partage du jour ---------------- */
 
 test('streak : la visite du jour est comptée au boot, 🔥 caché au jour 1', () => {

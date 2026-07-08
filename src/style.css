@@ -126,6 +126,16 @@ button.mini:active{color:var(--txt);}
 
 /* Overlays à listes (garde-robe, succès, réglages) */
 .ovl.scroll{justify-content:flex-start; overflow-y:auto; gap:9px; padding:14px;}
+
+/* v2.7.1 — fermer sans scroller : ✕ collant en haut, toujours sous le pouce */
+.ovl-x{
+  position:sticky; top:0; align-self:flex-end; z-index:3; flex:none;
+  background:#252a3a; color:var(--txt);
+  border:2px solid var(--ink); border-radius:6px;
+  font-family:inherit; font-size:13px; font-weight:bold; line-height:1;
+  padding:7px 10px; margin:-4px -4px -2px 0; cursor:pointer;
+}
+.ovl-x:active{color:var(--accent);}
 .list{width:100%; display:flex; flex-direction:column; gap:6px;}
 .row-item{
   display:flex; align-items:center; gap:9px; width:100%;
