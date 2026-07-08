@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { JSDOM } from 'jsdom';
 import { dailyQuests, dayKey } from '../src/quests.js';
+import { seasonFor } from '../src/seasons.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const html = readFileSync(join(root, 'index.html'), 'utf8');
@@ -61,6 +62,13 @@ test('adoption : nouvel œuf', () => {
   renderOnce();
 });
 
+test('régression : le tutoriel survit au stade œuf (des ticks ne le closent pas)', () => {
+  assert.equal(L.state.stage, 'egg');
+  assert.equal(L.state.coach, true, 'tutoriel armé dès l\'adoption');
+  tick(); tick();
+  assert.equal(L.state.coach, true, 'toujours actif après des ticks sur l\'œuf');
+});
+
 test('éclosion -> nommage', () => {
   L.forceHatch();
   assert.equal(L.state.stage, 'baby');
@@ -70,6 +78,43 @@ test('éclosion -> nommage', () => {
   assert.equal(L.state.name, 'Kiwi');
   assert.ok($('ovl-name').classList.contains('hidden'));
   assert.ok(!$('buttons').classList.contains('hidden'));
+});
+
+test('fil narratif : Chapitre 1 s\'affiche, puis les premiers pas guident vers Manger', () => {
+  // le nommage vient de déclencher le premier chapitre
+  assert.ok(!$('ovl-story').classList.contains('hidden'), 'carte chapitre visible');
+  assert.equal($('story-title').textContent, 'Chapitre 1 — La rencontre');
+  assert.ok(!L.state.storySeen.includes('naissance'), 'pas encore marqué vu tant qu\'ouvert');
+  $('btn-story-next').click(); // « VEILLER SUR ELLE »
+  assert.ok($('ovl-story').classList.contains('hidden'), 'chapitre refermé');
+  assert.ok(L.state.storySeen.includes('naissance'), 'chapitre mémorisé -> ne rejoue plus');
+  assert.ok($('b-feed').classList.contains('coach-target'), 'Manger surligné par le tutoriel');
+});
+
+test('tutoriel : manger -> jouer -> laver puis clôture, ne réapparaît plus', () => {
+  $('b-feed').click();
+  assert.ok($('b-play').classList.contains('coach-target'), 'après manger : Jouer surligné');
+  L.state.played = 1;                 // on saute la partie de pêche
+  tick();
+  assert.ok($('b-wash').classList.contains('coach-target'), 'après jouer : Laver surligné');
+  $('b-wash').click();
+  assert.equal(L.state.coach, false, 'les trois bases faites -> tutoriel clos');
+  assert.equal(document.querySelector('.coach-target'), null, 'plus aucun surlignage');
+  tick();
+  assert.equal(L.state.coach, false, 'ne se réarme pas');
+});
+
+test('saisons : initialisée en silence, un basculement déclenche une carte', () => {
+  const cur = seasonFor(new Date());
+  assert.equal(L.state.season, cur, 'saison initialisée (jamais null) sans carte parasite');
+  assert.ok($('ovl-story').classList.contains('hidden'), 'aucune carte au régime stable');
+  // on simule un changement de saison
+  L.state.season = (cur === 'hiver') ? 'ete' : 'hiver';
+  tick();
+  assert.ok(!$('ovl-story').classList.contains('hidden'), 'carte de saison affichée au basculement');
+  $('btn-story-next').click();
+  assert.ok($('ovl-story').classList.contains('hidden'), 'carte refermée');
+  assert.equal(L.state.season, cur, 'saison mise à jour après lecture de la carte');
 });
 
 test('actions : manger, laver, dodo, soigner', () => {

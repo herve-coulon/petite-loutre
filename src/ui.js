@@ -7,6 +7,7 @@ import { FURS, DECORS, unlockedFurs, unlockedDecors } from './skins.js';
 import { ACHIEVEMENTS } from './achievements.js';
 import { dailyQuests, dayKey } from './quests.js';
 import { dailyEvent } from './events.js';
+import { seasonInfo } from './seasons.js';
 
 const $ = id => document.getElementById(id);
 
@@ -134,8 +135,26 @@ export function updateHUD(s, mg) {
 export function showOverlay(id) { $(id).classList.remove('hidden'); }
 export function hideOverlay(id) { $(id).classList.add('hidden'); }
 export function hideAllOverlays() {
-  ['ovl-intro', 'ovl-name', 'ovl-over', 'ovl-confirm', 'ovl-hats', 'ovl-ach', 'ovl-set', 'ovl-battle', 'ovl-photo']
+  ['ovl-intro', 'ovl-name', 'ovl-story', 'ovl-over', 'ovl-confirm', 'ovl-hats', 'ovl-ach', 'ovl-set', 'ovl-battle', 'ovl-photo']
     .forEach(hideOverlay);
+}
+
+/** Carte d'histoire (chapitre) : emoji, titre, texte, bouton de suite. */
+export function showStory(beat, onDone) {
+  $('story-emoji').textContent = beat.emoji || '✨';
+  $('story-title').textContent = beat.title || '';
+  $('story-body').innerHTML = (beat.lines || []).join('<br><br>');
+  const btn = $('btn-story-next');
+  btn.textContent = beat.cta || 'CONTINUER';
+  showOverlay('ovl-story');
+  btn.onclick = () => { hideOverlay('ovl-story'); btn.onclick = null; if (onDone) onDone(); };
+}
+
+/** Surligne le bouton du prochain geste guidé (ou retire tout surlignage). */
+export function setCoach(step) {
+  const prev = document.querySelector('.coach-target');
+  if (prev) prev.classList.remove('coach-target');
+  if (step) { const b = $(step.target); if (b) b.classList.add('coach-target'); }
 }
 
 /** Durée en clair : "2 j 5 h", "3 h 12 min", "8 min". */
@@ -202,7 +221,13 @@ export function renderAchievements(rec, s) {
   const list = $('ach-list');
   list.innerHTML = '';
 
-  // l'événement du jour, en tête d'affiche
+  // saison en cours + événement du jour, en tête d'affiche
+  const se = seasonInfo();
+  const seLine = document.createElement('p');
+  seLine.className = 'small'; seLine.id = 'season-line';
+  seLine.textContent = se.emoji + ' Saison : ' + se.label;
+  list.appendChild(seLine);
+
   const evt = dailyEvent(dayKey());
   const evLine = document.createElement('p');
   evLine.className = 'small';

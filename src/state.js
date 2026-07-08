@@ -30,6 +30,9 @@ export function newState(now = Date.now(), rnd = Math.random) {
     grumpyUntil: 0,
     away: false, awayAt: 0, awayCare: 0, awayNextCare: 0,
     fed: 0, played: 0, washed: 0, healed: 0,
+    storySeen: [],   // chapitres narratifs déjà joués (fil de l'aventure)
+    coach: true,     // premiers pas guidés en cours (tutoriel doux)
+    season: null,    // dernière saison connue (null = à initialiser en silence)
     lastTick: now
   };
 }
@@ -55,6 +58,12 @@ function normalizeState(o) {
   for (const k of ['fed', 'played', 'washed', 'healed']) {
     if (typeof o[k] !== 'number') o[k] = 0;
   }
+  if (!Array.isArray(o.storySeen)) o.storySeen = [];
+  // sauvegardes d'avant le fil narratif : loutre déjà grandie -> pas de tutoriel
+  // rétroactif, mais on laisse les chapitres se rejouer une fois (storySeen vide).
+  if (typeof o.coach !== 'boolean') o.coach = (o.stage === 'egg' || o.stage === 'baby');
+  // saison : null -> initialisée en silence au 1er tick (pas de fausse transition)
+  if (typeof o.season !== 'string') o.season = null;
   return o;
 }
 

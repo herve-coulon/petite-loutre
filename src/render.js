@@ -6,10 +6,22 @@ import { furById } from './skins.js';
 import { moodOf, pickIdle, canIdle, IDLE_FRAMES } from './mood.js';
 import { dailyEvent, butterflyPos } from './events.js';
 import { dayKey } from './quests.js';
+import { seasonInfo } from './seasons.js';
 
 export const CANVAS_W = 160, CANVAS_H = 120;
 export const OTTER_X = 64;
 export const GROUND_Y = 96;
+
+/**
+ * Éclosion cinématique : niveau de fissures de l'œuf selon la progression
+ * (0 = intact … 3 = sur le point de craquer). PUR, testé.
+ */
+export function eggCrackLevel(progress) {
+  if (progress >= 0.97) return 3;
+  if (progress >= 0.82) return 2;
+  if (progress >= 0.55) return 1;
+  return 0;
+}
 
 export function otterY(stage) {
   const spr = SPRITES[stage] || SPRITES.baby;
@@ -47,6 +59,23 @@ export function makeRenderer(cv) {
         if (!c || ch === '.') continue;
         ctx.fillStyle = c;
         ctx.fillRect(x + i * sc, y + j * sc, sc, sc);
+      }
+    }
+  }
+
+  // Fissures de l'œuf, dessinées par-dessus le sprite (coords en px canvas 1:1).
+  // level 1 : fêlure fine ; 2 : elle s'étend ; 3 : ça craque + lueur qui filtre.
+  function drawEggCracks(ox, oy, level, frame) {
+    const px = (cx, cy) => ctx.fillRect(ox + cx, oy + cy, 2, 2);
+    ctx.fillStyle = PAL.K; // trait sombre
+    px(14, 6); px(16, 8); px(14, 10); px(16, 12);           // zigzag central
+    if (level >= 2) { px(18, 14); px(12, 12); px(20, 10); px(10, 16); px(22, 16); }
+    if (level >= 3) {
+      px(14, 14); px(18, 18); px(12, 20); px(20, 20); px(16, 22);
+      // lueur clignotante qui s'échappe des fêlures
+      if ((frame >> 3) % 2 === 0) {
+        ctx.fillStyle = PAL.C;
+        px(15, 9); px(15, 13); px(17, 15);
       }
     }
   }
@@ -299,9 +328,42 @@ export function makeRenderer(cv) {
     return { sky: '#9fd9e8', hill: '#7ac74f', hill2: '#5aa63d', water: '#3f7fd1', wave: '#7db4e8', night: false };
   }
 
+  // La saison repeint la berge (et la rivière l'hiver) par-dessus l'heure du jour.
+  function applySeason(c, season) {
+    const t = season && (c.night ? season.night : season.day);
+    return t ? Object.assign(c, t) : c;
+  }
+
+  // Ambiance saisonnière : feuilles/pétales/neige qui tombent en continu.
+  // Déterministe (comme la pluie) : positions dérivées de frame + indice.
+  function drawSeasonAmbient(kind, frame) {
+    if (!kind) return;
+    const N = kind === 'neige' ? 11 : 7;
+    for (let i = 0; i < N; i++) {
+      const sway = Math.sin((frame + i * 30) / 22) * (kind === 'feuilles' ? 6 : 3);
+      const x = ((i * 27 + 13 + sway) % 160 + 160) % 160;
+      const speed = kind === 'neige' ? 0.6 : 0.9;
+      const y = ((frame * speed + i * 37) % 116);
+      if (kind === 'neige') {
+        ctx.fillStyle = (i + (frame >> 5)) % 4 ? '#eef6ff' : '#cdddef';
+        ctx.fillRect(x, y, 2, 2);
+      } else if (kind === 'feuilles') {
+        const cols = ['#e07a2d', '#c94f3d', '#e0b23d'];
+        ctx.fillStyle = cols[i % cols.length];
+        if ((frame >> 3) % 2) ctx.fillRect(x, y, 3, 2);
+        else ctx.fillRect(x, y, 2, 3);
+      } else { // pétales de printemps
+        ctx.fillStyle = (i % 2) ? '#f5b8d0' : '#f7cede';
+        ctx.fillRect(x, y, 2, 2);
+      }
+    }
+  }
+
   function render(s, mg, frame, fx) {
     fx = fx || {};
-    const c = skyColors(new Date().getHours());
+    const now = new Date();
+    const season = seasonInfo(now);
+    const c = applySeason(skyColors(now.getHours()), season);
     ctx.fillStyle = c.sky; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
     // astre + étoiles
@@ -365,6 +427,9 @@ export function makeRenderer(cv) {
     // vie du décor (libellule le jour, luciole la nuit, poissons bondissants)
     drawAmbient(mg, frame, c.night);
 
+    // ambiance saisonnière : feuilles / pétales / neige qui tombent (pas pendant la pêche)
+    if (!mg) drawSeasonAmbient(season.ambient, frame);
+
     // événement du jour (surprise déterministe par date, jamais pendant la pêche)
     if (!mg && s.stage !== 'egg') drawDailyEvent(s, frame, c.night);
 
@@ -414,9 +479,14 @@ export function makeRenderer(cv) {
 
     // loutre / œuf
     const spr = SPRITES[s.stage];
+    // éclosion : plus l'œuf approche, plus il se fissure et tremble tout seul
+    const eggProg = s.stage === 'egg' ? Math.max(0, Math.min(1, (Date.now() - s.born) / HATCH_MS)) : 0;
+    const crack = s.stage === 'egg' ? eggCrackLevel(eggProg) : 0;
     const bounce = (s.sleeping || s.stage === 'egg' || yawning) ? 0 : ((frame >> 4) % 2 === 0 ? 0 : -2);
     let ox = OTTER_X, oy = otterY(s.stage) + bounce;
-    if (s.stage === 'egg' && fx.wobble) ox += ((frame >> 1) % 2 === 0 ? -2 : 2);
+    // tremblement : provoqué (réchauffage/secousse) ou spontané quand ça va craquer
+    if (s.stage === 'egg' && (fx.wobble || crack >= 3)) ox += ((frame >> 1) % 2 === 0 ? -2 : 2);
+    else if (s.stage === 'egg' && crack >= 2 && (frame >> 2) % 4 === 0) ox += 1;
     if (s.sick && (frame >> 2) % 6 === 0) ox += 1;
     if (idleAnim && idleAnim.kind === 'gratte') ox += (frame >> 2) % 2; // frisson de grattage
 
@@ -433,6 +503,7 @@ export function makeRenderer(cv) {
     }
 
     drawSprite(spr, ox, oy, 2, s.stage === 'egg' ? null : fur);
+    if (crack > 0) drawEggCracks(ox, oy, crack, frame);
 
     // chapeau équipé (posé sur la tête, suit le rebond)
     if (s.stage !== 'egg' && s.hat) {
@@ -484,13 +555,17 @@ export function makeRenderer(cv) {
 
     if (squashing) ctx.restore();
 
-    // décompte éclosion
+    // décompte éclosion (bascule en « ça craque ! » sur la toute fin)
     if (s.stage === 'egg') {
-      const left = Math.max(0, HATCH_MS - (Date.now() - s.born));
-      const mm = Math.floor(left / MIN), ss = Math.floor((left % MIN) / SEC);
-      ctx.fillStyle = 'rgba(15,18,26,.65)'; ctx.fillRect(52, 18, 56, 12);
+      ctx.fillStyle = 'rgba(15,18,26,.65)'; ctx.fillRect(46, 18, 68, 12);
       ctx.fillStyle = '#ffe9a8'; ctx.font = '8px monospace';
-      ctx.fillText('éclosion ' + mm + ':' + String(ss).padStart(2, '0'), 55, 27);
+      if (crack >= 3) {
+        ctx.fillText((frame >> 3) % 2 ? 'ça craque !!' : 'ça CRAQUE !!', 52, 27);
+      } else {
+        const left = Math.max(0, HATCH_MS - (Date.now() - s.born));
+        const mm = Math.floor(left / MIN), ss = Math.floor((left % MIN) / SEC);
+        ctx.fillText('éclosion ' + mm + ':' + String(ss).padStart(2, '0'), 52, 27);
+      }
     }
 
     // mini-jeu pêche

@@ -28,6 +28,8 @@ import { unlockedFurs, unlockedDecors } from './skins.js';
 import { newAchievements } from './achievements.js';
 import { encodeCard, decodeCard, newBattle, playTurn } from './battle.js';
 import { makeCard, CARD_URL } from './photocard.js';
+import { nextBeat, markSeen, coachStep } from './story.js';
+import { seasonFor, seasonInfo } from './seasons.js';
 
 const $ = id => document.getElementById(id);
 const now = () => Date.now();
@@ -40,6 +42,8 @@ let mg = null;
 let battle = null;
 let frame = 0;
 let wobbleUntil = 0, lastWarm = 0, lastPet = 0, lastSave = 0, lastTickAt = now();
+let storyOpen = false;        // une carte chapitre est à l'écran
+let coachTarget = null;       // bouton actuellement surligné par le tutoriel
 
 const cv = $('cv');
 const R = makeRenderer(cv);
@@ -346,7 +350,63 @@ function syncMusic() {
 function persist() { saveState(s, storage, now()); }
 function persistRec() { saveRecords(rec, storage); }
 /** Après chaque action joueur : sauvegarde + HUD à jour immédiatement. */
-function afterAct() { persist(); ui.updateHUD(s, mg); }
+function afterAct() { persist(); ui.updateHUD(s, mg); updateCoach(); }
+
+/* ---------------- Fil narratif + premiers pas guidés ---------------- */
+/** Joue le prochain chapitre en attente (et enchaîne s'il y en a plusieurs). */
+function maybeStory() {
+  if (storyOpen || !s) return;
+  const b = nextBeat(s);
+  if (!b) return;
+  storyOpen = true;
+  ui.setCoach(null); // pas de surlignage sous l'overlay
+  sfx.evolve();
+  ui.showStory(b, () => {
+    markSeen(s, b.id);
+    storyOpen = false;
+    persist();
+    coachTarget = null;   // force la ré-annonce du geste guidé au retour
+    updateCoach();
+    maybeStory();          // un autre chapitre attend peut-être derrière
+  });
+}
+
+/** Annonce un changement de saison (réutilise l'overlay d'histoire). */
+function maybeSeasonCard() {
+  if (storyOpen || !s || s.gameOver) return;
+  const cur = seasonFor(new Date());
+  if (s.season === cur) return;
+  if (s.season == null) { s.season = cur; persist(); return; } // 1er lancement : silencieux
+  storyOpen = true;
+  ui.setCoach(null);
+  sfx.evolve();
+  ui.showStory(seasonInfo(new Date()).card, () => {
+    s.season = cur;
+    storyOpen = false;
+    persist();
+    coachTarget = null;
+    updateCoach();
+  });
+}
+
+/** Surligne/souffle le prochain geste du tutoriel, ou le clôt en beauté. */
+function updateCoach() {
+  if (!s || !s.coach) { if (coachTarget) { ui.setCoach(null); coachTarget = null; } return; }
+  // tutoriel pas encore démarré (œuf, ou pas encore nommée) : on ne conclut rien
+  if (s.stage === 'egg' || !s.name) { if (coachTarget) { ui.setCoach(null); coachTarget = null; } return; }
+  const step = coachStep(s);
+  if (!step) { // les trois bases sont acquises -> fin douce du tutoriel
+    s.coach = false; coachTarget = null; ui.setCoach(null);
+    ui.toast('🎉 Tu sais tout !');
+    ui.log('Bravo ! Tu maîtrises les bases. À toi de veiller sur ' + (s.name || 'ta loutre') + '. 💛');
+    persist();
+    return;
+  }
+  const blocked = s.sleeping || s.away || s.gameOver || storyOpen || !!mg || diving();
+  ui.setCoach(blocked ? null : step);
+  if (!blocked && step.target !== coachTarget) { coachTarget = step.target; ui.log(step.msg); }
+  else if (blocked) coachTarget = null;
+}
 
 /** Détecte chapeaux et succès nouvellement débloqués -> toast + son. */
 function checkUnlocks() {
@@ -543,6 +603,9 @@ function tick() {
     ui.log('✨ Nouveau jour ! ' + dailyEvent(dayKey(t)).label);
   }
   ui.updateHUD(s, mg);
+  maybeStory();      // un chapitre vient peut-être de se débloquer (évolution en direct/au retour)
+  maybeSeasonCard(); // la saison a peut-être tourné (minuit / retour d'absence)
+  updateCoach();     // garde le surlignage du tutoriel en phase (dodo, overlays…)
   syncMusic(); // (re)démarre dès que l'audio est débloqué, coupe si veille/fin
   if (t - lastSave > 5 * SEC) {
     lastSave = t;
@@ -596,6 +659,9 @@ function boot() {
       else ui.log(greeting(s, now()) + ' ✨ Aujourd\'hui : ' + dailyEvent(dayKey()).label);
     }
     persist();
+    // au retour : rejoue un chapitre débloqué hors-ligne, puis réarme le tutoriel
+    if (!s.gameOver && s.name) { maybeStory(); maybeSeasonCard(); updateCoach(); }
+    else if (!s.gameOver) maybeSeasonCard(); // œuf : au moins initialiser la saison
   } else {
     ui.showOverlay('ovl-intro');
   }
@@ -609,9 +675,9 @@ function boot() {
     s.name = n.slice(0, 12);
     ui.hideOverlay('ovl-name');
     ui.toast('💛 Bienvenue, ' + s.name + ' ! 💛');
-    ui.log(s.name + ' est née ! Nourris-la, joue avec elle, et garde-la propre.');
     sfx.happy(); vibrate([15, 40, 15]);
     persist(); ui.updateHUD(s, mg);
+    maybeStory(); // Chapitre 1 — La rencontre, puis premiers pas guidés
   });
   $('name-input').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-name').click(); });
   $('btn-restart').addEventListener('click', () => { sfx.press(); startNew(); });

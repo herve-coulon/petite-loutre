@@ -1,0 +1,87 @@
+// Monde vivant : les saisons réelles habillent la berge et rythment l'aventure.
+// PUR : la saison se déduit de la date (hémisphère nord), identique pour tous —
+// comme les quêtes et la surprise du jour. Le rendu et la narration lisent d'ici.
+
+/**
+ * Saison à une date donnée, par mois (0 = janvier).
+ * hiver : déc·jan·fév · printemps : mar·avr·mai · été : juin·juil·août ·
+ * automne : sep·oct·nov.
+ */
+export function seasonFor(date = new Date()) {
+  const m = date.getMonth();
+  if (m <= 1 || m === 11) return 'hiver';
+  if (m <= 4) return 'printemps';
+  if (m <= 7) return 'ete';
+  return 'automne';
+}
+
+// Teintes de berge/rivière par saison (le jour). La nuit garde sa palette
+// sombre, sauf l'hiver dont la neige reste visible. `ambient` : la particule
+// d'ambiance qui tombe (feuilles, neige, pétales) ; null = rien de spécial.
+export const SEASONS = {
+  printemps: {
+    key: 'printemps', label: 'Printemps', emoji: '🌸',
+    day:   { hill: '#8fd857', hill2: '#63b23e' },
+    night: null,
+    ambient: 'petales',
+    card: {
+      emoji: '🌸',
+      title: 'Le printemps s\'installe',
+      lines: [
+        'La berge se réveille : l\'herbe reverdit et des pétales roses tourbillonnent dans l\'air tiède.',
+        'C\'est la saison des découvertes. Ta loutre renifle chaque brise avec gourmandise.'
+      ],
+      cta: 'RESPIRER LE PRINTEMPS'
+    }
+  },
+  ete: {
+    key: 'ete', label: 'Été', emoji: '☀️',
+    day:   { hill: '#7ac74f', hill2: '#5aa63d' },
+    night: null,
+    ambient: null,
+    card: {
+      emoji: '☀️',
+      title: 'L\'été est là',
+      lines: [
+        'Le soleil brille haut, la rivière scintille et invite à la baignade.',
+        'Journées longues, siestes au bord de l\'eau et plongeons rafraîchissants : ta loutre est dans son élément.'
+      ],
+      cta: 'PROFITER DE L\'ÉTÉ'
+    }
+  },
+  automne: {
+    key: 'automne', label: 'Automne', emoji: '🍂',
+    day:   { hill: '#c58a3d', hill2: '#9e6a2c' },
+    night: null,
+    ambient: 'feuilles',
+    card: {
+      emoji: '🍂',
+      title: 'Les couleurs de l\'automne',
+      lines: [
+        'La berge se pare d\'or et de roux ; les feuilles se détachent et dansent jusqu\'à la rivière.',
+        'L\'air fraîchit. Ta loutre gonfle son pelage et savoure la lumière dorée.'
+      ],
+      cta: 'SAVOURER L\'AUTOMNE'
+    }
+  },
+  hiver: {
+    key: 'hiver', label: 'Hiver', emoji: '❄️',
+    day:   { hill: '#d4dee6', hill2: '#b3c1cf', water: '#6f9fc4', wave: '#a9cbe6' },
+    night: { hill: '#5a6b7d', hill2: '#45566a', water: '#26436a', wave: '#3a5f8c' }, // neige grisée sous la lune
+    ambient: 'neige',
+    card: {
+      emoji: '❄️',
+      title: 'L\'hiver enveloppe la berge',
+      lines: [
+        'La neige tombe en silence et pose un manteau blanc sur la rive.',
+        'Le froid pique, mais ta loutre s\'en moque : son pelage épais et ta présence la tiennent au chaud.'
+      ],
+      cta: 'BRAVER L\'HIVER'
+    }
+  }
+};
+
+/** La saison, avec ses métadonnées, à une date donnée. */
+export function seasonInfo(date = new Date()) {
+  return SEASONS[seasonFor(date)];
+}

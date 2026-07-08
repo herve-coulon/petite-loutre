@@ -45,7 +45,9 @@ L'app se lance alors en plein écran, fonctionne hors-ligne, et la loutre vit sa
 
 | Élément | Détail |
 |---|---|
-| Éclosion | 2 min après adoption — accélérable en réchauffant l'œuf, en le touchant… ou en secouant le téléphone pour le bercer 📳 |
+| Éclosion | 2 min après adoption — accélérable en réchauffant l'œuf, en le touchant… ou en secouant le téléphone pour le bercer 📳. L'œuf se **fissure progressivement** et tremble tout seul quand ça va craquer 🥚 |
+| Aventure 📖 | La vie se raconte en **chapitres** : la naissance (Chapitre 1), puis un moment d'histoire à chaque grande étape (jeune, adulte). Les premières minutes sont **guidées** : le prochain geste à faire (manger, jouer, laver) est surligné et expliqué |
+| Saisons 🍂 | La berge vit au rythme des **saisons réelles** (identiques pour tous) : printemps (vert vif, pétales 🌸), été (☀️), automne (berge dorée, feuilles 🍂), hiver (neige, rivière glacée ❄️). Une carte d'histoire annonce chaque changement de saison |
 | Croissance | Bébé → jeune loutre à J+1 → adulte à J+3 |
 | Jauges | Faim, humeur, énergie, propreté + santé |
 | Actions | Manger 🐟, pêche 🎣 (mini-jeu), bain 🧼, dodo 💤, soin 💊, caresses (toucher la loutre), friandise 🍡 (jeune+), plongée au trésor 🤿 (adulte) |
@@ -89,6 +91,8 @@ src/
   events.js           surprise du jour, déterministe par date (pur)
   push.js             rappels push : calcul pur + abonnement navigateur
   mood.js             humeurs et manies de la loutre (pur)
+  story.js            fil narratif (chapitres) + premiers pas guidés (pur)
+  seasons.js          saisons réelles : teintes de berge + narration (pur)
   photocard.js        carte photo partageable (dessin autonome)
   minigame.js         pêche (logique pure)
   render.js           rendu canvas 160×120 (expressions, particules, squash)
@@ -97,7 +101,7 @@ src/
   ui.js               DOM : HUD, jauges, overlays
   pwa.js              service worker, bouton installer, persistance
   main.js             orchestrateur
-test/                 71 tests : moteur, features, combats, polish (node --test)
+test/                 tests : moteur, features, combats, polish, fil narratif (node --test)
                       + parcours joueur complet en jsdom (smoke)
 scripts/gen-icons.py  régénère les icônes depuis le sprite
 ```
@@ -126,10 +130,9 @@ Les dossiers `android/` et `ios/` générés sont déjà dans le `.gitignore`. P
 
 ## Feuille de route (idées)
 
-- Éclosion cinématique (fissures progressives, mini-tutoriel)
+- Deuxième mini-jeu (toboggan de rivière) et nouveaux lieux à explorer
+- Événements et quêtes saisonniers (bonhomme de neige l'hiver, cueillette l'automne…)
 - Vraie police pixel embarquée (remplacer Courier)
-- Notifications locales « ta loutre a faim » (simple via Capacitor, sinon Web Push + serveur)
-- Deuxième mini-jeu (toboggan de rivière)
 - i18n (en/es)
 
 *Fait en v2.1 : accessoires, succès + records, export/import. v2.2 : pelages,
@@ -144,4 +147,10 @@ du soigneur (XP visible, titres, récompenses de palier, barre permanente).
 v2.7 : série de jours 🔥, plus de mort (chez le héron + rituel de retour),
 surprise quotidienne, partage du résultat du jour façon Wordle. v3.0 :
 rappels push opt-in (« elle a faim », héron, quêtes) via un petit serveur
-Supabase gratuit — fonction `push`, cron 10 min, abonnements anonymes.*
+Supabase gratuit — fonction `push`, cron 10 min, abonnements anonymes. v3.1 :
+l'aventure prend forme — éclosion cinématique (œuf qui se fissure et tremble),
+fil narratif en chapitres (naissance, jeune, adulte) et premiers pas guidés
+(le geste suivant est surligné et expliqué). v3.2 : monde vivant — les saisons
+réelles habillent la berge (printemps/été/automne/hiver, chacune sa teinte et
+son ambiance : pétales, feuilles, neige) et une carte d'histoire annonce chaque
+changement de saison.*
