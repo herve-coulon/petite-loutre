@@ -6,7 +6,7 @@ import { furById } from './skins.js';
 import { moodOf, pickIdle, canIdle, IDLE_FRAMES } from './mood.js';
 import { dailyEvent, butterflyPos } from './events.js';
 import { dayKey } from './quests.js';
-import { seasonInfo } from './seasons.js';
+import { seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 import { LANE_X, SLIDE_OTTER_Y } from './toboggan.js';
 
 export const CANVAS_W = 160, CANVAS_H = 120;
@@ -360,6 +360,35 @@ export function makeRenderer(cv) {
     }
   }
 
+  // Trésor de saison du jour : cadeau thématique à toucher (une fois par jour).
+  function drawSeasonTreat(key, frame) {
+    const bx = TREAT_POS.x, by = TREAT_POS.y + ((frame >> 4) % 2); // léger balancement
+    if ((frame >> 3) % 3 === 0) { // scintille pour attirer l'œil
+      ctx.fillStyle = '#ffe9a8';
+      ctx.fillRect(bx + 8, by - 3, 1, 2); ctx.fillRect(bx - 3, by + 5, 2, 1);
+    }
+    if (key === 'chataigne') {
+      ctx.fillStyle = '#6b3f1d'; ctx.fillRect(bx + 3, by + 6, 10, 8); ctx.fillRect(bx + 5, by + 4, 6, 3);
+      ctx.fillStyle = '#8a5a2b'; ctx.fillRect(bx + 5, by + 8, 5, 4);
+      ctx.fillStyle = '#e6c79a'; ctx.fillRect(bx + 5, by + 13, 6, 1);
+    } else if (key === 'bonhomme') {
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(bx + 3, by + 7, 10, 8); ctx.fillRect(bx + 5, by + 1, 6, 6);
+      ctx.fillStyle = '#20160f'; ctx.fillRect(bx + 6, by + 3, 1, 1); ctx.fillRect(bx + 9, by + 3, 1, 1);
+      ctx.fillStyle = '#f2913d'; ctx.fillRect(bx + 7, by + 4, 2, 1);
+      ctx.fillStyle = '#3b6ea5'; ctx.fillRect(bx + 6, by + 9, 1, 1); ctx.fillRect(bx + 9, by + 11, 1, 1);
+    } else if (key === 'fleur') {
+      ctx.fillStyle = '#3f9d3a'; ctx.fillRect(bx + 7, by + 8, 2, 7); ctx.fillRect(bx + 3, by + 11, 4, 2);
+      ctx.fillStyle = '#f078a8';
+      ctx.fillRect(bx + 6, by + 2, 4, 4); ctx.fillRect(bx + 3, by + 4, 4, 4); ctx.fillRect(bx + 9, by + 4, 4, 4); ctx.fillRect(bx + 6, by + 7, 4, 3);
+      ctx.fillStyle = '#ffd94a'; ctx.fillRect(bx + 7, by + 5, 2, 2);
+    } else if (key === 'pasteque') {
+      ctx.fillStyle = '#e5484d'; ctx.fillRect(bx + 3, by + 5, 10, 7);
+      ctx.fillStyle = '#2f7d34'; ctx.fillRect(bx + 2, by + 11, 12, 3);
+      ctx.fillStyle = '#8ad05f'; ctx.fillRect(bx + 3, by + 11, 10, 1);
+      ctx.fillStyle = '#20160f'; ctx.fillRect(bx + 5, by + 7, 1, 1); ctx.fillRect(bx + 8, by + 6, 1, 1); ctx.fillRect(bx + 10, by + 8, 1, 1);
+    }
+  }
+
   function render(s, mg, frame, fx) {
     fx = fx || {};
     const now = new Date();
@@ -430,6 +459,11 @@ export function makeRenderer(cv) {
 
     // ambiance saisonnière : feuilles / pétales / neige qui tombent (pas pendant la pêche)
     if (!mg) drawSeasonAmbient(season.ambient, frame);
+
+    // trésor de saison du jour, à récolter (disparaît une fois pris)
+    if (!mg && s.stage !== 'egg' && season.treat && treatAvailable(s)) {
+      drawSeasonTreat(season.treat.id, frame);
+    }
 
     // événement du jour (surprise déterministe par date, jamais pendant la pêche)
     if (!mg && s.stage !== 'egg') drawDailyEvent(s, frame, c.night);

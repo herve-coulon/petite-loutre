@@ -30,7 +30,7 @@ import { newAchievements } from './achievements.js';
 import { encodeCard, decodeCard, newBattle, playTurn } from './battle.js';
 import { makeCard, CARD_URL } from './photocard.js';
 import { nextBeat, markSeen, coachStep } from './story.js';
-import { seasonFor, seasonInfo } from './seasons.js';
+import { seasonFor, seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 
 const $ = id => document.getElementById(id);
 const now = () => Date.now();
@@ -366,6 +366,28 @@ function onCanvasPointer(e) {
   if (s && !s.gameOver) {
     if (s.stage === 'egg') { actWarm(); return; }
     if (s.away) return; // elle n'est pas là — le bouton du héron fait le travail
+
+    // trésor de saison du jour : à récolter une fois (récompense thématique)
+    const treat = seasonInfo().treat;
+    if (treat && treatAvailable(s)) {
+      const p = TREAT_POS;
+      if (x >= p.x - 6 && x <= p.x + p.w + 6 && y >= p.y - 6 && y <= p.y + p.h + 6) {
+        ensureDaily(s, now());
+        s.qDaily.progress.saison = 1;
+        const g = treat.gain || {};
+        if (g.hunger) s.hunger = clamp(s.hunger + g.hunger, 0, 100);
+        if (g.fun) s.fun = clamp(s.fun + g.fun, 0, 100);
+        if (g.energy) s.energy = clamp(s.energy + g.energy, 0, 100);
+        rec.treatsTotal = (rec.treatsTotal || 0) + 1;
+        R.spawn('heart', s.stage); R.burst('sparkle', 8, s.stage);
+        sfx.happy(); vibrate(12);
+        gainXp(XP.event);
+        ui.log(treat.msg);
+        persist(); persistRec();
+        ui.updateHUD(s, mg);
+        return;
+      }
+    }
 
     // événement du jour : papillon rare à attraper (une fois, +10 XP)
     const evt = dailyEvent(dayKey());

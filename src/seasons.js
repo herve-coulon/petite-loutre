@@ -24,6 +24,8 @@ export const SEASONS = {
     day:   { hill: '#8fd857', hill2: '#63b23e' },
     night: null,
     ambient: 'petales',
+    treat: { id: 'fleur', emoji: '🌸', gain: { fun: 8 },
+      msg: 'Nout cueille une jolie fleur du printemps ! 🌸' },
     card: {
       emoji: '🌸',
       title: 'Le printemps s\'installe',
@@ -38,6 +40,8 @@ export const SEASONS = {
     day:   { hill: '#7ac74f', hill2: '#5aa63d' },
     night: null,
     ambient: null,
+    treat: { id: 'pasteque', emoji: '🍉', gain: { fun: 8, hunger: 6 },
+      msg: 'Une pastèque bien fraîche — Nout se régale et se rafraîchit ! 🍉' },
     card: {
       emoji: '☀️',
       title: 'L\'été est là',
@@ -52,6 +56,8 @@ export const SEASONS = {
     day:   { hill: '#c58a3d', hill2: '#9e6a2c' },
     night: null,
     ambient: 'feuilles',
+    treat: { id: 'chataigne', emoji: '🌰', gain: { hunger: 12, fun: 3 },
+      msg: 'Nout ramasse une châtaigne dodue pour les jours froids ! 🌰' },
     card: {
       emoji: '🍂',
       title: 'Les couleurs de l\'automne',
@@ -66,6 +72,8 @@ export const SEASONS = {
     day:   { hill: '#d4dee6', hill2: '#b3c1cf', water: '#6f9fc4', wave: '#a9cbe6' },
     night: { hill: '#5a6b7d', hill2: '#45566a', water: '#26436a', wave: '#3a5f8c' }, // neige grisée sous la lune
     ambient: 'neige',
+    treat: { id: 'bonhomme', emoji: '⛄', gain: { fun: 10, energy: 6 },
+      msg: 'Nout roule un bonhomme de neige — quelle rigolade ! ⛄' },
     card: {
       emoji: '❄️',
       title: 'L\'hiver enveloppe la berge',
@@ -80,4 +88,15 @@ export const SEASONS = {
 /** La saison, avec ses métadonnées, à une date donnée. */
 export function seasonInfo(date = new Date()) {
   return SEASONS[seasonFor(date)];
+}
+
+// Trésor de saison : un cadeau thématique à récolter une fois par jour
+// (châtaigne, bonhomme de neige, fleur, pastèque). Emplacement partagé entre
+// le rendu et la zone de toucher.
+export const TREAT_POS = { x: 118, y: 82, w: 16, h: 16 };
+
+/** Le trésor du jour est-il encore à récolter ? (déterministe, une fois/jour) */
+export function treatAvailable(s) {
+  if (!s || !s.qDaily) return false;
+  return !(s.qDaily.progress && s.qDaily.progress.saison);
 }

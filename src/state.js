@@ -106,6 +106,7 @@ export function newRecords() {
     perfectSlides: 0,   // descentes sans toucher de rocher
     sleepsTotal: 0,
     treasures: 0,
+    treatsTotal: 0,     // trésors de saison récoltés
     wins: 0,
     battles: 0,
     questsDone: 0,

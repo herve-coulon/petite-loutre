@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { seasonFor, seasonInfo, SEASONS } from '../src/seasons.js';
+import { seasonFor, seasonInfo, SEASONS, treatAvailable, TREAT_POS } from '../src/seasons.js';
 import { stepSim } from '../src/sim.js';
 import { newState } from '../src/state.js';
 import { H } from '../src/constants.js';
@@ -115,4 +115,28 @@ test('printemps : saison neutre, décroissance de base (repère)', () => {
   const spring = otter(SPRING); stepSim(spring, H, { simNow: SPRING, rnd });
   assert.equal(Math.round(spring.hunger), 74, '80 - 6/h de base');
   assert.equal(spring.health, 86, 'bien soignée -> régénère (+6)');
+});
+
+/* ---------------- trésor de saison (événement quotidien) ---------------- */
+
+test('chaque saison a un trésor thématique complet', () => {
+  for (const key of Object.keys(SEASONS)) {
+    const t = SEASONS[key].treat;
+    assert.ok(t, key + ' : trésor présent');
+    assert.ok(t.id && t.emoji && t.msg, key + ' : id/emoji/msg');
+    assert.ok(t.gain && Object.keys(t.gain).length > 0, key + ' : au moins un gain');
+    for (const g of Object.keys(t.gain)) {
+      assert.ok(['hunger', 'fun', 'energy'].includes(g), key + ' : gain sur une jauge connue');
+    }
+  }
+  assert.ok(TREAT_POS.x >= 0 && TREAT_POS.w > 0, 'emplacement du trésor défini');
+});
+
+test('treatAvailable : dispo une fois par jour, plus après récolte', () => {
+  assert.equal(treatAvailable(null), false, 'pas d\'état -> rien');
+  assert.equal(treatAvailable({}), false, 'pas de suivi quotidien -> rien');
+  const s = { qDaily: { date: '2026-10-15', progress: {}, done: [] } };
+  assert.equal(treatAvailable(s), true, 'dispo tant que non récolté');
+  s.qDaily.progress.saison = 1;
+  assert.equal(treatAvailable(s), false, 'récolté -> plus dispo aujourd\'hui');
 });

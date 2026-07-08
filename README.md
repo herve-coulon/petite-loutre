@@ -49,6 +49,7 @@ L'app se lance alors en plein écran, fonctionne hors-ligne, et la loutre vit sa
 | Aventure 📖 | La vie se raconte en **chapitres** : la naissance (Chapitre 1), puis un moment d'histoire à chaque grande étape (jeune, adulte). Les premières minutes sont **guidées** : le prochain geste à faire (manger, jouer, laver) est surligné et expliqué |
 | Saisons 🍂 | La berge vit au rythme des **saisons réelles** (identiques pour tous) : printemps (vert vif, pétales 🌸), été (☀️), automne (berge dorée, feuilles 🍂), hiver (neige, rivière glacée ❄️). Une carte d'histoire annonce chaque changement de saison |
 | Météo & santé 🌡️ | Les saisons **pèsent sur la santé** : l'**hiver**, le froid fait attraper froid (risque de maladie accru, pire si elle est affaiblie — elle grelotte) ; l'**été**, la chaleur donne soif et épuise, et elle surchauffe si on ne la rafraîchit pas (elle transpire). On contre avec les gestes habituels : **Laver** rafraîchit (gros boost l'été), **Manger/Dodo/câlins** réchauffent et réconfortent |
+| Trésor de saison 🎁 | Chaque jour, un cadeau thématique à récolter sur la berge (touche-le) : 🌸 fleur au printemps, 🍉 pastèque l'été, 🌰 châtaigne l'automne, ⛄ bonhomme de neige l'hiver — chacun avec sa petite récompense. Un record compte les trésors récoltés |
 | Croissance | Bébé → jeune loutre à J+1 → adulte à J+3 |
 | Jauges | Faim, humeur, énergie, propreté + santé |
 | Actions | Manger 🐟, pêche 🎣 (mini-jeu), bain 🧼, dodo 💤, soin 💊, caresses (toucher la loutre), friandise 🍡 (jeune+), plongée au trésor 🤿 (adulte) |
@@ -162,4 +163,6 @@ dimensionnées, plus lisibles). v3.3 : second mini-jeu — le toboggan de riviè
 v3.3.1 : câlins rendus découvrables (touche la loutre) et activités verrouillées
 qui expliquent leur déblocage. v3.4 : les saisons pèsent sur la santé — le froid
 de l'hiver fait attraper froid, la chaleur de l'été épuise et fait surchauffer ;
-on réchauffe/rafraîchit avec les gestes existants (bain, repas, câlins).*
+on réchauffe/rafraîchit avec les gestes existants (bain, repas, câlins). v3.5 :
+trésor de saison — un cadeau thématique à récolter chaque jour (fleur, pastèque,
+châtaigne, bonhomme de neige) avec sa récompense et un record dédié.*

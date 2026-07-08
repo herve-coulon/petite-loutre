@@ -277,6 +277,7 @@ export function renderAchievements(rec, s) {
     ' · Poissons : ' + rec.fishTotal +
     ' · Repas : ' + rec.mealsTotal +
     (rec.slideBest > 0 ? ' · Toboggan : ' + rec.slideBest : '') +
+    (rec.treatsTotal > 0 ? ' · Trésors de saison : ' + rec.treatsTotal : '') +
     ' · Loutres élevées : ' + Math.max(rec.otters, rec.bestAge > 0 ? 1 : 0);
 }
 
