@@ -4,6 +4,8 @@ import { HATCH_MS, MIN, SEC } from './constants.js';
 import { hatById } from './accessories.js';
 import { furById } from './skins.js';
 import { moodOf, pickIdle, canIdle, IDLE_FRAMES } from './mood.js';
+import { dailyEvent, butterflyPos } from './events.js';
+import { dayKey } from './quests.js';
 
 export const CANVAS_W = 160, CANVAS_H = 120;
 export const OTTER_X = 64;
@@ -169,6 +171,49 @@ export function makeRenderer(cv) {
     }
   }
 
+  /* ---------------- Événement du jour ---------------- */
+  function drawDailyEvent(s, frame, night) {
+    const id = dailyEvent(dayKey()).id;
+    if (id === 'papillon') {
+      if (s.qDaily && s.qDaily.progress && s.qDaily.progress.papillon) return; // déjà attrapé
+      const { x, y } = butterflyPos(frame);
+      const w = (frame >> 1) % 2;
+      ctx.fillStyle = '#e8608a';
+      ctx.fillRect(x - 2 - w, y - 1, 2, 3); ctx.fillRect(x + 1 + w, y - 1, 2, 3);
+      ctx.fillStyle = '#20160f'; ctx.fillRect(x, y, 1, 2);
+    } else if (id === 'pluie') {
+      ctx.fillStyle = 'rgba(190,220,255,.55)';
+      for (let i = 0; i < 14; i++) {
+        const rx = (i * 23 + ((frame * 2) % 46)) % 160;
+        const ry = (frame * 3 + i * 31) % 100;
+        ctx.fillRect(rx, ry, 1, 4);
+      }
+      ctx.fillStyle = '#e5484d'; ctx.fillRect(24, 88, 6, 3); ctx.fillRect(139, 92, 5, 3);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(26, 91, 2, 3); ctx.fillRect(140, 95, 2, 2);
+      ctx.fillRect(25, 88, 1, 1); ctx.fillRect(141, 92, 1, 1);
+    } else if (id === 'heron') {
+      drawSprite(SPRITES.heron, 138, 82, 1, null, true); // il pêche au loin
+    } else if (id === 'canetons') {
+      ctx.fillStyle = '#f2c14e';
+      for (let i = 0; i < 3; i++) {
+        const dx2 = (((frame >> 1) + 176 - i * 13) % 176) - 8;
+        const dy2 = 106 + (((frame >> 3) + i) % 2);
+        ctx.fillRect(dx2, dy2, 4, 3); ctx.fillRect(dx2 + 3, dy2 - 2, 2, 2);
+      }
+    } else if (id === 'arcenciel' && !night) {
+      const cols = ['#e5484d', '#f2913d', '#f2c14e', '#8ad05f', '#5fc9e0'];
+      for (let x = 10; x < 150; x += 2) {
+        const d = Math.abs(x - 80);
+        const base = Math.sqrt(Math.max(0, 4900 - d * d)) * 0.55;
+        for (let i = 0; i < cols.length; i++) {
+          const y = 68 - base + i * 2;
+          if (y > 8 && y < 58) { ctx.fillStyle = cols[i]; ctx.fillRect(x, y, 2, 2); }
+        }
+      }
+    }
+  }
+
   /* ---------------- Petites manies (idle) ---------------- */
   function drawIdle(kind, t, ox, oy, fur) {
     const B = (fur && fur.B) || PAL.B, D = (fur && fur.D) || PAL.D;
@@ -301,10 +346,27 @@ export function makeRenderer(cv) {
       return;
     }
 
+    // partie bouder chez le héron : la berge est calme, le grand oiseau veille
+    if (s.away) {
+      drawSprite(SPRITES.heron, 66, 68, 2);
+      if ((frame >> 4) % 2 === 0) { // il pense à elle…
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(94, 62, 2, 2); ctx.fillRect(98, 59, 2, 2); ctx.fillRect(102, 56, 2, 2);
+      }
+      ctx.fillStyle = 'rgba(15,18,26,.65)'; ctx.fillRect(26, 16, 108, 12);
+      ctx.fillStyle = '#ffe9a8'; ctx.font = '8px monospace';
+      ctx.fillText('chez le héron… soins ' + (s.awayCare || 0) + '/3', 32, 25);
+      drawParticles();
+      return;
+    }
+
     const fur = furById(s.fur).map;
 
     // vie du décor (libellule le jour, luciole la nuit, poissons bondissants)
     drawAmbient(mg, frame, c.night);
+
+    // événement du jour (surprise déterministe par date, jamais pendant la pêche)
+    if (!mg && s.stage !== 'egg') drawDailyEvent(s, frame, c.night);
 
     // adversaire de combat (dessiné à droite, en miroir)
     if (fx.foe) {

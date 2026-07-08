@@ -18,11 +18,20 @@ function hatch(s, simNow, events) {
   events.push({ type: 'hatch' });
 }
 
-function die(s, simNow, events) {
-  s.gameOver = true;
+/**
+ * v2.7 : la loutre ne meurt plus — négligée, elle part bouder CHEZ LE HÉRON.
+ * Là-bas elle est en sécurité (plus aucune décroissance) ; on la ramène par
+ * un rituel de soins en 3 visites espacées (voir actCare côté orchestrateur).
+ * L'irréversible faisait désinstaller ; l'absence réparable fait revenir.
+ */
+function goAway(s, simNow, events) {
+  s.away = true;
+  s.awayAt = simNow;
+  s.awayCare = 0;
+  s.awayNextCare = 0;
   s.sleeping = false;
-  s.diedAt = simNow;
-  events.push({ type: 'die' });
+  s.sick = false; // le héron la soigne — c'est le retour qui se mérite
+  events.push({ type: 'away' });
 }
 
 /**
@@ -31,7 +40,7 @@ function die(s, simNow, events) {
  */
 export function stepSim(s, dt, opts = {}) {
   const events = opts.events || [];
-  if (s.gameOver) return events;
+  if (s.gameOver || s.away) return events; // gameOver : sauvegardes d'avant v2.7
   const offline = !!opts.offline;
   const simNow = opts.simNow || Date.now();
   const rnd = opts.rnd || Math.random;
@@ -80,7 +89,7 @@ export function stepSim(s, dt, opts = {}) {
   if (dh === 0 && !s.sick && s.hunger > 25 && s.clean > 25) dh = +6;
   s.health = clamp(s.health + dh * h, 0, 100);
 
-  if (s.health <= 0) { die(s, simNow, events); return events; }
+  if (s.health <= 0) { goAway(s, simNow, events); return events; }
 
   // Croissance
   const st = stageFor(ageMs(s, simNow));
@@ -103,7 +112,7 @@ export function simulateOffline(s, nowMs = Date.now(), rnd = Math.random) {
 
   let cursor = s.lastTick;
   const target = Math.min(nowMs, s.lastTick + MAX_OFFLINE);
-  while (cursor < target && !s.gameOver) {
+  while (cursor < target && !s.gameOver && !s.away) {
     const step = Math.min(MIN, target - cursor);
     cursor += step;
     stepSim(s, step, { offline: true, simNow: cursor, rnd, events });

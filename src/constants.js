@@ -19,6 +19,10 @@ export const DIVE_MS = 15 * 60 * 1000;    // plongée : 15 min
 export const GRUMPY_MS = 10 * MIN;        // bouderie après un réveil forcé
 export const WAKE_OK_ENERGY = 60;         // en-dessous : réveillée trop tôt -> elle boude
 
+// Chez le héron (v2.7) : plus de mort — un rituel de retour en 3 soins espacés
+export const AWAY_CARE_NEEDED = 3;
+export const AWAY_CARE_CD = 3 * H;
+
 // Éclosion active — v2.5 : s'occuper de l'œuf doit VRAIMENT payer
 export const WARM_BOOST = 10 * SEC;       // par réchauffage (bouton ou toucher)
 export const WARM_CD = 500;               // délai entre deux réchauffages (ms)

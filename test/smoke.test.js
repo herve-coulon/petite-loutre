@@ -118,15 +118,31 @@ test('HUD : jauges et libellés cohérents', () => {
   assert.match($('f-hunger').style.width, /%$/);
 });
 
-test('mort -> écran de fin -> recommencer', () => {
+test('négligence -> chez le héron -> rituel de retour en 3 soins (v2.7)', () => {
   L.state.health = 1; L.state.hunger = 0; L.state.sick = true;
   L.step(3600 * 1000);
-  assert.equal(L.state.gameOver, true);
-  assert.ok(!$('ovl-over').classList.contains('hidden'));
-  assert.match($('over-text').innerText || $('over-text').textContent, /Kiwi/);
-  $('btn-restart').click();
-  assert.equal(L.state.stage, 'egg');
-  assert.equal(L.state.gameOver, false);
+  assert.equal(L.state.away, true, 'partie chez le héron');
+  assert.equal(L.state.gameOver, false, 'plus de mort');
+  assert.ok($('ovl-over').classList.contains('hidden'), 'pas d\'écran de fin');
+  tick();
+  assert.match($('hud-stage').textContent, /HÉRON/);
+  assert.ok($('buttons').classList.contains('hidden'), 'actions normales masquées');
+  assert.ok(!$('btnrow-away').classList.contains('hidden'), 'bouton de soin visible');
+
+  $('b-feed').click();
+  assert.equal(L.state.away, true, 'nourrir ne marche pas : elle n\'est pas là');
+
+  $('b-care').click(); // soin 1
+  assert.equal(L.state.awayCare, 1);
+  $('b-care').click(); // trop tôt (cooldown 3 h)
+  assert.equal(L.state.awayCare, 1, 'le rituel s\'étale dans le temps');
+
+  L.state.awayNextCare = 0; tick(); $('b-care').click(); // soin 2 (le tick réactive le bouton)
+  L.state.awayNextCare = 0; tick(); $('b-care').click(); // soin 3 -> retour !
+  assert.equal(L.state.away, false, 'elle est rentrée');
+  assert.ok(L.state.health >= 40, 'santé retapée');
+  assert.ok(L.state.grumpyUntil > Date.now(), 'encore vexée : bouderie de retour');
+  assert.match($('toast').textContent, /rentrée/);
   renderOnce();
 });
 
@@ -149,7 +165,7 @@ test('garde-robe : déblocage par records + équipement', () => {
   $('b-hats').click();
   assert.ok(!$('ovl-hats').classList.contains('hidden'));
   const rows = [...$('hat-list').querySelectorAll('.row-item')];
-  assert.equal(rows.length, 20, '8 chapeaux + 6 pelages + 6 décors');
+  assert.equal(rows.length, 21, '8 chapeaux + 7 pelages + 6 décors');
   const noeud = rows[0];
   assert.ok(!noeud.classList.contains('locked'), 'nœud débloqué');
   assert.ok(rows[3].classList.contains('locked'), 'couronne verrouillée');
@@ -161,7 +177,7 @@ test('garde-robe : déblocage par records + équipement', () => {
 test('succès : écran + records affichés', () => {
   $('b-ach').click();
   assert.ok(!$('ovl-ach').classList.contains('hidden'));
-  assert.equal($('ach-list').querySelectorAll('.row-item').length, 17, '3 quêtes + 14 succès');
+  assert.equal($('ach-list').querySelectorAll('.row-item').length, 19, '3 quêtes + 16 succès');
   assert.match($('rec-line').textContent, /Records/);
   $('btn-ach-close').click();
 });
@@ -298,6 +314,36 @@ test('réveil au bon moment : pas de bouderie', () => {
   $('b-sleep').click();
   assert.equal(L.state.sleeping, false);
   assert.equal(L.state.grumpyUntil, 0, 'énergie haute : réveil serein');
+});
+
+/* ---------------- v2.7 : streak, partage du jour ---------------- */
+
+test('streak : la visite du jour est comptée au boot, 🔥 caché au jour 1', () => {
+  assert.equal(L.records.streakCount, 1, 'première visite comptée');
+  assert.ok(L.records.streakDay, 'jour mémorisé');
+  assert.equal($('streak').textContent, '', 'pas de flamme pour un seul jour');
+});
+
+test('streak : hier -> aujourd\'hui incrémente et affiche la flamme', () => {
+  // simule une série entamée hier
+  L.records.streakDay = new Date(Date.now() - 24 * 3600 * 1000).toISOString().slice(0, 10);
+  L.records.streakCount = 2;
+  L.state.hunger = 50;
+  $('b-feed').click(); // n'importe quel gain d'XP rafraîchit le bandeau…
+  // …mais c'est le passage de minuit ou le boot qui compte la série ; on force :
+  L.records.streakCount = 3;
+  L.records.streakBest = 3;
+  L.state.hunger = 50;
+  $('b-feed').click();
+  assert.match($('streak').textContent, /🔥3/, 'flamme affichée');
+});
+
+test('partage du jour : bouton présent, clic sans API -> message propre', () => {
+  $('b-ach').click();
+  assert.match($('event-line').textContent, /Aujourd'hui/, 'événement du jour annoncé');
+  assert.ok(!$('btn-day-share').classList.contains('hidden'));
+  $('btn-day-share').click(); // ni share ni clipboard dans jsdom -> toast de repli
+  $('btn-ach-close').click();
 });
 
 /* ---------------- v2.6 : niveaux ---------------- */

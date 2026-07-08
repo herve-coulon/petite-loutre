@@ -5,7 +5,8 @@ import { levelFromXp, titleFor } from './level.js';
 import { HATS, unlockedHats } from './accessories.js';
 import { FURS, DECORS, unlockedFurs, unlockedDecors } from './skins.js';
 import { ACHIEVEMENTS } from './achievements.js';
-import { dailyQuests } from './quests.js';
+import { dailyQuests, dayKey } from './quests.js';
+import { dailyEvent } from './events.js';
 
 const $ = id => document.getElementById(id);
 
@@ -50,6 +51,8 @@ export function renderLevel(rec) {
   $('lvl-label').textContent = 'NIV ' + L.level + ' · ' + titleFor(L.level);
   $('lvl-fill').style.width = Math.round(L.cur / L.next * 100) + '%';
   $('lvl-num').textContent = L.cur + '/' + L.next + ' XP';
+  const st = (rec && rec.streakCount) || 0;
+  $('streak').textContent = st >= 2 ? '🔥' + st : '';
 }
 
 /** Micro-tremblement de l'écran de jeu (début de combat…). */
@@ -67,13 +70,28 @@ export function updateHUD(s, mg) {
   if (!s) return;
   $('hud-name').textContent = s.name ? s.name.toUpperCase() : '???';
   const grumpy = !s.sick && !s.sleeping && (s.grumpyUntil || 0) > Date.now();
-  $('hud-stage').textContent = STAGES[s.stage] + (s.sick ? ' 🤒' : '') + (s.sleeping ? ' 💤' : '') + (grumpy ? ' 😾' : '');
+  $('hud-stage').textContent = s.away
+    ? 'CHEZ LE HÉRON 🪶'
+    : STAGES[s.stage] + (s.sick ? ' 🤒' : '') + (s.sleeping ? ' 💤' : '') + (grumpy ? ' 😾' : '');
   $('hud-age').textContent = fmtAge(s);
 
   const isEgg = s.stage === 'egg';
+  const isAway = !!s.away && !s.gameOver;
   $('bars').style.visibility = isEgg ? 'hidden' : 'visible';
   $('btnrow-egg').classList.toggle('hidden', !isEgg || s.gameOver);
-  $('buttons').classList.toggle('hidden', isEgg || s.gameOver);
+  $('buttons').classList.toggle('hidden', isEgg || s.gameOver || isAway);
+  $('btnrow-away').classList.toggle('hidden', !isAway);
+  if (isAway) {
+    const b = $('b-care');
+    const wait = (s.awayNextCare || 0) - Date.now();
+    if (wait > 0) {
+      b.disabled = true;
+      b.innerHTML = '<span class="ic">🪶</span>Elle hésite… reviens dans ' + fmtDur(wait);
+    } else {
+      b.disabled = false;
+      b.innerHTML = '<span class="ic">🐟</span>Lui porter un poisson (' + (s.awayCare || 0) + '/3)';
+    }
+  }
 
   if (!isEgg) {
     setBar('f-hunger', s.hunger);
@@ -184,6 +202,14 @@ export function renderAchievements(rec, s) {
   const list = $('ach-list');
   list.innerHTML = '';
 
+  // l'événement du jour, en tête d'affiche
+  const evt = dailyEvent(dayKey());
+  const evLine = document.createElement('p');
+  evLine.className = 'small';
+  evLine.id = 'event-line';
+  evLine.textContent = '✨ Aujourd\'hui : ' + evt.label;
+  list.appendChild(evLine);
+
   // Quêtes du jour en tête
   if (s && s.qDaily) {
     const t = document.createElement('p');
@@ -266,7 +292,8 @@ export function liveEventMessage(ev, s) {
 export function offlineSummary(s, elapsed, events) {
   const hh = Math.floor(elapsed / H), mm = Math.floor((elapsed % H) / MIN);
   let msg = 'Te revoilà ! (absent ' + (hh > 0 ? hh + ' h ' : '') + mm + ' min)';
-  if (s.gameOver) return null; // géré par l'écran de fin
+  if (s.gameOver) return null; // sauvegardes d'avant v2.7
+  if (s.away) return 'Oh non… pendant ton absence, ' + (s.name || 'ta loutre') + ' est partie bouder chez le héron. Porte-lui des poissons pour la ramener ! 🪶';
   if (events.some(e => e.type === 'evolve')) msg += ' — ' + (s.name || 'ta loutre') + ' a grandi pendant ton absence ! ✨';
   else if (s.sick) msg += ' — ' + s.name + ' est tombée malade ! 🤒';
   else if (s.poops.length) msg += ' — il y a du nettoyage à faire…';

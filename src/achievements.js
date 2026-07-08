@@ -32,7 +32,11 @@ export const ACHIEVEMENTS = [
   { id: 'niv5', icon: '⭐', name: 'Étoile montante', desc: 'Atteindre le niveau 5',
     test: (s, r) => levelFromXp(r.xp || 0).level >= 5 },
   { id: 'niv12', icon: '🌟', name: 'Murmureur', desc: 'Atteindre le niveau 12',
-    test: (s, r) => levelFromXp(r.xp || 0).level >= 12 }
+    test: (s, r) => levelFromXp(r.xp || 0).level >= 12 },
+  { id: 'fidele', icon: '🔥', name: 'Fidèle au poste', desc: 'Revenir 7 jours d\'affilée',
+    test: (s, r) => (r.streakBest || 0) >= 7 },
+  { id: 'inseparables', icon: '💛', name: 'Inséparables', desc: 'Revenir 30 jours d\'affilée',
+    test: (s, r) => (r.streakBest || 0) >= 30 }
 ];
 
 /** Marque les succès nouvellement obtenus dans rec et les retourne. */

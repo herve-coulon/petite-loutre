@@ -1,11 +1,16 @@
 // Orchestrateur : relie simulation, rendu, UI, audio et PWA.
 import {
   SEC, MIN, clamp, TREAT_CD, DIVE_MS, GRUMPY_MS, WAKE_OK_ENERGY,
-  WARM_BOOST, WARM_CD, SHAKE_BOOST, SHAKE_CD, SHAKE_G
+  WARM_BOOST, WARM_CD, SHAKE_BOOST, SHAKE_CD, SHAKE_G,
+  AWAY_CARE_NEEDED, AWAY_CARE_CD
 } from './constants.js';
+import { touchStreak } from './streak.js';
+import { dailyShareText } from './share.js';
+import { dailyEvent, butterflyPos } from './events.js';
 import * as music from './music.js';
 import { XP, levelFromXp, titleFor } from './level.js';
-import { bumpQuest, completedQuests, ensureDaily } from './quests.js';
+import { bumpQuest, completedQuests, ensureDaily, dayKey } from './quests.js';
+
 import {
   newState, saveState, loadState, clearSave,
   loadRecords, saveRecords, exportSave, importSave
@@ -45,12 +50,11 @@ function applyEvents(events, offline = false) {
       if (!offline) { sfx.hatch(); R.burst('confetti', 26, 'egg'); gainXp(XP.hatch); }
       continue;
     }
-    if (ev.type === 'die') {
-      rec.otters++;
-      rec.bestAge = Math.max(rec.bestAge, ageMs(s, s.diedAt || now()));
+    if (ev.type === 'away') {
+      rec.bestAge = Math.max(rec.bestAge, ageMs(s, s.awayAt || now()));
       checkUnlocks();
-      ui.showGameOver(s);
-      if (!offline) sfx.over();
+      if (!offline) { sfx.over(); ui.shake(); vibrate([30, 50, 30]); }
+      ui.log((s.name || 'Ta loutre') + ' n\'allait pas bien du tout… elle est partie bouder chez le héron. Porte-lui des poissons pour la ramener ! 🪶');
       continue;
     }
     if (offline) continue; // le reste est résumé au retour
@@ -68,7 +72,7 @@ function applyEvents(events, offline = false) {
 
 /* ---------------- Actions ---------------- */
 function diving() { return s && (s.divingUntil || 0) > now(); }
-function busy() { return !s || s.gameOver || s.stage === 'egg' || mg || diving(); }
+function busy() { return !s || s.gameOver || s.away || s.stage === 'egg' || mg || diving(); }
 function press() { vibrate(10); }
 const isChildPlus = () => s && (s.stage === 'child' || s.stage === 'adult');
 
@@ -306,6 +310,26 @@ function onCanvasPointer(e) {
   }
   if (s && !s.gameOver) {
     if (s.stage === 'egg') { actWarm(); return; }
+    if (s.away) return; // elle n'est pas là — le bouton du héron fait le travail
+
+    // événement du jour : papillon rare à attraper (une fois, +10 XP)
+    const evt = dailyEvent(dayKey());
+    const caught = s.qDaily && s.qDaily.progress && s.qDaily.progress.papillon;
+    if (evt.id === 'papillon' && !caught) {
+      const b = butterflyPos(frame);
+      if (Math.abs(x - b.x) < 10 && Math.abs(y - b.y) < 10) {
+        ensureDaily(s, now());
+        s.qDaily.progress.papillon = 1;
+        R.splashAt(x, y);
+        R.burst('sparkle', 8, s.stage);
+        sfx.catch(); vibrate(12);
+        gainXp(XP.event);
+        ui.log('🦋 Attrapé ! Le papillon rare t\'offre son éclat.');
+        persist();
+        return;
+      }
+    }
+
     const ox = OTTER_X, oy = otterY(s.stage);
     if (x >= ox - 4 && x <= ox + 36 && y >= oy - 4 && y <= oy + 40) pet();
   }
@@ -381,6 +405,53 @@ function quest(key, n = 1) {
   }
   persistRec();
   checkUnlocks();
+}
+
+/* ---------------- Chez le héron : le rituel du retour ---------------- */
+function actCare() {
+  if (!s || !s.away || s.gameOver) return;
+  const t = now();
+  if (t < (s.awayNextCare || 0)) {
+    ui.log('Le héron veille sur elle… reviens dans ' + ui.fmtDur(s.awayNextCare - t) + '.');
+    return;
+  }
+  press();
+  s.awayCare = (s.awayCare || 0) + 1;
+  s.awayNextCare = t + AWAY_CARE_CD;
+  R.burst('sparkle', 8, s.stage);
+  if (s.awayCare >= AWAY_CARE_NEEDED) {
+    // retrouvailles ! elle rentre — un peu vexée quand même
+    s.away = false;
+    s.awayAt = 0; s.awayCare = 0; s.awayNextCare = 0;
+    s.health = 45; s.hunger = 55; s.clean = 70; s.energy = 60;
+    s.grumpyUntil = t + GRUMPY_MS;
+    R.burst('confetti', 30, s.stage);
+    R.squash();
+    sfx.hatch(); vibrate([20, 40, 20]);
+    gainXp(XP.reunion);
+    ui.toast('🦦 ' + (s.name || 'Elle') + ' est rentrée !');
+    ui.log(s.name + ' est rentrée du héron… encore un peu vexée. Un câlin s\'impose.');
+  } else {
+    sfx.heal();
+    ui.log('Tu portes un poisson frais chez le héron… ' + s.name + ' hésite encore. (' + s.awayCare + '/' + AWAY_CARE_NEEDED + ')');
+  }
+  persist();
+  ui.updateHUD(s, mg);
+}
+
+/* ---------------- Série de jours (streak) ---------------- */
+function checkStreak() {
+  if (!rec) return;
+  const st = touchStreak(rec, now());
+  if (!st) return;
+  persistRec();
+  ui.renderLevel(rec);
+  if (st.count >= 2) ui.toast('🔥 ' + st.count + ' jours d\'affilée !');
+  if (st.xp) {
+    gainXp(st.xp);
+    ui.log('Palier de série : ' + st.count + ' jours d\'affilée ! Récompense : +' + st.xp + ' XP 🔥');
+    checkUnlocks(); // pelage Braise, succès Fidèle…
+  }
 }
 
 /* ---------------- Carte photo partageable ---------------- */
@@ -462,8 +533,13 @@ function tick() {
   } else {
     applyEvents(stepSim(s, rawDt, { simNow: t }));
   }
-  if (s.divingUntil && t >= s.divingUntil && !s.gameOver) resolveDive();
-  if (s.stage !== 'egg' && ensureDaily(s, t)) persist(); // nouvelles quêtes du jour
+  if (s.divingUntil && t >= s.divingUntil && !s.gameOver && !s.away) resolveDive();
+  if (s.stage !== 'egg' && ensureDaily(s, t)) {
+    // minuit vient de passer : nouvelles quêtes, série, surprise du jour
+    persist();
+    checkStreak();
+    ui.log('✨ Nouveau jour ! ' + dailyEvent(dayKey(t)).label);
+  }
   ui.updateHUD(s, mg);
   syncMusic(); // (re)démarre dès que l'audio est débloqué, coupe si veille/fin
   if (t - lastSave > 5 * SEC) {
@@ -513,7 +589,8 @@ function boot() {
       const msg = ui.offlineSummary(s, elapsed, events);
       if (msg && elapsed > 10 * MIN) ui.log(msg);
       else if (s.stage === 'egg') ui.log('L\'œuf t\'attendait bien au chaud…');
-      else ui.log('Content de te revoir, ' + s.name + ' aussi !');
+      else if (s.away) ui.log(s.name + ' est chez le héron… porte-lui des poissons pour la ramener. 🪶');
+      else ui.log('Content de te revoir ! ✨ Aujourd\'hui : ' + dailyEvent(dayKey()).label);
     }
     persist();
   } else {
@@ -544,6 +621,7 @@ function boot() {
   $('b-warm').addEventListener('click', actWarm);
   $('b-treat').addEventListener('click', actTreat);
   $('b-dive').addEventListener('click', actDive);
+  $('b-care').addEventListener('click', actCare);
 
   // Combat de loutres (par code de défi)
   $('b-battle').addEventListener('click', () => {
@@ -650,6 +728,22 @@ function boot() {
     ui.showOverlay('ovl-ach');
   });
   $('btn-ach-close').addEventListener('click', () => ui.hideOverlay('ovl-ach'));
+  $('btn-day-share').addEventListener('click', async () => {
+    if (!s) return;
+    if (s.stage !== 'egg') ensureDaily(s, now());
+    const text = dailyShareText(s, rec, now());
+    sfx.press(); vibrate(10);
+    if (typeof navigator.share === 'function') {
+      try { await navigator.share({ text }); ui.toast('📣 Résultat partagé !'); } catch (e) { /* annulé */ }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      ui.toast('📋 Résultat copié — colle-le à tes amis !');
+    } catch (e) {
+      ui.toast('Partage indisponible sur cet appareil…');
+    }
+  });
 
   // Réglages : export / import / reset
   $('b-gear').addEventListener('click', () => {
@@ -696,6 +790,8 @@ function boot() {
   // premier toucher, où qu'il soit : permission capteurs iOS + déblocage audio
   document.addEventListener('pointerdown', () => { enableMotion(); syncMusic(); });
 
+  checkStreak(); // la visite du jour compte pour la série 🔥
+
   setInterval(tick, 1000);
   requestAnimationFrame(loop);
 }
@@ -713,7 +809,7 @@ window.__loutre = {
     }
   },
   step(ms) { applyEvents(stepSim(s, ms, { simNow: now() })); ui.updateHUD(s, mg); },
-  startNew, actFeed, actWash, actSleep, actHeal, actPlay, actTreat, actDive, pet,
+  startNew, actFeed, actWash, actSleep, actHeal, actPlay, actTreat, actDive, actCare, pet,
   get battle() { return battle; }
 };
 

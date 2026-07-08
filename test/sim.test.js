@@ -129,12 +129,24 @@ test('maladie : déclenchée quand la malchance frappe', () => {
 
 /* ---------- santé, mort, croissance ---------- */
 
-test('négligence totale : la santé chute puis mort', () => {
+test('négligence totale : la santé chute puis départ chez le héron (v2.7)', () => {
   const s = babyState({ hunger: 0, clean: 0, sick: true, health: 5 });
   const ev = stepSim(s, 1 * H, { simNow: T0 + H, rnd: noLuck });
-  assert.equal(s.gameOver, true);
-  assert.equal(s.diedAt, T0 + H);
-  assert.ok(ev.some(e => e.type === 'die'));
+  assert.equal(s.away, true, 'partie bouder chez le héron — plus de mort');
+  assert.equal(s.gameOver, false);
+  assert.equal(s.awayAt, T0 + H);
+  assert.equal(s.awayCare, 0, 'rituel de retour à zéro');
+  assert.equal(s.sick, false, 'le héron la soigne');
+  assert.ok(ev.some(e => e.type === 'away'));
+});
+
+test('chez le héron : plus aucune décroissance, elle est en sécurité', () => {
+  const s = babyState({ away: true, awayAt: T0, hunger: 40, fun: 40, health: 10 });
+  const ev = stepSim(s, 48 * H, { simNow: T0 + 48 * H, rnd: noLuck });
+  assert.equal(ev.length, 0, 'rien ne se passe là-bas');
+  assert.equal(s.hunger, 40);
+  assert.equal(s.health, 10);
+  assert.equal(s.away, true);
 });
 
 test('bonne santé : régénération', () => {
@@ -178,12 +190,14 @@ test('hors-ligne : œuf éclot pendant l absence', () => {
   assert.ok(events.some(e => e.type === 'hatch'));
 });
 
-test('hors-ligne : abandon prolongé -> la loutre meurt', () => {
+test('hors-ligne : abandon prolongé -> partie chez le héron (récupérable)', () => {
   const s = babyState();
   s.lastTick = T0;
   const { events } = simulateOffline(s, T0 + 6 * 24 * H, noLuck);
-  assert.equal(s.gameOver, true);
-  assert.ok(events.some(e => e.type === 'die'));
+  assert.equal(s.away, true, 'chez le héron, pas morte');
+  assert.equal(s.gameOver, false);
+  assert.ok(events.some(e => e.type === 'away'));
+  assert.equal(s.lastTick, T0 + 6 * 24 * H);
 });
 
 test('hors-ligne : rattrapage plafonné à MAX_OFFLINE', () => {

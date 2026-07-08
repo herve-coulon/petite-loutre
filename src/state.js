@@ -27,6 +27,7 @@ export function newState(now = Date.now(), rnd = Math.random) {
     lastTreat: 0,
     divingUntil: 0,
     grumpyUntil: 0,
+    away: false, awayAt: 0, awayCare: 0, awayNextCare: 0,
     fed: 0, played: 0, washed: 0, healed: 0,
     lastTick: now
   };
@@ -44,6 +45,10 @@ function normalizeState(o) {
   if (typeof o.divingUntil !== 'number') o.divingUntil = 0;
   if (typeof o.grumpyUntil !== 'number') o.grumpyUntil = 0;
   if (typeof o.music !== 'boolean') o.music = true;
+  if (typeof o.away !== 'boolean') o.away = false;
+  for (const k of ['awayAt', 'awayCare', 'awayNextCare']) {
+    if (typeof o[k] !== 'number') o[k] = 0;
+  }
   if (!Array.isArray(o.poops)) o.poops = [];
   for (const k of ['fed', 'played', 'washed', 'healed']) {
     if (typeof o[k] !== 'number') o[k] = 0;
@@ -91,6 +96,9 @@ export function newRecords() {
     battles: 0,
     questsDone: 0,
     xp: 0,
+    streakCount: 0,
+    streakDay: null,
+    streakBest: 0,
     achievements: []
   };
 }

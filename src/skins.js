@@ -15,7 +15,9 @@ export const FURS = [
   { id: 'nuit', icon: '🌙', name: 'Bleu nuit', cond: 'Dormir 20 fois',
     test: r => r.sleepsTotal >= 20, map: { B: '#3d4c6e', C: '#9fb0d0', D: '#1c2438' } },
   { id: 'bonbon', icon: '🍬', name: 'Rose bonbon', cond: 'Gagner 3 combats',
-    test: r => r.wins >= 3, map: { B: '#d97ba6', C: '#f7d4e3', D: '#7a3a58' } }
+    test: r => r.wins >= 3, map: { B: '#d97ba6', C: '#f7d4e3', D: '#7a3a58' } },
+  { id: 'braise', icon: '🔥', name: 'Braise', cond: 'Série de 7 jours d\'affilée',
+    test: r => (r.streakBest || 0) >= 7, map: { B: '#b5502a', C: '#f2b28c', D: '#571d0c' } }
 ];
 
 // Petits décors dessinés sur la berge.

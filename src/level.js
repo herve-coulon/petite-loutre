@@ -15,7 +15,9 @@ export const XP = {
   win: 20,      // …le gagner
   quest: 25,    // quête du jour réussie
   evolve: 50,   // la loutre grandit
-  hatch: 10     // éclosion
+  hatch: 10,    // éclosion
+  reunion: 20,  // la ramener de chez le héron
+  event: 10     // surprise du jour (papillon attrapé…)
 };
 
 /** Coût pour passer du niveau n au suivant (croissance douce mais réelle). */

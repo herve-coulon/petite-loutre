@@ -12,6 +12,10 @@ import { XP, xpCost, levelFromXp, titleFor, TITLES } from '../src/level.js';
 import { HATS, unlockedHats } from '../src/accessories.js';
 import { DECORS, unlockedDecors } from '../src/skins.js';
 import { newRecords } from '../src/state.js';
+import { touchStreak, STREAK_MILESTONES } from '../src/streak.js';
+import { dailyShareText, SHARE_URL } from '../src/share.js';
+import { dailyEvent, butterflyPos, DAILY_EVENTS } from '../src/events.js';
+import { dayKey, dailyQuests } from '../src/quests.js';
 
 const T0 = 1_750_000_000_000;
 
@@ -131,6 +135,86 @@ test('rendu : chaque humeur peint un visage différent', () => {
     for (let j = i + 1; j < faces.length; j++) {
       assert.notEqual(faces[i], faces[j], 'humeurs ' + i + ' et ' + j + ' identiques à l\'écran');
     }
+  }
+});
+
+/* ---------------- streak ---------------- */
+
+const UN_JOUR = 24 * 3600 * 1000;
+
+test('streak : première visite = 1, même jour = non recompté', () => {
+  const rec = newRecords();
+  const st = touchStreak(rec, T0);
+  assert.deepEqual(st, { count: 1, xp: 0 });
+  assert.equal(touchStreak(rec, T0 + 3600 * 1000), null, 'déjà compté aujourd\'hui');
+  assert.equal(rec.streakCount, 1);
+});
+
+test('streak : jours consécutifs s\'enchaînent, un trou remet à 1', () => {
+  const rec = newRecords();
+  touchStreak(rec, T0);
+  touchStreak(rec, T0 + UN_JOUR);
+  const st3 = touchStreak(rec, T0 + 2 * UN_JOUR);
+  assert.equal(st3.count, 3, 'trois jours d\'affilée');
+  assert.equal(st3.xp, STREAK_MILESTONES[3], 'palier 3 récompensé');
+  assert.equal(rec.streakBest, 3);
+  const gap = touchStreak(rec, T0 + 5 * UN_JOUR); // deux jours manqués
+  assert.equal(gap.count, 1, 'série cassée, on repart à 1');
+  assert.equal(rec.streakBest, 3, 'le record reste');
+});
+
+test('streak : paliers 3/7/14/30 tous récompensés', () => {
+  const rec = newRecords();
+  let earned = [];
+  for (let d = 0; d < 30; d++) {
+    const st = touchStreak(rec, T0 + d * UN_JOUR);
+    if (st && st.xp) earned.push(st.count);
+  }
+  assert.deepEqual(earned, [3, 7, 14, 30]);
+  assert.equal(rec.streakBest, 30);
+});
+
+/* ---------------- partage du jour ---------------- */
+
+test('partage : cases, compte, niveau, flamme et lien', () => {
+  const s = otter({ name: 'Kiwi' });
+  s.qDaily = { date: dayKey(T0), progress: {}, done: [] };
+  const rec = { xp: 45, streakCount: 12 };
+  const txt = dailyShareText(s, rec, T0);
+  assert.match(txt, /🦦 Ma Petite Loutre — \d\d\/\d\d/);
+  assert.match(txt, /[✅⬜]{3} \d\/3/, 'trois cases de quêtes');
+  assert.match(txt, /NIV 2/);
+  assert.match(txt, /🔥12 j/);
+  assert.ok(txt.endsWith(SHARE_URL));
+});
+
+test('partage : quête réussie -> une case cochée ; pas de flamme à 1 jour', () => {
+  const s = otter();
+  const date = dayKey(T0);
+  const quests = dailyQuests(date);
+  s.qDaily = { date, progress: {}, done: [quests[0].id] };
+  const txt = dailyShareText(s, { xp: 0, streakCount: 1 }, T0);
+  assert.match(txt, /✅/, 'au moins une case cochée');
+  assert.match(txt, / 1\/3/);
+  assert.ok(!txt.includes('🔥'), 'flamme cachée à 1 jour');
+});
+
+/* ---------------- événement du jour ---------------- */
+
+test('événement : déterministe par date, varie au fil des jours', () => {
+  const a = dailyEvent('2026-07-08');
+  assert.deepEqual(dailyEvent('2026-07-08'), a, 'même jour = même surprise pour tous');
+  assert.ok(DAILY_EVENTS.some(e => e.id === a.id));
+  const ids = new Set();
+  for (let d = 1; d <= 20; d++) ids.add(dailyEvent('2026-07-' + String(d).padStart(2, '0')).id);
+  assert.ok(ids.size >= 3, 'la surprise change vraiment au fil des jours (' + ids.size + ' distinctes sur 20 j)');
+});
+
+test('événement : le papillon vole dans l\'écran, toujours attrapable', () => {
+  for (let f = 0; f < 2000; f += 37) {
+    const { x, y } = butterflyPos(f);
+    assert.ok(x > 10 && x < 150, 'x=' + x);
+    assert.ok(y > 40 && y < 72, 'y=' + y);
   }
 });
 

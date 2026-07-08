@@ -102,5 +102,21 @@ export const SPRITES = {
     '.RRRRRR.',
     '..RRRR..',
     '...RR...'
+  ],
+  heron: [
+    '.....gg.....',
+    '....gggK....',
+    'OOOOgggg....',
+    '.....ggg....',
+    '.....gg.....',
+    '.....gg.....',
+    '....gggg....',
+    '...GGgggg...',
+    '..GGGggggg..',
+    '..GGGGgggg..',
+    '...GGGGgg...',
+    '.....DD.....',
+    '.....D.D....',
+    '....DD.DD...'
   ]
 };

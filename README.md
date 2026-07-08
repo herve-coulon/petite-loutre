@@ -52,6 +52,10 @@ L'app se lance alors en plein écran, fonctionne hors-ligne, et la loutre vit sa
 | Combats ⚔️ | Duels par code de défi à s'échanger entre amis (dès le stade jeune) |
 | Quêtes 🏆 | 3 micro-objectifs par jour, identiques pour tout le monde |
 | Niveaux ⭐ | Chaque geste rapporte de l'XP (« +5 » à l'écran) : niveaux, titres honorifiques, friandise rechargée à chaque montée, cosmétiques exclusifs aux paliers 3/5/10 — le niveau survit aux loutres |
+| Série 🔥 | Revenir chaque jour entretient la flamme : paliers 3/7/14/30 jours (XP, pelage Braise, succès) |
+| Chez le héron 🪶 | Plus de mort : négligée, la loutre part bouder chez le héron — on la ramène par 3 soins espacés de 3 h, elle rentre boudeuse |
+| Surprise du jour ✨ | Un événement quotidien identique pour tous (papillon rare à attraper +10 XP, pluie aux champignons, héron pêcheur, canetons, arc-en-ciel) |
+| Partage du jour 📣 | Résultat quotidien façon Wordle (✅✅⬜ 2/3 · NIV · 🔥) à envoyer d'un tap |
 | Risques | Cacas à nettoyer, maladie, départ si la santé tombe à 0 |
 | Ambiance | Ciel jour/crépuscule/nuit selon l'heure réelle, musique chiptune (enjouée le jour, berceuse la nuit — désactivable dans ⚙️), sons 8-bit, vibrations, libellule et poissons sauteurs, confettis et squash & stretch |
 | Expressivité 🦦 | Le visage suit l'humeur (contente, affamée, boudeuse, malade) ; elle se gratte, bâille et jongle avec un caillou quand tout va bien — et boude 10 min si on la réveille trop tôt (un câlin ou une friandise la déride) |
@@ -79,6 +83,9 @@ src/
   battle.js           combats par code de défi (pur, RNG seedé)
   quests.js           quêtes du jour (déterministes par date)
   level.js            XP, niveaux et titres du soigneur (pur)
+  streak.js           série de jours et paliers (pur)
+  share.js            résultat quotidien à partager (pur)
+  events.js           surprise du jour, déterministe par date (pur)
   mood.js             humeurs et manies de la loutre (pur)
   photocard.js        carte photo partageable (dessin autonome)
   minigame.js         pêche (logique pure)
@@ -131,4 +138,6 @@ bercer en secouant le téléphone, bouderie de réveil forcé, sieste vraiment
 réparatrice, lancement instantané (cache d'abord). v2.5 : musique chiptune
 jour/nuit, éclosion active bien plus payante (10 s par réchauffage, 8 s par
 secousse), permission capteurs iOS demandée au premier toucher. v2.6 : niveaux
-du soigneur (XP visible, titres, récompenses de palier, barre permanente).*
+du soigneur (XP visible, titres, récompenses de palier, barre permanente).
+v2.7 : série de jours 🔥, plus de mort (chez le héron + rituel de retour),
+surprise quotidienne, partage du résultat du jour façon Wordle.*
