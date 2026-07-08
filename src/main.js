@@ -5,6 +5,7 @@ import {
   AWAY_CARE_NEEDED, AWAY_CARE_CD, GAME_VERSION
 } from './constants.js';
 import { touchStreak } from './streak.js';
+import { greeting } from './mood.js';
 import { dailyShareText } from './share.js';
 import { dailyEvent, butterflyPos } from './events.js';
 import * as music from './music.js';
@@ -591,7 +592,7 @@ function boot() {
       if (msg && elapsed > 10 * MIN) ui.log(msg);
       else if (s.stage === 'egg') ui.log('L\'œuf t\'attendait bien au chaud…');
       else if (s.away) ui.log(s.name + ' est chez le héron… porte-lui des poissons pour la ramener. 🪶');
-      else ui.log('Content de te revoir ! ✨ Aujourd\'hui : ' + dailyEvent(dayKey()).label);
+      else ui.log(greeting(s, now()) + ' ✨ Aujourd\'hui : ' + dailyEvent(dayKey()).label);
     }
     persist();
   } else {

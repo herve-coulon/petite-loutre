@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { squashScale, SQUASH_MS, makeRenderer } from '../src/render.js';
-import { moodOf, pickIdle, canIdle, IDLES, IDLE_FRAMES } from '../src/mood.js';
+import { moodOf, pickIdle, canIdle, IDLES, IDLE_FRAMES, greeting } from '../src/mood.js';
 import { cardData, drawCard, makeCard, CARD_W, CARD_H, CARD_URL } from '../src/photocard.js';
 import { newState } from '../src/state.js';
 import { stepSim } from '../src/sim.js';
@@ -105,6 +105,37 @@ test('humeur : œuf, partie finie et état absent -> null', () => {
   assert.equal(moodOf(otter({ stage: 'egg' })), null);
   assert.equal(moodOf(otter({ gameOver: true })), null);
   assert.equal(moodOf(null), null);
+});
+
+test('bonjour de reconnexion : le message suit l\'humeur, avec le prénom', () => {
+  const cases = [
+    [otter({ name: 'Kiwi', sleeping: true }), /dort.*💤/],
+    [otter({ name: 'Kiwi', sick: true }), /🤒/],
+    [otter({ name: 'Kiwi', hunger: 10 }), /🐟/],
+    [otter({ name: 'Kiwi', fun: 10 }), /vexé|boude/],
+    [otter({ name: 'Kiwi', fun: 90, hunger: 80 }), /💛/],
+    [otter({ name: 'Kiwi', fun: 50 }), /salue|Bonjour|Bonsoir|Coucou|debout/]
+  ];
+  for (const [s, re] of cases) {
+    const msg = greeting(s, T0, () => 0);
+    assert.match(msg, re, msg);
+    assert.ok(msg.includes('Kiwi'), 'le prénom est là : ' + msg);
+  }
+});
+
+test('bonjour : des variantes existent (pas la même phrase en boucle)', () => {
+  const s = otter({ name: 'Kiwi', fun: 90, hunger: 80 });
+  const a = greeting(s, T0, () => 0);
+  const b = greeting(s, T0, () => 0.99);
+  assert.notEqual(a, b, 'deux tirages différents -> deux phrases');
+});
+
+test('bonjour neutre : la politesse suit l\'heure', () => {
+  const s = otter({ fun: 50 });
+  const at = h => greeting(s, Date.UTC(2026, 6, 8, h, 0, 0), () => 0);
+  // (l'heure affichée dépend du fuseau de la machine : on vérifie juste
+  // que matin très tôt et soirée ne donnent pas la même phrase)
+  assert.notEqual(at(3), at(20));
 });
 
 test('manies : tirage borné, durées définies, seulement quand tout est calme', () => {
