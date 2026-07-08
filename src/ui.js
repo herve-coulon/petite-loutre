@@ -114,19 +114,22 @@ export function updateHUD(s, mg) {
     const child = s.stage === 'child' || s.stage === 'adult';
     const adult = s.stage === 'adult';
     const diving = (s.divingUntil || 0) > Date.now();
+    // Verrouillé = grisé (classe .locked) mais TOUJOURS tapable : le geste
+    // explique alors comment le débloquer (bien plus clair qu'un bouton mort).
     const lock = (id, locked, label, html) => {
       const b = $(id);
       const want = locked ? '<span class="ic">🔒</span>' + label : html;
       if (b.innerHTML !== want) b.innerHTML = want;
+      b.classList.toggle('locked', locked);
     };
     lock('b-treat', !child, 'Jeune', '<span class="ic">🍡</span>Friandise');
     lock('b-dive', !adult, 'Adulte', '<span class="ic">🤿</span>Plongée');
     lock('b-battle', !child, 'Jeune', '<span class="ic">⚔️</span>Combat');
     lock('b-slide', !child, 'Jeune', '<span class="ic">🛝</span>Toboggan');
-    $('b-treat').disabled = dis || s.sleeping || !child || diving;
-    $('b-dive').disabled = dis || s.sleeping || !adult || diving;
-    $('b-battle').disabled = dis || s.sleeping || !child || diving;
-    $('b-slide').disabled = dis || s.sleeping || !child || diving;
+    $('b-treat').disabled = dis || s.sleeping || diving;
+    $('b-dive').disabled = dis || s.sleeping || diving;
+    $('b-battle').disabled = dis || s.sleeping || diving;
+    $('b-slide').disabled = dis || s.sleeping || diving;
     if (diving) {
       ['b-feed', 'b-play', 'b-wash', 'b-sleep', 'b-heal'].forEach(id => { $(id).disabled = true; });
     }

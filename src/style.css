@@ -147,6 +147,8 @@ button.act .ic{display:block; font-size:19px; margin-bottom:3px;}
 button.act:active{transform:translateY(3px); box-shadow:0 0 0 var(--ink);}
 button.act:disabled{filter:grayscale(1) brightness(.6); cursor:default;
   transform:none; box-shadow:0 3px 0 var(--ink);}
+/* verrouillé par la progression : grisé, mais tapable (explique le déblocage) */
+button.act.locked{filter:grayscale(1) brightness(.62);}
 button.ghost{background:#252a3a; color:var(--dim);}
 
 #foot{

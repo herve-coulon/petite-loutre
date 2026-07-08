@@ -84,7 +84,8 @@ function press() { vibrate(10); }
 const isChildPlus = () => s && (s.stage === 'child' || s.stage === 'adult');
 
 function actTreat() {
-  if (busy() || s.sleeping || !isChildPlus()) return;
+  if (busy() || s.sleeping) return;
+  if (!isChildPlus()) { ui.log('🍡 Les friandises arrivent quand ta loutre devient jeune (à 1 jour) ! 🌱'); return; }
   const t = now();
   const CD = TREAT_CD;
   if (t - (s.lastTreat || 0) < CD) {
@@ -107,7 +108,8 @@ function actTreat() {
 }
 
 function actDive() {
-  if (busy() || s.sleeping || s.stage !== 'adult') return;
+  if (busy() || s.sleeping) return;
+  if (s.stage !== 'adult') { ui.log('🤿 La plongée au trésor s\'ouvre au stade adulte (à 3 jours) ! 🦦'); return; }
   press();
   s.divingUntil = now() + DIVE_MS;
   sfx.wash();
@@ -259,7 +261,7 @@ function pet() {
     s.grumpyUntil = 0; // un câlin, et la bouderie s'envole
     ui.log(s.name + ' te pardonne… mais ne recommence pas ! 💛');
   }
-  if (t - lastPet > 20 * SEC) {
+  if (t - lastPet > 5 * SEC) {
     lastPet = t;
     s.fun = clamp(s.fun + 3, 0, 100);
     R.spawn('heart', s.stage);
@@ -306,7 +308,8 @@ function endGame(res) {
 
 /* ---------------- Toboggan de rivière (2e mini-jeu) ---------------- */
 function actSlide() {
-  if (busy() || s.sleeping || !isChildPlus()) return;
+  if (busy() || s.sleeping) return;
+  if (!isChildPlus()) { ui.log('🛝 Le toboggan s\'ouvre quand ta loutre devient jeune (à 1 jour) ! 🌱'); return; }
   if (s.energy < 14) { ui.log(s.name + ' est trop fatiguée pour le toboggan…'); return; }
   press();
   mg = newSlide(now());
@@ -439,7 +442,7 @@ function updateCoach() {
   if (!step) { // les trois bases sont acquises -> fin douce du tutoriel
     s.coach = false; coachTarget = null; ui.setCoach(null);
     ui.toast('🎉 Tu sais tout !');
-    ui.log('Bravo ! Tu maîtrises les bases. À toi de veiller sur ' + (s.name || 'ta loutre') + '. 💛');
+    ui.log('Bravo ! 💡 Astuce : touche ta loutre pour la câliner. À toi de veiller sur ' + (s.name || 'elle') + ' ! 💛');
     persist();
     return;
   }
@@ -736,7 +739,8 @@ function boot() {
 
   // Combat de loutres (par code de défi)
   $('b-battle').addEventListener('click', () => {
-    if (busy() || s.sleeping || !isChildPlus()) return;
+    if (busy() || s.sleeping) return;
+    if (!isChildPlus()) { ui.log('⚔️ Les combats s\'ouvrent quand ta loutre devient jeune (à 1 jour) ! 🌱'); return; }
     sfx.press();
     battle = null;
     ui.resetBattleUI(encodeCard(s));

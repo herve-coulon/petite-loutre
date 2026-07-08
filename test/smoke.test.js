@@ -496,10 +496,15 @@ test('musique : le réglage 🎵 bascule et se sauvegarde', () => {
 test('toboggan : verrouillé avant le stade jeune, sinon se lance, se termine et compte la descente', () => {
   L.state.energy = 90; L.state.sleeping = false; L.state.divingUntil = 0; L.state.gameOver = false; L.state.away = false;
 
-  // verrou : pas de toboggan au stade bébé
+  // verrou : pas de toboggan au stade bébé, mais le bouton EXPLIQUE le déblocage
   L.state.stage = 'baby';
+  L.state.hatchedAt = Date.now() - 1000; // âge bébé -> step(0) ne fait pas évoluer
+  L.step(0); // rafraîchit le HUD (état des boutons)
+  assert.ok($('b-slide').classList.contains('locked'), 'bouton grisé (verrouillé)');
+  assert.equal($('b-slide').disabled, false, 'mais tapable pour expliquer le déblocage');
   L.actSlide();
   assert.equal(L.minigame, null, 'toboggan verrouillé au stade bébé');
+  assert.match($('log').textContent, /jeune/i, 'astuce de déblocage affichée');
 
   // débloqué dès le stade jeune
   L.state.stage = 'child';

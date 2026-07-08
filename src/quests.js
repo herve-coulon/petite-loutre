@@ -7,7 +7,7 @@ export const QUEST_POOL = [
   { id: 'games2', icon: '🎣', label: 'Jouer 2 parties de pêche', key: 'games', target: 2 },
   { id: 'fish5', icon: '🐠', label: 'Attraper 5 poissons', key: 'fish', target: 5 },
   { id: 'wash2', icon: '🧼', label: 'Donner 2 bains', key: 'washes', target: 2 },
-  { id: 'pets5', icon: '💛', label: 'Faire 5 câlins', key: 'pets', target: 5 },
+  { id: 'pets5', icon: '💛', label: 'Câliner 5× (touche la loutre)', key: 'pets', target: 5 },
   { id: 'treat1', icon: '🍡', label: 'Offrir 1 friandise', key: 'treats', target: 1 },
   { id: 'battle1', icon: '⚔️', label: 'Livrer 1 combat', key: 'battles', target: 1 },
   { id: 'sleep1', icon: '💤', label: 'Border la loutre 1 fois', key: 'sleeps', target: 1 }
