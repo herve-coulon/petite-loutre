@@ -1,6 +1,6 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v2.7.2';
+const VERSION = 'v2.7.3';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [
@@ -55,12 +55,17 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
 
+  // ⚠️ Toujours lire dans NOTRE cache versionné (caches.open(CACHE).match),
+  // jamais caches.match global : pendant une mise à jour, deux caches
+  // coexistent et le match global fabriquait des pages mélangées
+  // (index.html neuf + main.js ancien -> boutons visibles mais morts).
+
   // Navigation : cache immédiat (lancement instantané), mise à jour en arrière-plan.
   // La nouvelle version s'affiche au lancement suivant — le rattrapage hors-ligne
   // du jeu rend ce léger différé invisible pour le joueur.
   if (req.mode === 'navigate') {
     e.respondWith(
-      caches.match('./index.html').then((hit) => {
+      caches.open(CACHE).then((c) => c.match('./index.html')).then((hit) => {
         const refresh = fetch(req)
           .then((res) => {
             if (res.ok) {
@@ -76,9 +81,9 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Assets : cache d'abord, réseau en secours (puis mise en cache).
+  // Assets : cache (de cette version) d'abord, réseau en secours (puis mise en cache).
   e.respondWith(
-    caches.match(req).then((hit) => hit || fetch(req).then((res) => {
+    caches.open(CACHE).then((c) => c.match(req)).then((hit) => hit || fetch(req).then((res) => {
       if (res.ok && new URL(req.url).origin === self.location.origin) {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(req, copy));
