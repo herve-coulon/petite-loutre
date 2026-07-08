@@ -28,8 +28,7 @@ export const SEASONS = {
       emoji: '🌸',
       title: 'Le printemps s\'installe',
       lines: [
-        'La berge se réveille : l\'herbe reverdit et des pétales roses tourbillonnent dans l\'air tiède.',
-        'C\'est la saison des découvertes. Ta loutre renifle chaque brise avec gourmandise.'
+        'L\'herbe reverdit et des pétales roses dansent dans l\'air tiède. C\'est la saison des découvertes.'
       ],
       cta: 'RESPIRER LE PRINTEMPS'
     }
@@ -43,8 +42,7 @@ export const SEASONS = {
       emoji: '☀️',
       title: 'L\'été est là',
       lines: [
-        'Le soleil brille haut, la rivière scintille et invite à la baignade.',
-        'Journées longues, siestes au bord de l\'eau et plongeons rafraîchissants : ta loutre est dans son élément.'
+        'Le soleil brille haut, la rivière scintille : baignades et siestes au bord de l\'eau, ta loutre est dans son élément.'
       ],
       cta: 'PROFITER DE L\'ÉTÉ'
     }
@@ -58,8 +56,7 @@ export const SEASONS = {
       emoji: '🍂',
       title: 'Les couleurs de l\'automne',
       lines: [
-        'La berge se pare d\'or et de roux ; les feuilles se détachent et dansent jusqu\'à la rivière.',
-        'L\'air fraîchit. Ta loutre gonfle son pelage et savoure la lumière dorée.'
+        'La berge se pare d\'or et les feuilles dansent jusqu\'à la rivière. L\'air fraîchit, le pelage s\'épaissit.'
       ],
       cta: 'SAVOURER L\'AUTOMNE'
     }
@@ -73,8 +70,7 @@ export const SEASONS = {
       emoji: '❄️',
       title: 'L\'hiver enveloppe la berge',
       lines: [
-        'La neige tombe en silence et pose un manteau blanc sur la rive.',
-        'Le froid pique, mais ta loutre s\'en moque : son pelage épais et ta présence la tiennent au chaud.'
+        'La neige tombe en silence et couvre la rive de blanc. Le froid pique, mais son pelage épais la garde au chaud.'
       ],
       cta: 'BRAVER L\'HIVER'
     }

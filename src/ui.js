@@ -143,7 +143,8 @@ export function hideAllOverlays() {
 export function showStory(beat, onDone) {
   $('story-emoji').textContent = beat.emoji || '✨';
   $('story-title').textContent = beat.title || '';
-  $('story-body').innerHTML = (beat.lines || []).join('<br><br>');
+  $('story-body').innerHTML = (beat.lines || []).map(l => '<p>' + l + '</p>').join('');
+  $('story-body').scrollTop = 0;
   const btn = $('btn-story-next');
   btn.textContent = beat.cta || 'CONTINUER';
   showOverlay('ovl-story');

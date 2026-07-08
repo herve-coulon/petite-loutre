@@ -15,9 +15,7 @@ export const BEATS = [
     emoji: '🐣',
     title: 'Chapitre 1 — La rencontre',
     lines: [
-      'Contre toute attente, l\'œuf a éclos entre tes mains.',
-      'Une minuscule loutre cligne des yeux, encore toute chiffonnée. Elle ne connaît rien du monde… à part toi.',
-      'Nourris-la, joue avec elle, garde-la propre. Votre aventure commence.'
+      'L\'œuf a éclos : une petite loutre te fixe de ses grands yeux. Prends soin d\'elle — votre aventure commence.'
     ],
     cta: 'VEILLER SUR ELLE'
   },
@@ -27,9 +25,7 @@ export const BEATS = [
     emoji: '🌿',
     title: 'Chapitre 2 — Les premières audaces',
     lines: [
-      'Ta loutre a grandi ! Ses pattes sont plus sûres, ses moustaches frémissent de curiosité.',
-      'Elle réclame des friandises 🍡 et rêve déjà de mesurer sa force en duel ⚔️.',
-      'La rivière devient son terrain de jeu.'
+      'Ta loutre a grandi ! Plus vive et curieuse, elle réclame des friandises 🍡 et rêve déjà de duels ⚔️.'
     ],
     cta: 'CONTINUER L\'AVENTURE'
   },
@@ -39,9 +35,7 @@ export const BEATS = [
     emoji: '🌊',
     title: 'Chapitre 3 — La grande loutre',
     lines: [
-      'La voilà adulte, élégante et sûre d\'elle.',
-      'Les profondeurs ne lui font plus peur : elle peut plonger chercher des trésors 🤿.',
-      'Le meilleur reste à écrire — jour après jour, à tes côtés.'
+      'La voilà adulte, sûre d\'elle. Les profondeurs ne l\'effraient plus : elle peut plonger chercher des trésors 🤿.'
     ],
     cta: 'PLONGER DANS LA SUITE'
   }
