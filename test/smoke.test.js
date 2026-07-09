@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { JSDOM } from 'jsdom';
 import { dailyQuests, dayKey } from '../src/quests.js';
+import { levelFromXp } from '../src/level.js';
 import { seasonFor } from '../src/seasons.js';
 import { ACHIEVEMENTS } from '../src/achievements.js';
 
@@ -462,11 +463,11 @@ test('montée de niveau : toast étoilé, friandise rechargée, sauvegardé', ()
     done: dailyQuests(dayKey()).map(q => q.id)
   };
   const lv0 = $('lvl-label').textContent;
-  // se place juste sous le prochain niveau : le prochain repas le déclenche
-  const cur = L.records.xp || 0;
-  let total = 0, lvl = 1;
-  while (total + (40 + (lvl - 1) * 25) <= cur) { total += 40 + (lvl - 1) * 25; lvl++; }
-  L.records.xp = total + (40 + (lvl - 1) * 25) - 2; // à 2 XP du niveau suivant
+  // repart d'un niveau bas (les tests précédents peuvent avoir atteint le plafond 50)
+  L.records.xp = 100;
+  const cur = L.records.xp;
+  const Lc = levelFromXp(cur);
+  L.records.xp = cur + (Lc.next - Lc.cur) - 2; // à 2 XP du niveau suivant
   L.state.lastTreat = Date.now(); // friandise en recharge
   L.state.hunger = 50;
   $('b-feed').click();

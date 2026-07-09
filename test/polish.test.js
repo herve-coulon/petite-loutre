@@ -8,7 +8,7 @@ import { cardData, drawCard, makeCard, CARD_W, CARD_H, CARD_URL } from '../src/p
 import { newState } from '../src/state.js';
 import { stepSim } from '../src/sim.js';
 import { DAY, NIGHT, LOOP, stepDur, isNightHour, DAY_BPM, NIGHT_BPM } from '../src/music.js';
-import { XP, xpCost, levelFromXp, titleFor, TITLES } from '../src/level.js';
+import { XP, xpCost, levelFromXp, titleFor, TITLES, MAX_LEVEL } from '../src/level.js';
 import { HATS, unlockedHats } from '../src/accessories.js';
 import { DECORS, unlockedDecors } from '../src/skins.js';
 import { newRecords } from '../src/state.js';
@@ -286,13 +286,15 @@ test('événement : le papillon vole dans l\'écran, toujours attrapable', () =>
 /* ---------------- niveaux ---------------- */
 
 test('niveaux : départ niveau 1, seuils exacts, courbe croissante', () => {
-  assert.deepEqual(levelFromXp(0), { level: 1, cur: 0, next: 40 });
-  assert.equal(levelFromXp(39).level, 1);
-  assert.equal(levelFromXp(40).level, 2, 'niveau 2 pile à 40 XP');
-  assert.deepEqual(levelFromXp(40 + 65), { level: 3, cur: 0, next: xpCost(3) });
-  for (let n = 1; n < 30; n++) assert.ok(xpCost(n + 1) > xpCost(n), 'chaque niveau coûte plus cher');
+  assert.deepEqual(levelFromXp(0), { level: 1, cur: 0, next: xpCost(1) });
+  assert.equal(levelFromXp(xpCost(1) - 1).level, 1);
+  assert.equal(levelFromXp(xpCost(1)).level, 2, 'niveau 2 pile au coût du niveau 1');
+  assert.deepEqual(levelFromXp(xpCost(1) + xpCost(2)), { level: 3, cur: 0, next: xpCost(3) });
+  for (let n = 1; n < 49; n++) assert.ok(xpCost(n + 1) > xpCost(n), 'chaque niveau coûte plus cher');
   assert.equal(levelFromXp(-50).level, 1, 'XP négative impossible');
   assert.equal(levelFromXp(NaN).level, 1);
+  assert.equal(levelFromXp(99999999).level, MAX_LEVEL, 'plafonné à 50');
+  assert.equal(MAX_LEVEL, 50);
 });
 
 test('niveaux : titres définis, croissants, jamais vides', () => {
@@ -318,10 +320,10 @@ test('niveaux : les cosmétiques de palier se débloquent par l\'XP', () => {
   const rec = newRecords();
   assert.ok(!unlockedHats(rec).includes('etoile'));
   assert.ok(!unlockedDecors(rec).includes('feu'));
-  rec.xp = 40 + 65; // niveau 3
+  rec.xp = xpCost(1) + xpCost(2); // niveau 3
   assert.ok(unlockedDecors(rec).includes('feu'), 'feu de camp au niveau 3');
   assert.ok(!unlockedHats(rec).includes('etoile'), 'étoile pas avant le niveau 5');
-  rec.xp = 40 + 65 + 90 + 115; // niveau 5
+  rec.xp = xpCost(1) + xpCost(2) + xpCost(3) + xpCost(4); // niveau 5
   assert.ok(unlockedHats(rec).includes('etoile'));
   rec.xp = 100000;
   assert.ok(unlockedHats(rec).includes('aureole'));

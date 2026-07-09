@@ -20,9 +20,13 @@ export const XP = {
   event: 10     // surprise du jour (papillon attrapé…)
 };
 
-/** Coût pour passer du niveau n au suivant (croissance douce mais réelle). */
+// v3.7 : 50 niveaux, une vraie ascension. La courbe part douce (on accroche
+// vite) puis se durcit franchement (le niveau 50 est un objectif long-terme).
+export const MAX_LEVEL = 50;
+
+/** Coût pour passer du niveau n au suivant : linéaire + quadratique (se raidit). */
 export function xpCost(level) {
-  return 40 + (level - 1) * 25;
+  return Math.round(30 + (level - 1) * 15 + (level - 1) ** 2 * 0.8);
 }
 
 /**
@@ -32,7 +36,7 @@ export function xpCost(level) {
 export function levelFromXp(xp) {
   let level = 1;
   let rest = Math.max(0, Math.floor(xp || 0));
-  while (rest >= xpCost(level) && level < 99) {
+  while (rest >= xpCost(level) && level < MAX_LEVEL) {
     rest -= xpCost(level);
     level++;
   }
@@ -46,7 +50,10 @@ export const TITLES = [
   [5, 'Gardien de la rivière'],
   [8, 'Grand soigneur'],
   [12, 'Murmureur de loutres'],
-  [16, 'Légende de la berge']
+  [16, 'Légende de la berge'],
+  [24, 'Maître des saisons'],
+  [35, 'Esprit de la rivière'],
+  [50, 'Gardien légendaire']
 ];
 
 export function titleFor(level) {

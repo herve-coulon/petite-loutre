@@ -52,12 +52,12 @@ L'app se lance alors en plein écran, fonctionne hors-ligne, et la loutre vit sa
 | Trésor de saison 🎁 | Chaque jour, un cadeau thématique à récolter sur la berge (touche-le) : 🌸 fleur au printemps, 🍉 pastèque l'été, 🌰 châtaigne l'automne, ⛄ bonhomme de neige l'hiver — chacun avec sa petite récompense. Un record compte les trésors récoltés |
 | Croissance | Bébé → jeune loutre à J+1 → adulte à J+3 |
 | Jauges | Faim, humeur, énergie, propreté + santé |
-| Actions | Manger 🐟, pêche 🎣 (mini-jeu), bain 🧼, dodo 💤, soin 💊, caresses (toucher la loutre), friandise 🍡 (Niv 2), plongée au trésor 🤿 (Niv 5) |
-| Déblocages 🔓 | Les activités s'ouvrent au fil des **niveaux du soigneur** : friandise (Niv 2), toboggan (Niv 3), combat (Niv 4), plongée (Niv 5). Un bouton verrouillé reste tapable et **dit à quel niveau il s'ouvre** ; chaque montée de niveau annonce sa nouveauté (réglable dans `UNLOCK_LEVEL`) |
+| Actions | Manger 🐟, pêche 🎣 (mini-jeu), bain 🧼, dodo 💤, soin 💊, caresses (toucher la loutre), friandise 🍡 (Niv 2), plongée au trésor 🤿 (Niv 6) |
+| Déblocages 🔓 | Les activités s'ouvrent au fil des **niveaux du soigneur** : friandise (Niv 2), toboggan (Niv 3), plongée (Niv 6), combat (Niv 10). Un bouton verrouillé reste tapable et **dit à quel niveau il s'ouvre** ; chaque montée de niveau annonce sa nouveauté (réglable dans `UNLOCK_LEVEL`) |
 | Mini-jeux 🎮 | **Pêche** 🎣 : touche les poissons. **Toboggan de rivière** 🛝 (Niv 3) : la loutre dévale les rapides sur 3 couloirs — tape le couloir voulu pour gober les 🐟 et esquiver les 🪨 (descente parfaite = 5 poissons sans un rocher) |
-| Combats ⚔️ | Duels par code de défi à s'échanger entre amis (Niv 4) |
+| Combats ⚔️ | Duels par code de défi à s'échanger entre amis (Niv 10) |
 | Quêtes 🏆 | 3 micro-objectifs par jour, identiques pour tout le monde |
-| Niveaux ⭐ | Chaque geste rapporte de l'XP (« +5 » à l'écran) : niveaux, titres honorifiques, friandise rechargée à chaque montée, cosmétiques exclusifs aux paliers 3/5/10 — le niveau survit aux loutres |
+| Niveaux ⭐ | Chaque geste rapporte de l'XP (« +5 » à l'écran) : **50 niveaux** dont le coût se durcit (le 50 est un objectif long-terme), titres honorifiques jusqu'à « Gardien légendaire », friandise rechargée à chaque montée, cosmétiques de palier — le niveau survit aux loutres |
 | Série 🔥 | Revenir chaque jour entretient la flamme : paliers 3/7/14/30 jours (XP, pelage Braise, succès) |
 | Chez le héron 🪶 | Plus de mort : négligée, la loutre part bouder chez le héron — on la ramène par 3 soins espacés de 3 h, elle rentre boudeuse |
 | Surprise du jour ✨ | Un événement quotidien identique pour tous (papillon rare à attraper +10 XP, pluie aux champignons, héron pêcheur, canetons, arc-en-ciel) |
@@ -170,4 +170,6 @@ châtaigne, bonhomme de neige) avec sa récompense et un record dédié. v3.6 :
 les activités se débloquent désormais au fil des niveaux du soigneur (Niv 2→5)
 plutôt que par stade de vie — chaque montée de niveau offre une nouveauté ; et
 vraie police pixel embarquée (Pixelify Sans, woff2 en data-URI, accents FR + œ,
-100% hors-ligne) à la place de Courier.*
+100% hors-ligne) à la place de Courier. v3.7 : progression étendue à 50 niveaux
+(courbe qui se durcit, titres jusqu'à « Gardien légendaire ») et combat repoussé
+au niveau 10.*
