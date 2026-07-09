@@ -33,6 +33,7 @@ export function newState(now = Date.now(), rnd = Math.random) {
     storySeen: [],   // chapitres narratifs déjà joués (fil de l'aventure)
     coach: true,     // premiers pas guidés en cours (tutoriel doux)
     season: null,    // dernière saison connue (null = à initialiser en silence)
+    gear: null,      // trésor équipé (id) — bonus de jeu, par loutre
     lastTick: now
   };
 }
@@ -64,6 +65,7 @@ function normalizeState(o) {
   if (typeof o.coach !== 'boolean') o.coach = (o.stage === 'egg' || o.stage === 'baby');
   // saison : null -> initialisée en silence au 1er tick (pas de fausse transition)
   if (typeof o.season !== 'string') o.season = null;
+  if (o.gear === undefined) o.gear = null; // trésor équipé
   return o;
 }
 
@@ -107,6 +109,7 @@ export function newRecords() {
     sleepsTotal: 0,
     treasures: 0,
     treatsTotal: 0,     // trésors de saison récoltés
+    items: [],          // trésors rares possédés (ids) — global, survit aux loutres
     wins: 0,
     battles: 0,
     questsDone: 0,
@@ -125,6 +128,7 @@ function normalizeRecords(o) {
     if (o[k] === undefined) o[k] = base[k];
   }
   if (!Array.isArray(o.achievements)) o.achievements = [];
+  if (!Array.isArray(o.items)) o.items = [];
   return o;
 }
 

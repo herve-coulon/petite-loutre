@@ -7,6 +7,7 @@ import { moodOf, pickIdle, canIdle, IDLE_FRAMES } from './mood.js';
 import { dailyEvent, butterflyPos } from './events.js';
 import { dayKey } from './quests.js';
 import { seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
+import { itemById, RARITIES } from './items.js';
 import { LANE_X, SLIDE_OTTER_Y } from './toboggan.js';
 
 export const CANVAS_W = 160, CANVAS_H = 120;
@@ -612,6 +613,22 @@ export function makeRenderer(cv) {
       const d = (frame >> 2) % 6;
       ctx.fillRect(ox + 30, oy + 2 + d, 2, 3);           // goutte qui glisse
       if (d > 3) ctx.fillRect(ox - 2, oy + 4 + (d - 3) * 2, 2, 3);
+    }
+
+    // trésor équipé : une lueur de sa rareté orbite près d'elle
+    if (s.gear && s.stage !== 'egg' && !s.away && !s.gameOver && !mg) {
+      const it = itemById(s.gear);
+      if (it) {
+        const ang = frame / 22;
+        const gx = ox + 16 + Math.round(Math.cos(ang) * 22);
+        const gy = oy + 4 + Math.round(Math.sin(ang) * 9);
+        ctx.fillStyle = RARITIES[it.rarity].color;
+        ctx.fillRect(gx, gy, 2, 2);
+        if ((frame >> 3) % 2 === 0) {
+          ctx.fillRect(gx - 1, gy, 1, 1); ctx.fillRect(gx + 2, gy, 1, 1);
+          ctx.fillRect(gx, gy - 1, 1, 1); ctx.fillRect(gx, gy + 2, 1, 1);
+        }
+      }
     }
 
     if (squashing) ctx.restore();

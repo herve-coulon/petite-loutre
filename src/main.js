@@ -31,6 +31,7 @@ import { encodeCard, decodeCard, newBattle, playTurn } from './battle.js';
 import { makeCard, CARD_URL } from './photocard.js';
 import { nextBeat, markSeen, coachStep } from './story.js';
 import { seasonFor, seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
+import { ITEMS, RARITIES, itemById, bonusOf, rollDrop, milestoneItem } from './items.js';
 
 const $ = id => document.getElementById(id);
 const now = () => Date.now();
@@ -136,6 +137,7 @@ function resolveDive() {
   R.burst('sparkle', 10, s.stage);
   sfx.hatch(); vibrate([15, 30, 15]);
   gainXp(XP.dive);
+  tryDrop(2.5); // la plongée est une vraie chasse au trésor : meilleure chance
   persist();
   checkUnlocks();
 }
@@ -317,6 +319,7 @@ function endGame(res) {
   ui.updateHUD(s, mg, rec);
   quest('games');
   if (sc > 0) quest('fish', sc);
+  tryDrop();
 }
 
 /* ---------------- Toboggan de rivière (2e mini-jeu) ---------------- */
@@ -357,6 +360,7 @@ function endSlide(res) {
   ui.updateHUD(s, mg, rec);
   quest('games');
   if (sc > 0) quest('fish', sc);
+  tryDrop(clean ? 1.8 : 1); // descente parfaite = meilleure chance de trésor
 }
 
 /* ---------------- Canvas (pêche, caresses, œuf) ---------------- */
@@ -393,6 +397,7 @@ function onCanvasPointer(e) {
         ui.log(treat.msg);
         persist(); persistRec();
         ui.updateHUD(s, mg, rec);
+        tryDrop(1.3); // le trésor de saison peut cacher un objet rare
         return;
       }
     }
@@ -527,6 +532,7 @@ function checkUnlocks() {
 /** XP du soigneur : chaque geste compte. Montée de niveau = fête + friandise rechargée. */
 function gainXp(n) {
   if (!rec || !n) return;
+  n = Math.round(n * (bonusOf(s && s.gear).xp || 1)); // bonus d'XP du trésor équipé
   const before = levelFromXp(rec.xp || 0).level;
   rec.xp = (rec.xp || 0) + n;
   const L = levelFromXp(rec.xp);
@@ -539,14 +545,47 @@ function gainXp(n) {
       persist();
     }
     checkUnlocks(); // cosmétiques et succès de palier viennent d'apparaître
+    // trésors de palier garantis (un ou plusieurs niveaux franchis)
+    const gotItems = [];
+    for (let lv = before + 1; lv <= L.level; lv++) {
+      const mid = milestoneItem(lv);
+      if (mid && !rec.items.includes(mid)) { rec.items.push(mid); gotItems.push(itemById(mid)); }
+    }
     ui.toast('⭐ NIVEAU ' + L.level + ' · ' + titleFor(L.level) + ' !');
     const opened = featuresOpenedBetween(before, L.level);
-    if (opened.length) ui.log('⭐ Niveau ' + L.level + ' ! Débloqué : ' + opened.join(' + ') + ' ! Va essayer !');
-    else ui.log('Niveau ' + L.level + ' ! Récompense : friandise rechargée. 🍡');
+    if (gotItems.length) {
+      const it = gotItems[gotItems.length - 1];
+      ui.log('🏅 Niveau ' + L.level + ' ! Trésor ' + RARITIES[it.rarity].label.toLowerCase() + ' : ' + it.emoji + ' ' + it.name + ' ! Équipe-le dans 🎩.');
+    } else if (opened.length) {
+      ui.log('⭐ Niveau ' + L.level + ' ! Débloqué : ' + opened.join(' + ') + ' ! Va essayer !');
+    } else {
+      ui.log('Niveau ' + L.level + ' ! Récompense : friandise rechargée. 🍡');
+    }
     sfx.levelup(); vibrate([20, 40, 20]);
   }
   ui.renderLevel(rec);
   persistRec();
+}
+
+/* ---------------- Trésors : drops dans les activités ---------------- */
+/** Tente un drop aléatoire (chance boostée par le trésor équipé + le contexte). */
+function tryDrop(boost = 1) {
+  if (!s || s.gameOver || s.stage === 'egg') return;
+  const id = rollDrop(Math.random, (bonusOf(s.gear).luck || 1) * boost);
+  if (!id) return;
+  const it = itemById(id);
+  if (rec.items.includes(id)) { // déjà possédé -> petit lot de consolation
+    ui.toast('✨ ' + it.emoji + ' encore un ' + it.name + ' !');
+    gainXp(15);
+    return;
+  }
+  rec.items.push(id);
+  persistRec();
+  const rar = RARITIES[it.rarity];
+  ui.toast(it.emoji + ' ' + rar.label + ' : ' + it.name + ' !');
+  ui.log('🎁 Trésor ' + rar.label.toLowerCase() + ' déniché : ' + it.emoji + ' ' + it.name + ' ! Équipe-le dans 🎩.');
+  if (!s.gameOver && s.stage !== 'egg') R.burst('confetti', 24, s.stage);
+  sfx.levelup(); vibrate([20, 40, 20]);
 }
 
 /** Progression de quête + récompense immédiate si terminée. */
@@ -828,6 +867,7 @@ function boot() {
         s.fun = clamp(s.fun + 12, 0, 100);
         gainXp(XP.win);
         sfx.happy(); ui.toast('🏆 Victoire de ' + battle.me.name + ' !');
+        tryDrop(1.5); // une victoire peut rapporter un trésor
       } else {
         s.fun = clamp(s.fun + 2, 0, 100);
         sfx.sad(); ui.toast('💔 Défaite… ça se rejouera !');
@@ -894,6 +934,12 @@ function boot() {
     onDecor(id) {
       if (!s || !unlockedDecors(rec).includes(id)) return;
       s.decor = id;
+      sfx.press(); vibrate(10); persist();
+      ui.renderWardrobe(s, rec, wardrobeHandlers);
+    },
+    onGear(id) {
+      if (!s || !rec.items.includes(id)) return;
+      s.gear = (s.gear === id ? null : id); // touché à nouveau = retirer
       sfx.press(); vibrate(10); persist();
       ui.renderWardrobe(s, rec, wardrobeHandlers);
     }

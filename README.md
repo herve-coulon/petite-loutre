@@ -58,6 +58,7 @@ L'app se lance alors en plein écran, fonctionne hors-ligne, et la loutre vit sa
 | Combats ⚔️ | Duels par code de défi à s'échanger entre amis (Niv 10) |
 | Quêtes 🏆 | 3 micro-objectifs par jour, identiques pour tout le monde |
 | Niveaux ⭐ | Chaque geste rapporte de l'XP (« +5 » à l'écran) : **50 niveaux** dont le coût se durcit (le 50 est un objectif long-terme), titres honorifiques jusqu'à « Gardien légendaire », friandise rechargée à chaque montée, cosmétiques de palier — le niveau survit aux loutres |
+| Trésors 💎 | Des objets rares **équipables** à **4 raretés** (commun → légendaire), chacun avec un **petit bonus de jeu** (+XP, jauges plus lentes, résistance aux saisons, meilleure chance…). On les gagne de deux façons : **paliers de niveau** garantis (Niv 4, 8, 12, 20, 35, 50) et **drops** aléatoires dans les activités (plongée, toboggan, combat, pêche, trésor de saison). Un seul équipé à la fois (garde-robe 🎩) ; une lueur de sa rareté orbite près de la loutre |
 | Série 🔥 | Revenir chaque jour entretient la flamme : paliers 3/7/14/30 jours (XP, pelage Braise, succès) |
 | Chez le héron 🪶 | Plus de mort : négligée, la loutre part bouder chez le héron — on la ramène par 3 soins espacés de 3 h, elle rentre boudeuse |
 | Surprise du jour ✨ | Un événement quotidien identique pour tous (papillon rare à attraper +10 XP, pluie aux champignons, héron pêcheur, canetons, arc-en-ciel) |
@@ -98,6 +99,7 @@ src/
   mood.js             humeurs et manies de la loutre (pur)
   story.js            fil narratif (chapitres) + premiers pas guidés (pur)
   seasons.js          saisons réelles : teintes de berge + narration (pur)
+  items.js            trésors rares : raretés, paliers, drops, bonus (pur)
   photocard.js        carte photo partageable (dessin autonome)
   minigame.js         pêche (logique pure)
   toboggan.js         toboggan de rivière : 2e mini-jeu (logique pure)
@@ -172,4 +174,6 @@ plutôt que par stade de vie — chaque montée de niveau offre une nouveauté ;
 vraie police pixel embarquée (Pixelify Sans, woff2 en data-URI, accents FR + œ,
 100% hors-ligne) à la place de Courier. v3.7 : progression étendue à 50 niveaux
 (courbe qui se durcit, titres jusqu'à « Gardien légendaire ») et combat repoussé
-au niveau 10.*
+au niveau 10. v3.8 : trésors rares équipables (4 raretés, petits bonus de jeu :
+XP, jauges plus lentes, résistance aux saisons…), gagnés par paliers de niveau
+garantis ET par drops aléatoires dans les activités.*

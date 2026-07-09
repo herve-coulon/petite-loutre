@@ -10,6 +10,9 @@ import { dailyQuests, dayKey } from '../src/quests.js';
 import { levelFromXp } from '../src/level.js';
 import { seasonFor } from '../src/seasons.js';
 import { ACHIEVEMENTS } from '../src/achievements.js';
+import { ITEMS } from '../src/items.js';
+import { HATS } from '../src/accessories.js';
+import { FURS, DECORS } from '../src/skins.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const html = readFileSync(join(root, 'index.html'), 'utf8');
@@ -212,10 +215,11 @@ test('garde-robe : déblocage par records + équipement', () => {
   $('b-hats').click();
   assert.ok(!$('ovl-hats').classList.contains('hidden'));
   const rows = [...$('hat-list').querySelectorAll('.row-item')];
-  assert.equal(rows.length, 21, '8 chapeaux + 7 pelages + 6 décors');
-  const noeud = rows[0];
+  assert.equal(rows.length, ITEMS.length + HATS.length + FURS.length + DECORS.length,
+    'trésors + chapeaux + pelages + décors');
+  const noeud = rows[ITEMS.length];       // 1er chapeau (après la section Trésors)
   assert.ok(!noeud.classList.contains('locked'), 'nœud débloqué');
-  assert.ok(rows[3].classList.contains('locked'), 'couronne verrouillée');
+  assert.ok(rows[ITEMS.length + 3].classList.contains('locked'), 'couronne verrouillée');
   noeud.click();
   assert.equal(L.state.hat, 'noeud');
   $('btn-hats-close').click();

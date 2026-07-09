@@ -8,6 +8,7 @@ import { ACHIEVEMENTS } from './achievements.js';
 import { dailyQuests, dayKey } from './quests.js';
 import { dailyEvent } from './events.js';
 import { seasonInfo } from './seasons.js';
+import { ITEMS, RARITIES, MILESTONES, describeBonus } from './items.js';
 
 const $ = id => document.getElementById(id);
 
@@ -187,6 +188,31 @@ function sectionRows(list, items, unlocked, currentId, onPick, removable) {
   }
 }
 
+/** Section « Trésors » : objets rares équipables (bonus de jeu). */
+function milestoneLevelOf(id) {
+  for (const [lv, mid] of Object.entries(MILESTONES)) if (mid === id) return +lv;
+  return null;
+}
+function treasureRows(list, s, rec, onGear) {
+  const owned = rec.items || [];
+  for (const it of ITEMS) {
+    const ok = owned.includes(it.id);
+    const on = s && s.gear === it.id;
+    const rar = RARITIES[it.rarity];
+    const btn = document.createElement('button');
+    btn.className = 'row-item' + (ok ? '' : ' locked') + (on ? ' equipped' : '');
+    let sub;
+    if (ok) sub = describeBonus(it.bonus) + (on ? ' · touché pour retirer' : ' · touché pour équiper');
+    else { const ml = milestoneLevelOf(it.id); sub = rar.label + ' — ' + (ml ? 'palier Niv ' + ml : 'à dénicher dans les activités'); }
+    btn.innerHTML =
+      '<span class="ic2">' + (ok ? it.emoji : '🔒') + '</span>' +
+      '<div><b style="color:' + rar.color + '">' + it.name + '</b><small>' + sub + '</small></div>' +
+      (on ? '<span class="tag">✓</span>' : '');
+    if (ok) btn.addEventListener('click', () => onGear(it.id));
+    list.appendChild(btn);
+  }
+}
+
 export function renderWardrobe(s, rec, h) {
   const list = $('hat-list');
   list.innerHTML = '';
@@ -195,6 +221,8 @@ export function renderWardrobe(s, rec, h) {
     p.className = 'small'; p.style.marginTop = '4px'; p.textContent = t;
     list.appendChild(p);
   };
+  title('— Trésors — (' + ((rec.items || []).length) + '/' + ITEMS.length + ')');
+  treasureRows(list, s, rec, h.onGear);
   title('— Chapeaux —');
   sectionRows(list, HATS, unlockedHats(rec), s && s.hat, h.onHat, true);
   title('— Pelages —');

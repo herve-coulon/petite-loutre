@@ -2,6 +2,7 @@
 // Toute la vie de la loutre passe par ici — en direct comme en rattrapage hors-ligne.
 import { H, MIN, HATCH_MS, CHILD_AT, ADULT_AT, MAX_OFFLINE, R, RS, SEASON_FX, clamp } from './constants.js';
 import { seasonFor } from './seasons.js';
+import { bonusOf } from './items.js';
 
 export function ageMs(s, now = Date.now()) {
   if (!s.hatchedAt) return 0;
@@ -56,21 +57,23 @@ export function stepSim(s, dt, opts = {}) {
   const season = seasonFor(new Date(simNow)); // saison réelle, déterministe
   const heat = season === 'ete';
   const cold = season === 'hiver';
+  const gear = bonusOf(s.gear);               // bonus du trésor équipé
+  const gd = gear.decay || 1;                 // jauges plus lentes (< 1)
 
   if (s.sleeping) {
-    s.hunger = clamp(s.hunger - RS.hunger * h, 0, 100);
-    s.fun    = clamp(s.fun    - RS.fun * h, 0, 100);
-    s.clean  = clamp(s.clean  - RS.clean * h, 0, 100);
+    s.hunger = clamp(s.hunger - RS.hunger * gd * h, 0, 100);
+    s.fun    = clamp(s.fun    - RS.fun * gd * h, 0, 100);
+    s.clean  = clamp(s.clean  - RS.clean * gd * h, 0, 100);
     s.energy = clamp(s.energy + RS.energyGain * h, 0, 100);
     if (s.energy >= 100) { s.sleeping = false; events.push({ type: 'wake' }); }
   } else {
     const dirtMalus = s.poops.length * 1.2;
     // été : la chaleur accélère faim (soif), humeur et énergie
     const m = heat ? SEASON_FX.HEAT_MULT : null;
-    s.hunger = clamp(s.hunger - R.hunger * (m ? m.hunger : 1) * h, 0, 100);
-    s.fun    = clamp(s.fun    - R.fun    * (m ? m.fun    : 1) * h, 0, 100);
-    s.energy = clamp(s.energy - R.energy * (m ? m.energy : 1) * h, 0, 100);
-    s.clean  = clamp(s.clean  - (R.clean + dirtMalus) * h, 0, 100);
+    s.hunger = clamp(s.hunger - R.hunger * (m ? m.hunger : 1) * gd * h, 0, 100);
+    s.fun    = clamp(s.fun    - R.fun    * (m ? m.fun    : 1) * gd * h, 0, 100);
+    s.energy = clamp(s.energy - R.energy * (m ? m.energy : 1) * gd * h, 0, 100);
+    s.clean  = clamp(s.clean  - (R.clean + dirtMalus) * gd * h, 0, 100);
     if (s.energy <= 0) { s.sleeping = true; events.push({ type: 'autosleep' }); }
   }
 
@@ -84,9 +87,10 @@ export function stepSim(s, dt, opts = {}) {
   if (!s.sick) {
     let p = 0.004 + s.poops.length * 0.02 + (s.clean < 25 ? 0.03 : 0) + (s.hunger < 15 ? 0.02 : 0);
     if (cold) {
-      p += SEASON_FX.COLD_SICK
+      const coldTerm = SEASON_FX.COLD_SICK
         + (s.energy < SEASON_FX.COLD_LOW_ENERGY ? SEASON_FX.COLD_SICK_TIRED : 0)
         + (s.hunger < SEASON_FX.COLD_LOW_HUNGER ? SEASON_FX.COLD_SICK_HUNGRY : 0);
+      p += coldTerm * (1 - (gear.coldResist || 0)); // un trésor peut atténuer le froid
     }
     if (rnd() < p * h) { s.sick = true; events.push({ type: 'sick' }); }
   }
@@ -98,7 +102,7 @@ export function stepSim(s, dt, opts = {}) {
   if (s.sick) dh -= 7;
   if (s.energy <= 0 && !s.sleeping) dh -= 3;
   // été : surchauffe si elle n'est pas rafraîchie (un bain la refroidit)
-  if (heat && s.clean < SEASON_FX.HEAT_OVERHEAT_CLEAN) dh -= SEASON_FX.HEAT_OVERHEAT_HP;
+  if (heat && s.clean < SEASON_FX.HEAT_OVERHEAT_CLEAN) dh -= SEASON_FX.HEAT_OVERHEAT_HP * (1 - (gear.heatResist || 0));
   if (dh === 0 && !s.sick && s.hunger > 25 && s.clean > 25) dh = +6;
   s.health = clamp(s.health + dh * h, 0, 100);
 
