@@ -33,6 +33,7 @@ import { makeCard, CARD_URL } from './photocard.js';
 import { nextBeat, markSeen, coachStep } from './story.js';
 import { seasonFor, seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 import { ITEMS, RARITIES, itemById, bonusOf, rollDrop, milestoneItem } from './items.js';
+import { pickTrait, traitById, isFavorite, favoriteLine, bondGain, bondLevel } from './personality.js';
 
 const $ = id => document.getElementById(id);
 const now = () => Date.now();
@@ -116,6 +117,7 @@ function actTreat() {
   gainXp(XP.treat);
   afterAct();
   quest('treats');
+  careBond('treat');
 }
 
 function actDive() {
@@ -141,6 +143,7 @@ function resolveDive() {
   tryDrop(2.5); // la plongée est une vraie chasse au trésor : meilleure chance
   persist();
   checkUnlocks();
+  careBond('dive');
 }
 
 function actFeed() {
@@ -158,6 +161,7 @@ function actFeed() {
   gainXp(XP.meal);
   afterAct();
   quest('meals');
+  careBond('feed');
 }
 
 function actWash() {
@@ -179,6 +183,7 @@ function actWash() {
   gainXp(XP.wash);
   afterAct();
   quest('washes');
+  careBond('wash');
 }
 
 function actSleep() {
@@ -190,6 +195,7 @@ function actSleep() {
     sfx.sleep(); ui.log(s.name + ' se blottit pour dormir… 💤');
     afterAct();
     quest('sleeps');
+    careBond('sleep');
     return;
   }
   if (s.energy < WAKE_OK_ENERGY) {
@@ -218,6 +224,7 @@ function actHeal() {
   sfx.heal();
   ui.log('Le médicament fait effet. ' + s.name + ' va mieux ! 💊');
   afterAct();
+  careBond('heal');
 }
 
 function actWarm() {
@@ -285,6 +292,7 @@ function pet() {
     ui.log(s.name + ' adore les caresses ! 💛');
     gainXp(XP.pet);
     quest('pets');
+    careBond('pet');
   } else {
     sfx.press();
   }
@@ -321,6 +329,7 @@ function endGame(res) {
   quest('games');
   if (sc > 0) quest('fish', sc);
   tryDrop();
+  careBond('play');
 }
 
 /* ---------------- Toboggan de rivière (2e mini-jeu) ---------------- */
@@ -362,6 +371,7 @@ function endSlide(res) {
   quest('games');
   if (sc > 0) quest('fish', sc);
   tryDrop(clean ? 1.8 : 1); // descente parfaite = meilleure chance de trésor
+  careBond('play');
 }
 
 /* ---------------- Canvas (pêche, caresses, œuf) ---------------- */
@@ -447,6 +457,28 @@ function persistRec() { saveRecords(rec, storage); }
 /** Après chaque action joueur : sauvegarde + HUD à jour immédiatement. */
 function afterAct() { persist(); ui.updateHUD(s, mg, rec); updateCoach(); }
 
+/**
+ * Le LIEN grandit à chaque geste attentionné. Si c'est l'activité préférée de
+ * sa personnalité : réaction spéciale + éclat de joie. Un palier franchi = fête.
+ */
+function careBond(actionKey) {
+  if (!s || s.stage === 'egg' || s.gameOver || s.away) return;
+  const before = bondLevel(s.bond);
+  s.bond = (s.bond || 0) + bondGain(actionKey, s.trait);
+  const after = bondLevel(s.bond);
+  if (isFavorite(s.trait, actionKey)) { // c'est ce qu'ELLE préfère
+    s.fun = clamp(s.fun + 5, 0, 100);
+    ui.log(favoriteLine(s.trait, s.name));
+    R.spawn('heart', s.stage);
+  }
+  if (after.level > before.level) { // nouveau palier de lien
+    ui.toast('💛 Lien : ' + after.name + ' !');
+    R.burst('sparkle', 12, s.stage);
+    sfx.happy(); vibrate([15, 30, 15]);
+  }
+  persist();
+}
+
 /* ---------------- Fil narratif + premiers pas guidés ---------------- */
 /** Joue le prochain chapitre en attente (et enchaîne s'il y en a plusieurs). */
 function maybeStory() {
@@ -505,10 +537,13 @@ function updateCoach() {
   // tutoriel pas encore démarré (œuf, ou pas encore nommée) : on ne conclut rien
   if (s.stage === 'egg' || !s.name) { if (coachTarget) { ui.setCoach(null); coachTarget = null; } return; }
   const step = coachStep(s);
-  if (!step) { // les trois bases sont acquises -> fin douce du tutoriel
+  if (!step) { // les trois bases sont acquises -> fin douce du tutoriel + révélation du caractère
     s.coach = false; coachTarget = null; ui.setCoach(null);
+    const tr = traitById(s.trait);
     ui.toast('🎉 Tu sais tout !');
-    ui.log('Bravo ! 💡 Astuce : touche ta loutre pour la câliner. À toi de veiller sur ' + (s.name || 'elle') + ' ! 💛');
+    ui.log(tr
+      ? 'Bravo ! Tu apprends à connaître ' + (s.name || 'ta loutre') + ' : c\'est une petite ' + tr.name + ' ' + tr.emoji + ', elle ' + tr.desc + '. 💛'
+      : 'Bravo ! 💡 Astuce : touche ta loutre pour la câliner. 💛');
     persist();
     return;
   }
@@ -645,6 +680,7 @@ function actCare() {
   }
   persist();
   ui.updateHUD(s, mg, rec);
+  careBond('care'); // ne compte qu'aux retrouvailles (garde-fou sur s.away)
 }
 
 /* ---------------- Série de jours (streak) ---------------- */
@@ -793,6 +829,8 @@ function boot() {
   const prev = loadState(storage);
   if (prev) {
     s = prev;
+    // migration : une loutre déjà nommée d'avant v3.10 reçoit un caractère (déterministe)
+    if (s.name && s.stage !== 'egg' && !s.trait) s.trait = pickTrait(() => (s.born % 1000) / 1000);
     setMuted(s.mute);
     const { elapsed, events } = simulateOffline(s, now());
     applyEvents(events, true);
@@ -803,7 +841,10 @@ function boot() {
       if (msg && elapsed > 10 * MIN) ui.log(msg);
       else if (s.stage === 'egg') ui.log('L\'œuf t\'attendait bien au chaud…');
       else if (s.away) ui.log(s.name + ' est chez le héron… porte-lui des poissons pour la ramener. 🪶');
-      else ui.log(greeting(s, now()) + ' ✨ Aujourd\'hui : ' + dailyEvent(dayKey()).label);
+      else {
+        const warm = bondLevel(s.bond).level >= 4 ? 'Tu lui as tellement manqué ! ' : '';
+        ui.log(warm + greeting(s, now()) + ' ✨ Aujourd\'hui : ' + dailyEvent(dayKey()).label);
+      }
     }
     persist();
     // au retour : rejoue un chapitre débloqué hors-ligne, puis réarme le tutoriel
@@ -820,6 +861,7 @@ function boot() {
     let n = $('name-input').value.trim();
     if (!n) n = 'Loutrette';
     s.name = n.slice(0, 12);
+    if (!s.trait) s.trait = pickTrait(); // chaque loutre a son caractère
     ui.hideOverlay('ovl-name');
     ui.toast('💛 Bienvenue, ' + s.name + ' ! 💛');
     sfx.happy(); vibrate([15, 40, 15]);

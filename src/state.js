@@ -35,6 +35,8 @@ export function newState(now = Date.now(), rnd = Math.random) {
     coach: true,     // premiers pas guidés en cours (tutoriel doux)
     season: null,    // dernière saison connue (null = à initialiser en silence)
     gear: null,      // trésor équipé (id) — bonus de jeu, par loutre
+    trait: null,     // personnalité, tirée au baptême (chaque loutre est unique)
+    bond: 0,         // lien/affinité avec CETTE loutre, grandit avec les soins
     lastTick: now
   };
 }
@@ -68,6 +70,8 @@ function normalizeState(o) {
   // saison : null -> initialisée en silence au 1er tick (pas de fausse transition)
   if (typeof o.season !== 'string') o.season = null;
   if (o.gear === undefined) o.gear = null; // trésor équipé
+  if (o.trait === undefined) o.trait = null; // personnalité (assignée au besoin par l'orchestrateur)
+  if (typeof o.bond !== 'number') o.bond = 0;
   return o;
 }
 

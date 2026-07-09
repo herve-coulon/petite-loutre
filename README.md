@@ -67,6 +67,7 @@ L'app se lance alors en plein écran, fonctionne hors-ligne, et la loutre vit sa
 | Risques | Cacas à nettoyer, maladie, départ si la santé tombe à 0 |
 | Ambiance 🎧 | Ciel jour/crépuscule/nuit selon l'heure réelle ; **lit sonore procédural** (eau qui clapote, oiseaux au printemps/été, grillons l'été la nuit, vent l'automne/hiver) ; **musique chiptune** enjouée le jour / berceuse la nuit, **teintée par la saison** (clochette d'hiver, timbres qui changent) ; **vrai bus de mixage** (les actions *duckent* la musique) + **réglage de volume** dans ⚙️ ; SFX 8-bit à micro-variation de hauteur (pas de fatigue de répétition), vibrations, libellule et poissons sauteurs, confettis et squash & stretch |
 | Expressivité 🦦 | Le visage suit l'humeur (contente, affamée, boudeuse, malade) ; elle se gratte, bâille et jongle avec un caillou quand tout va bien — et boude 10 min si on la réveille trop tôt (un câlin ou une friandise la déride) |
+| Caractère 💛 | Chaque loutre a une **personnalité** tirée au baptême (Gourmande, Joueuse, Dormeuse, Câline, Coquette, Aventurière) — donc son **activité préférée** : la lui offrir déclenche une réaction unique + un éclat de joie. Un **lien** grandit à chaque geste (double sur l'activité préférée) et franchit des paliers célébrés (Complices → Âmes sœurs) ; à haut lien, elle est plus démonstrative au retour. Personnalité + lien affichés dans le HUD et l'écran 🏆 |
 | Carte photo 📸 | Carte souvenir générée (nom, chapeau, exploits du jour) à partager sur WhatsApp/Insta via le partage natif |
 | Garde-robe 🎩 | 6 chapeaux, 6 pelages, 5 décors de berge à débloquer (records globaux, conservés entre les vies) |
 | Succès 🏆 | succès + records (longévité, poissons, repas, meilleur toboggan…) |
@@ -97,6 +98,7 @@ src/
   events.js           surprise du jour, déterministe par date (pur)
   push.js             rappels push : calcul pur + abonnement navigateur
   mood.js             humeurs et manies de la loutre (pur)
+  personality.js      caractère : personnalité tirée au baptême + lien (pur)
   story.js            fil narratif (chapitres) + premiers pas guidés (pur)
   seasons.js          saisons réelles : teintes de berge + narration (pur)
   items.js            trésors rares : raretés, paliers, drops, bonus (pur)
@@ -180,4 +182,7 @@ XP, jauges plus lentes, résistance aux saisons…), gagnés par paliers de nive
 garantis ET par drops aléatoires dans les activités. v3.9 : refonte audio —
 vrai bus de mixage (ducking, volume réglable), lit d'ambiance procédural
 (eau/oiseaux/vent/grillons selon saison et heure), musique teintée par la
-saison, SFX à micro-variation de hauteur.*
+saison, SFX à micro-variation de hauteur. v3.10 : le caractère de la loutre —
+personnalité tirée au baptême (activité préférée + réactions uniques) et lien
+qui grandit avec les soins (paliers célébrés, loutre plus démonstrative à haut
+lien).*

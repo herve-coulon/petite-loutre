@@ -122,6 +122,21 @@ test('saisons : initialisée en silence, un basculement déclenche une carte', (
   assert.equal(L.state.season, cur, 'saison mise à jour après lecture de la carte');
 });
 
+test('caractère : personnalité au baptême, lien qui grandit, action favorite doublée', () => {
+  assert.ok(L.state.trait, 'une personnalité a été tirée au baptême');
+  // état sain et nourrissable
+  Object.assign(L.state, { stage: 'child', sleeping: false, away: false, gameOver: false, divingUntil: 0 });
+  // trait qui n'aime PAS manger : gain de lien « normal »
+  L.state.trait = 'joueuse'; L.state.bond = 0; L.state.hunger = 40;
+  L.actFeed();
+  const normal = L.state.bond;
+  assert.ok(normal > 0, 'nourrir renforce le lien');
+  // trait qui AIME manger : gain doublé
+  L.state.trait = 'gourmande'; L.state.bond = 0; L.state.hunger = 40;
+  L.actFeed();
+  assert.equal(L.state.bond, normal * 2, 'nourrir une gourmande rapporte le double de lien');
+});
+
 test('actions : manger, laver, dodo, soigner', () => {
   L.state.hunger = 50;
   $('b-feed').click();
@@ -164,7 +179,7 @@ test('sauvegarde écrite dans localStorage', () => {
 
 test('HUD : jauges et libellés cohérents', () => {
   tick();
-  assert.equal($('hud-name').textContent, 'KIWI');
+  assert.match($('hud-name').textContent, /^KIWI/); // + emoji de caractère éventuel
   assert.match($('f-hunger').style.width, /%$/);
 });
 

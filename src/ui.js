@@ -9,6 +9,7 @@ import { dailyQuests, dayKey } from './quests.js';
 import { dailyEvent } from './events.js';
 import { seasonInfo } from './seasons.js';
 import { ITEMS, RARITIES, MILESTONES, describeBonus } from './items.js';
+import { traitById, bondLevel } from './personality.js';
 
 const $ = id => document.getElementById(id);
 
@@ -71,7 +72,8 @@ export function shake() {
 export function updateHUD(s, mg, rec) {
   if (!s) return;
   const level = levelFromXp((rec && rec.xp) || 0).level;
-  $('hud-name').textContent = s.name ? s.name.toUpperCase() : '???';
+  const tr = traitById(s.trait);
+  $('hud-name').textContent = (s.name ? s.name.toUpperCase() : '???') + (tr && s.stage !== 'egg' ? ' ' + tr.emoji : '');
   const grumpy = !s.sick && !s.sleeping && (s.grumpyUntil || 0) > Date.now();
   $('hud-stage').textContent = s.away
     ? 'CHEZ LE HÉRON 🪶'
@@ -254,6 +256,18 @@ export function updateBattleUI(b) {
 export function renderAchievements(rec, s) {
   const list = $('ach-list');
   list.innerHTML = '';
+
+  // caractère + lien de la loutre, en tête
+  const tr = s && traitById(s.trait);
+  if (tr) {
+    const bl = bondLevel(s.bond);
+    const prog = bl.max ? '❤️' : ' (' + bl.cur + '/' + bl.next + ')';
+    const cLine = document.createElement('p');
+    cLine.className = 'small'; cLine.id = 'char-line';
+    cLine.innerHTML = '🦦 <b>' + (s.name || 'Ta loutre') + '</b> · ' + tr.name + ' ' + tr.emoji +
+      ' · Lien : ' + bl.name + ' 💛' + prog;
+    list.appendChild(cLine);
+  }
 
   // saison en cours + événement du jour, en tête d'affiche
   const se = seasonInfo();
