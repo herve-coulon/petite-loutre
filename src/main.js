@@ -2,7 +2,7 @@
 import {
   SEC, MIN, clamp, TREAT_CD, DIVE_MS, GRUMPY_MS, WAKE_OK_ENERGY,
   WARM_BOOST, WARM_CD, SHAKE_BOOST, SHAKE_CD, SHAKE_G,
-  AWAY_CARE_NEEDED, AWAY_CARE_CD, SEASON_FX, GAME_VERSION
+  AWAY_CARE_NEEDED, AWAY_CARE_CD, SEASON_FX, UNLOCK_LEVEL, GAME_VERSION
 } from './constants.js';
 import { touchStreak } from './streak.js';
 import { greeting } from './mood.js';
@@ -82,11 +82,19 @@ function applyEvents(events, offline = false) {
 function diving() { return s && (s.divingUntil || 0) > now(); }
 function busy() { return !s || s.gameOver || s.away || s.stage === 'egg' || mg || diving(); }
 function press() { vibrate(10); }
-const isChildPlus = () => s && (s.stage === 'child' || s.stage === 'adult');
+const curLevel = () => levelFromXp((rec && rec.xp) || 0).level;
+const unlocked = (feat) => curLevel() >= UNLOCK_LEVEL[feat];
+const UNLOCK_LABEL = { treat: '🍡 Friandise', slide: '🛝 Toboggan', battle: '⚔️ Combat', dive: '🤿 Plongée' };
+/** Activités qui s'ouvrent en passant de `before` à `after` (annonce de palier). */
+function featuresOpenedBetween(before, after) {
+  return Object.keys(UNLOCK_LABEL)
+    .filter(f => before < UNLOCK_LEVEL[f] && after >= UNLOCK_LEVEL[f])
+    .map(f => UNLOCK_LABEL[f]);
+}
 
 function actTreat() {
   if (busy() || s.sleeping) return;
-  if (!isChildPlus()) { ui.log('🍡 Les friandises arrivent quand ta loutre devient jeune (à 1 jour) ! 🌱'); return; }
+  if (!unlocked('treat')) { ui.log('🍡 La friandise s\'ouvre au niveau ' + UNLOCK_LEVEL.treat + ' ! Occupe-toi bien d\'elle pour monter. ⭐'); return; }
   const t = now();
   const CD = TREAT_CD;
   if (t - (s.lastTreat || 0) < CD) {
@@ -110,7 +118,7 @@ function actTreat() {
 
 function actDive() {
   if (busy() || s.sleeping) return;
-  if (s.stage !== 'adult') { ui.log('🤿 La plongée au trésor s\'ouvre au stade adulte (à 3 jours) ! 🦦'); return; }
+  if (!unlocked('dive')) { ui.log('🤿 La plongée au trésor s\'ouvre au niveau ' + UNLOCK_LEVEL.dive + ' ! ⭐'); return; }
   press();
   s.divingUntil = now() + DIVE_MS;
   sfx.wash();
@@ -286,7 +294,7 @@ function actPlay() {
   mg = newGame(now());
   sfx.press();
   ui.log('Partie de pêche ! Attrape les poissons en les touchant !');
-  ui.updateHUD(s, mg);
+  ui.updateHUD(s, mg, rec);
 }
 
 function endGame(res) {
@@ -306,7 +314,7 @@ function endGame(res) {
   else { sfx.sad(); ui.log('Aucun poisson… ils étaient rusés aujourd\'hui.'); }
   gainXp(XP.game + sc * XP.fish);
   persist();
-  ui.updateHUD(s, mg);
+  ui.updateHUD(s, mg, rec);
   quest('games');
   if (sc > 0) quest('fish', sc);
 }
@@ -314,13 +322,13 @@ function endGame(res) {
 /* ---------------- Toboggan de rivière (2e mini-jeu) ---------------- */
 function actSlide() {
   if (busy() || s.sleeping) return;
-  if (!isChildPlus()) { ui.log('🛝 Le toboggan s\'ouvre quand ta loutre devient jeune (à 1 jour) ! 🌱'); return; }
+  if (!unlocked('slide')) { ui.log('🛝 Le toboggan s\'ouvre au niveau ' + UNLOCK_LEVEL.slide + ' ! ⭐'); return; }
   if (s.energy < 14) { ui.log(s.name + ' est trop fatiguée pour le toboggan…'); return; }
   press();
   mg = newSlide(now());
   sfx.press();
   ui.log('Toboggan ! Tape le couloir pour gober les 🐟 et esquiver les 🪨 !');
-  ui.updateHUD(s, mg);
+  ui.updateHUD(s, mg, rec);
 }
 
 function endSlide(res) {
@@ -346,7 +354,7 @@ function endSlide(res) {
   gainXp(XP.game + sc * XP.fish);
   checkUnlocks();
   persist();
-  ui.updateHUD(s, mg);
+  ui.updateHUD(s, mg, rec);
   quest('games');
   if (sc > 0) quest('fish', sc);
 }
@@ -384,7 +392,7 @@ function onCanvasPointer(e) {
         gainXp(XP.event);
         ui.log(treat.msg);
         persist(); persistRec();
-        ui.updateHUD(s, mg);
+        ui.updateHUD(s, mg, rec);
         return;
       }
     }
@@ -421,7 +429,7 @@ function syncMusic() {
 function persist() { saveState(s, storage, now()); }
 function persistRec() { saveRecords(rec, storage); }
 /** Après chaque action joueur : sauvegarde + HUD à jour immédiatement. */
-function afterAct() { persist(); ui.updateHUD(s, mg); updateCoach(); }
+function afterAct() { persist(); ui.updateHUD(s, mg, rec); updateCoach(); }
 
 /* ---------------- Fil narratif + premiers pas guidés ---------------- */
 /** Joue le prochain chapitre en attente (et enchaîne s'il y en a plusieurs). */
@@ -532,7 +540,9 @@ function gainXp(n) {
     }
     checkUnlocks(); // cosmétiques et succès de palier viennent d'apparaître
     ui.toast('⭐ NIVEAU ' + L.level + ' · ' + titleFor(L.level) + ' !');
-    ui.log('Niveau ' + L.level + ' ! Récompense : friandise rechargée. 🍡');
+    const opened = featuresOpenedBetween(before, L.level);
+    if (opened.length) ui.log('⭐ Niveau ' + L.level + ' ! Débloqué : ' + opened.join(' + ') + ' ! Va essayer !');
+    else ui.log('Niveau ' + L.level + ' ! Récompense : friandise rechargée. 🍡');
     sfx.levelup(); vibrate([20, 40, 20]);
   }
   ui.renderLevel(rec);
@@ -584,7 +594,7 @@ function actCare() {
     ui.log('Tu portes un poisson frais chez le héron… ' + s.name + ' hésite encore. (' + s.awayCare + '/' + AWAY_CARE_NEEDED + ')');
   }
   persist();
-  ui.updateHUD(s, mg);
+  ui.updateHUD(s, mg, rec);
 }
 
 /* ---------------- Série de jours (streak) ---------------- */
@@ -663,7 +673,7 @@ function startNew() {
   ui.hideAllOverlays();
   ui.log('Garde l\'œuf au chaud : touche-le, réchauffe-le… ou secoue doucement ton téléphone pour le bercer !');
   persist();
-  ui.updateHUD(s, mg);
+  ui.updateHUD(s, mg, rec);
 }
 
 function tick() {
@@ -688,7 +698,7 @@ function tick() {
     checkStreak();
     ui.log('✨ Nouveau jour ! ' + dailyEvent(dayKey(t)).label);
   }
-  ui.updateHUD(s, mg);
+  ui.updateHUD(s, mg, rec);
   maybeStory();      // un chapitre vient peut-être de se débloquer (évolution en direct/au retour)
   maybeSeasonCard(); // la saison a peut-être tourné (minuit / retour d'absence)
   updateCoach();     // garde le surlignage du tutoriel en phase (dodo, overlays…)
@@ -752,7 +762,7 @@ function boot() {
   } else {
     ui.showOverlay('ovl-intro');
   }
-  ui.updateHUD(s, mg);
+  ui.updateHUD(s, mg, rec);
 
   $('btn-start').addEventListener('click', () => { sfx.press(); vibrate(15); enableMotion(); startNew(); });
   window.addEventListener('devicemotion', onMotion);
@@ -763,7 +773,7 @@ function boot() {
     ui.hideOverlay('ovl-name');
     ui.toast('💛 Bienvenue, ' + s.name + ' ! 💛');
     sfx.happy(); vibrate([15, 40, 15]);
-    persist(); ui.updateHUD(s, mg);
+    persist(); ui.updateHUD(s, mg, rec);
     maybeStory(); // Chapitre 1 — La rencontre, puis premiers pas guidés
   });
   $('name-input').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-name').click(); });
@@ -783,7 +793,7 @@ function boot() {
   // Combat de loutres (par code de défi)
   $('b-battle').addEventListener('click', () => {
     if (busy() || s.sleeping) return;
-    if (!isChildPlus()) { ui.log('⚔️ Les combats s\'ouvrent quand ta loutre devient jeune (à 1 jour) ! 🌱'); return; }
+    if (!unlocked('battle')) { ui.log('⚔️ Les combats s\'ouvrent au niveau ' + UNLOCK_LEVEL.battle + ' ! ⭐'); return; }
     sfx.press();
     battle = null;
     ui.resetBattleUI(encodeCard(s));
@@ -830,7 +840,7 @@ function boot() {
   $('bt-calin').addEventListener('click', () => doMove('calin'));
 
   $('b-mute').addEventListener('click', () => {
-    s.mute = !s.mute; setMuted(s.mute); syncMusic(); persist(); ui.updateHUD(s, mg);
+    s.mute = !s.mute; setMuted(s.mute); syncMusic(); persist(); ui.updateHUD(s, mg, rec);
   });
   $('b-music').addEventListener('click', () => {
     s.music = s.music === false; // toggle
@@ -959,7 +969,7 @@ function boot() {
       ui.hideAllOverlays();
       if (s.gameOver) ui.showGameOver(s);
       else if (s.stage !== 'egg' && !s.name) ui.showNaming();
-      ui.updateHUD(s, mg);
+      ui.updateHUD(s, mg, rec);
       ui.log('Sauvegarde importée. Re-bonjour, ' + (s.name || 'petit œuf') + ' ! 💛');
       sfx.happy();
     });
@@ -1015,10 +1025,10 @@ window.__loutre = {
     if (s && s.stage === 'egg') {
       s.born = now() - 3 * MIN;
       applyEvents(stepSim(s, 1000, { simNow: now() }));
-      ui.updateHUD(s, mg);
+      ui.updateHUD(s, mg, rec);
     }
   },
-  step(ms) { applyEvents(stepSim(s, ms, { simNow: now() })); ui.updateHUD(s, mg); },
+  step(ms) { applyEvents(stepSim(s, ms, { simNow: now() })); ui.updateHUD(s, mg, rec); },
   startNew, actFeed, actWash, actSleep, actHeal, actPlay, actTreat, actDive, actSlide, actCare, pet,
   get battle() { return battle; }
 };

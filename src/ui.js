@@ -1,5 +1,5 @@
 // Couche DOM : HUD, jauges, overlays, messages. Aucune logique de jeu ici.
-import { STAGES, H, MIN, clamp } from './constants.js';
+import { STAGES, H, MIN, clamp, UNLOCK_LEVEL } from './constants.js';
 import { ageMs } from './sim.js';
 import { levelFromXp, titleFor } from './level.js';
 import { HATS, unlockedHats } from './accessories.js';
@@ -67,8 +67,9 @@ export function shake() {
   el._sh = setTimeout(() => el.classList.remove('shake'), 450);
 }
 
-export function updateHUD(s, mg) {
+export function updateHUD(s, mg, rec) {
   if (!s) return;
+  const level = levelFromXp((rec && rec.xp) || 0).level;
   $('hud-name').textContent = s.name ? s.name.toUpperCase() : '???';
   const grumpy = !s.sick && !s.sleeping && (s.grumpyUntil || 0) > Date.now();
   $('hud-stage').textContent = s.away
@@ -110,22 +111,21 @@ export function updateHUD(s, mg) {
       ? '<span class="ic">☀️</span>Réveil'
       : '<span class="ic">💤</span>Dodo';
 
-    // actions à débloquer avec la progression
-    const child = s.stage === 'child' || s.stage === 'adult';
-    const adult = s.stage === 'adult';
+    // actions à débloquer au fil des NIVEAUX du soigneur
     const diving = (s.divingUntil || 0) > Date.now();
     // Verrouillé = grisé (classe .locked) mais TOUJOURS tapable : le geste
     // explique alors comment le débloquer (bien plus clair qu'un bouton mort).
-    const lock = (id, locked, label, html) => {
+    const lock = (id, need, html) => {
       const b = $(id);
-      const want = locked ? '<span class="ic">🔒</span>' + label : html;
+      const locked = level < need;
+      const want = locked ? '<span class="ic">🔒</span>Niv ' + need : html;
       if (b.innerHTML !== want) b.innerHTML = want;
       b.classList.toggle('locked', locked);
     };
-    lock('b-treat', !child, 'Jeune', '<span class="ic">🍡</span>Friandise');
-    lock('b-dive', !adult, 'Adulte', '<span class="ic">🤿</span>Plongée');
-    lock('b-battle', !child, 'Jeune', '<span class="ic">⚔️</span>Combat');
-    lock('b-slide', !child, 'Jeune', '<span class="ic">🛝</span>Toboggan');
+    lock('b-treat', UNLOCK_LEVEL.treat, '<span class="ic">🍡</span>Friandise');
+    lock('b-dive', UNLOCK_LEVEL.dive, '<span class="ic">🤿</span>Plongée');
+    lock('b-battle', UNLOCK_LEVEL.battle, '<span class="ic">⚔️</span>Combat');
+    lock('b-slide', UNLOCK_LEVEL.slide, '<span class="ic">🛝</span>Toboggan');
     $('b-treat').disabled = dis || s.sleeping || diving;
     $('b-dive').disabled = dis || s.sleeping || diving;
     $('b-battle').disabled = dis || s.sleeping || diving;

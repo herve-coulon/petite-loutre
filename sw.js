@@ -1,12 +1,13 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v3.5.0';
+const VERSION = 'v3.6.0';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [
   './',
   './index.html',
   './manifest.webmanifest',
+  './src/fonts.css',
   './src/style.css',
   './src/main.js',
   './src/constants.js',

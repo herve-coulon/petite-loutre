@@ -7,7 +7,7 @@
 html,body{
   margin:0; padding:0; height:100%;
   background:#20242f;
-  font-family:"Courier New",Courier,monospace; color:var(--txt);
+  font-family:'Pixelify Sans',"Courier New",monospace; color:var(--txt);
   overflow:hidden;
   overscroll-behavior:none;
   touch-action:manipulation;
@@ -53,7 +53,7 @@ canvas{
   align-items:center; justify-content:center; text-align:center; padding:18px;
   background:rgba(15,18,26,.93); border:2px solid #000;
 }
-.ovl p{margin:0; font-size:12px; line-height:1.7; letter-spacing:1px;}
+.ovl p{margin:0; font-size:12px; line-height:1.5; letter-spacing:1px;}
 .ovl .big{font-size:15px; color:var(--accent);}
 .hidden{display:none !important;}
 

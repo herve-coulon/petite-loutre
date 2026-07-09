@@ -52,9 +52,10 @@ L'app se lance alors en plein écran, fonctionne hors-ligne, et la loutre vit sa
 | Trésor de saison 🎁 | Chaque jour, un cadeau thématique à récolter sur la berge (touche-le) : 🌸 fleur au printemps, 🍉 pastèque l'été, 🌰 châtaigne l'automne, ⛄ bonhomme de neige l'hiver — chacun avec sa petite récompense. Un record compte les trésors récoltés |
 | Croissance | Bébé → jeune loutre à J+1 → adulte à J+3 |
 | Jauges | Faim, humeur, énergie, propreté + santé |
-| Actions | Manger 🐟, pêche 🎣 (mini-jeu), bain 🧼, dodo 💤, soin 💊, caresses (toucher la loutre), friandise 🍡 (jeune+), plongée au trésor 🤿 (adulte) |
-| Mini-jeux 🎮 | **Pêche** 🎣 : touche les poissons. **Toboggan de rivière** 🛝 (jeune+) : la loutre dévale les rapides sur 3 couloirs — tape le couloir voulu pour gober les 🐟 et esquiver les 🪨 (descente parfaite = 5 poissons sans un rocher) |
-| Combats ⚔️ | Duels par code de défi à s'échanger entre amis (dès le stade jeune) |
+| Actions | Manger 🐟, pêche 🎣 (mini-jeu), bain 🧼, dodo 💤, soin 💊, caresses (toucher la loutre), friandise 🍡 (Niv 2), plongée au trésor 🤿 (Niv 5) |
+| Déblocages 🔓 | Les activités s'ouvrent au fil des **niveaux du soigneur** : friandise (Niv 2), toboggan (Niv 3), combat (Niv 4), plongée (Niv 5). Un bouton verrouillé reste tapable et **dit à quel niveau il s'ouvre** ; chaque montée de niveau annonce sa nouveauté (réglable dans `UNLOCK_LEVEL`) |
+| Mini-jeux 🎮 | **Pêche** 🎣 : touche les poissons. **Toboggan de rivière** 🛝 (Niv 3) : la loutre dévale les rapides sur 3 couloirs — tape le couloir voulu pour gober les 🐟 et esquiver les 🪨 (descente parfaite = 5 poissons sans un rocher) |
+| Combats ⚔️ | Duels par code de défi à s'échanger entre amis (Niv 4) |
 | Quêtes 🏆 | 3 micro-objectifs par jour, identiques pour tout le monde |
 | Niveaux ⭐ | Chaque geste rapporte de l'XP (« +5 » à l'écran) : niveaux, titres honorifiques, friandise rechargée à chaque montée, cosmétiques exclusifs aux paliers 3/5/10 — le niveau survit aux loutres |
 | Série 🔥 | Revenir chaque jour entretient la flamme : paliers 3/7/14/30 jours (XP, pelage Braise, succès) |
@@ -79,6 +80,7 @@ index.html            page unique (aucun bundler, modules ES natifs)
 manifest.webmanifest  manifeste PWA
 sw.js                 service worker (hors-ligne) — ⚠️ incrémenter VERSION à chaque release
 src/
+  fonts.css           police pixel embarquée (Pixelify Sans, woff2 en data-URI)
   constants.js        équilibrage du jeu
   state.js            état + sauvegarde (stockage injecté)
   sim.js              moteur PUR (horloge et hasard injectés, événements)
@@ -136,7 +138,6 @@ Les dossiers `android/` et `ios/` générés sont déjà dans le `.gitignore`. P
 
 - Nouveaux lieux à explorer (forêt, mer) avec leurs activités
 - Événements et quêtes saisonniers (bonhomme de neige l'hiver, cueillette l'automne…)
-- Vraie police pixel embarquée (remplacer Courier)
 - i18n (en/es)
 
 *Fait en v2.1 : accessoires, succès + records, export/import. v2.2 : pelages,
@@ -165,4 +166,8 @@ qui expliquent leur déblocage. v3.4 : les saisons pèsent sur la santé — le 
 de l'hiver fait attraper froid, la chaleur de l'été épuise et fait surchauffer ;
 on réchauffe/rafraîchit avec les gestes existants (bain, repas, câlins). v3.5 :
 trésor de saison — un cadeau thématique à récolter chaque jour (fleur, pastèque,
-châtaigne, bonhomme de neige) avec sa récompense et un record dédié.*
+châtaigne, bonhomme de neige) avec sa récompense et un record dédié. v3.6 :
+les activités se débloquent désormais au fil des niveaux du soigneur (Niv 2→5)
+plutôt que par stade de vie — chaque montée de niveau offre une nouveauté ; et
+vraie police pixel embarquée (Pixelify Sans, woff2 en data-URI, accents FR + œ,
+100% hors-ligne) à la place de Courier.*

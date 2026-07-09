@@ -260,6 +260,7 @@ test('game feel : le début de combat secoue l\'écran', () => {
   L.state.hatchedAt = Date.now() - 25 * 3600 * 1000;
   L.state.stage = 'child';
   L.state.sleeping = false;
+  L.records.xp = 100000; // le combat se débloque par NIVEAU désormais
   tick();
   assert.equal(L.state.stage, 'child', 'stade stable après tick');
   $('b-battle').click();
@@ -493,21 +494,23 @@ test('musique : le réglage 🎵 bascule et se sauvegarde', () => {
   tick(); // la synchro musique tourne sans AudioContext (no-op propre)
 });
 
-test('toboggan : verrouillé avant le stade jeune, sinon se lance, se termine et compte la descente', () => {
+test('toboggan : verrouillé sous le niveau requis, sinon se lance, se termine et compte la descente', () => {
   L.state.energy = 90; L.state.sleeping = false; L.state.divingUntil = 0; L.state.gameOver = false; L.state.away = false;
+  L.state.stage = 'child'; L.state.hatchedAt = Date.now() - 25 * 3600 * 1000;
 
-  // verrou : pas de toboggan au stade bébé, mais le bouton EXPLIQUE le déblocage
-  L.state.stage = 'baby';
-  L.state.hatchedAt = Date.now() - 1000; // âge bébé -> step(0) ne fait pas évoluer
+  // verrou : niveau trop bas -> bouton grisé mais tapable, qui explique le déblocage
+  L.records.xp = 0; // niveau 1
   L.step(0); // rafraîchit le HUD (état des boutons)
-  assert.ok($('b-slide').classList.contains('locked'), 'bouton grisé (verrouillé)');
+  assert.ok($('b-slide').classList.contains('locked'), 'bouton grisé sous le niveau requis');
   assert.equal($('b-slide').disabled, false, 'mais tapable pour expliquer le déblocage');
   L.actSlide();
-  assert.equal(L.minigame, null, 'toboggan verrouillé au stade bébé');
-  assert.match($('log').textContent, /jeune/i, 'astuce de déblocage affichée');
+  assert.equal(L.minigame, null, 'toboggan verrouillé au niveau 1');
+  assert.match($('log').textContent, /niveau/i, 'astuce de déblocage par niveau affichée');
 
-  // débloqué dès le stade jeune
-  L.state.stage = 'child';
+  // débloqué une fois le palier de niveau atteint
+  L.records.xp = 100000;
+  L.step(0);
+  assert.ok(!$('b-slide').classList.contains('locked'), 'débloqué au niveau requis');
   const slidesBefore = L.records.slidesTotal || 0;
   L.actSlide();
   assert.equal(L.minigame && L.minigame.mode, 'slide', 'partie de toboggan lancée');

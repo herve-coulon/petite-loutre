@@ -35,7 +35,7 @@ export const BEATS = [
     emoji: '🌊',
     title: 'Chapitre 3 — La grande loutre',
     lines: [
-      'La voilà adulte, sûre d\'elle. Les profondeurs ne l\'effraient plus : elle peut plonger chercher des trésors 🤿.'
+      'La voilà adulte, sûre d\'elle. Plus tu montes en niveau, plus de belles aventures s\'ouvrent — jour après jour, à tes côtés. 🤿'
     ],
     cta: 'PLONGER DANS LA SUITE'
   }
