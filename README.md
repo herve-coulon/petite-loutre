@@ -71,6 +71,7 @@ L'app se lance alors en plein écran, fonctionne hors-ligne, et la loutre vit sa
 | Carte photo 📸 | Carte souvenir générée (nom, chapeau, exploits du jour) à partager sur WhatsApp/Insta via le partage natif |
 | Garde-robe 🎩 | 6 chapeaux, 6 pelages, 5 décors de berge à débloquer (records globaux, conservés entre les vies) |
 | Succès 🏆 | succès + records (longévité, poissons, repas, meilleur toboggan…) |
+| Accessibilité ♿ | **Mouvement réduit** (respecte `prefers-reduced-motion` du système, + interrupteur ⚙️) : coupe particules, secousses, clignotements et grosses rafales ; **gros texte** (interrupteur ⚙️) qui agrandit les textes les plus lus |
 | Sauvegarde ⚙️ | Export/import par code pour changer de téléphone |
 
 Équilibrage : toutes les constantes sont dans `src/constants.js`.
@@ -185,4 +186,5 @@ vrai bus de mixage (ducking, volume réglable), lit d'ambiance procédural
 saison, SFX à micro-variation de hauteur. v3.10 : le caractère de la loutre —
 personnalité tirée au baptême (activité préférée + réactions uniques) et lien
 qui grandit avec les soins (paliers célébrés, loutre plus démonstrative à haut
-lien).*
+lien). v3.11 : accessibilité — mouvement réduit (pref système + interrupteur,
+coupe particules/secousses/clignotements) et gros texte.*

@@ -1,7 +1,7 @@
 // Constantes de jeu — ajuster ici pour équilibrer.
 // ⚠️ GAME_VERSION : à incrémenter avec package.json et sw.js à chaque release
 // (affichée dans ⚙️ Réglages pour vérifier ce que le téléphone exécute).
-export const GAME_VERSION = '3.10.0';
+export const GAME_VERSION = '3.11.0';
 export const SEC = 1000;
 export const MIN = 60 * SEC;
 export const H = 60 * MIN;

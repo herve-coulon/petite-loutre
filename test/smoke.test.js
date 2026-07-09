@@ -514,6 +514,29 @@ test('musique : le réglage 🎵 bascule et se sauvegarde', () => {
   tick(); // la synchro musique tourne sans AudioContext (no-op propre)
 });
 
+test('accessibilité : gros texte et mouvement réduit basculent classes + préférence', () => {
+  $('b-gear').click();
+  const root = document.documentElement;
+  assert.ok(!root.classList.contains('big-text'));
+  $('b-bigtext').click();
+  assert.equal(L.state.bigText, true, 'gros texte activé');
+  assert.ok(root.classList.contains('big-text'), 'classe appliquée');
+  assert.match($('b-bigtext').textContent, /OUI/);
+
+  $('b-motion').click();
+  assert.equal(L.state.reduceMotion, true, 'mouvement réduit activé');
+  assert.ok(root.classList.contains('reduce-motion'), 'classe appliquée');
+  assert.match($('b-motion').textContent, /RÉDUITES/);
+
+  const saved = JSON.parse(window.localStorage.getItem('petite_loutre_v2'));
+  assert.equal(saved.bigText, true, 'préférences persistées');
+  assert.equal(saved.reduceMotion, true);
+  // on remet à zéro pour ne pas perturber les autres tests
+  $('b-bigtext').click(); $('b-motion').click();
+  assert.ok(!root.classList.contains('big-text') && !root.classList.contains('reduce-motion'));
+  $('btn-set-close').click();
+});
+
 test('toboggan : verrouillé sous le niveau requis, sinon se lance, se termine et compte la descente', () => {
   L.state.energy = 90; L.state.sleeping = false; L.state.divingUntil = 0; L.state.gameOver = false; L.state.away = false;
   L.state.stage = 'child'; L.state.hatchedAt = Date.now() - 25 * 3600 * 1000;

@@ -58,8 +58,13 @@ export function renderLevel(rec) {
   $('streak').textContent = st >= 2 ? '🔥' + st : '';
 }
 
+let reducedMotion = false;
+/** Accessibilité : couper les mouvements pilotés par le JS (secousses…). */
+export function setReduced(b) { reducedMotion = !!b; }
+
 /** Micro-tremblement de l'écran de jeu (début de combat…). */
 export function shake() {
+  if (reducedMotion) return;
   const el = $('screenwrap');
   if (!el) return;
   el.classList.remove('shake');

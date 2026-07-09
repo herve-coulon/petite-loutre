@@ -231,6 +231,33 @@ button.mini:active{color:var(--txt);}
   80%{transform:translate(2px,1px);}
 }
 
+/* ---------------- Accessibilité ---------------- */
+/* Mouvement réduit : la préférence système OU l'interrupteur des réglages
+   (classe .reduce-motion sur <html>) coupent les animations qui peuvent gêner. */
+@media (prefers-reduced-motion: reduce){
+  .fill.low, .fill.up, .coach-target, #screenwrap.shake{animation:none !important;}
+}
+:root.reduce-motion .fill.low,
+:root.reduce-motion .fill.up,
+:root.reduce-motion .coach-target,
+:root.reduce-motion #screenwrap.shake{animation:none !important;}
+/* le halo du tutoriel reste visible (statique) même sans pulsation */
+:root.reduce-motion .coach-target{box-shadow:0 3px 0 var(--ink), 0 0 0 4px rgba(242,193,78,.7);}
+
+/* Gros texte : agrandit les textes les plus lus (~+20 %). */
+:root.big-text #log{font-size:13px;}
+:root.big-text .bar label{font-size:12px;}
+:root.big-text button.act{font-size:12px;}
+:root.big-text #hud{font-size:13px;}
+:root.big-text #hud b{font-size:15px;}
+:root.big-text #lvl{font-size:12px;}
+:root.big-text .ovl p{font-size:14px;}
+:root.big-text .story-body{font-size:14px;}
+:root.big-text .row-item{font-size:13px;}
+:root.big-text .row-item small{font-size:11px;}
+:root.big-text .small{font-size:12px;}
+:root.big-text button.mini{font-size:13px;}
+
 /* Écrans confortables : look console posée sur la table */
 @media (min-width:500px) and (min-height:700px){
   body{display:flex; align-items:center; justify-content:center; padding:14px;}

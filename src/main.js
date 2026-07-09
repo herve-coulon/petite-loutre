@@ -444,6 +444,25 @@ function syncMusic() {
   ambient.setActive(on);
 }
 
+/* ---------------- Accessibilité ---------------- */
+const mediaReduce = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
+
+/** Applique les préférences d'accessibilité (classes CSS + rendu + secousses). */
+function applyA11y() {
+  if (!s) return;
+  const root = document.documentElement;
+  root.classList.toggle('big-text', !!s.bigText);
+  const reduced = !!s.reduceMotion;
+  root.classList.toggle('reduce-motion', reduced);
+  R.setReduced(reduced);
+  ui.setReduced(reduced);
+}
+
+function updateA11yLabels() {
+  const bt = $('b-bigtext'); if (bt) bt.textContent = '🔠 GROS TEXTE : ' + (s && s.bigText ? 'OUI' : 'NON');
+  const bm = $('b-motion'); if (bm) bm.textContent = '✨ ANIMATIONS : ' + (s && s.reduceMotion ? 'RÉDUITES' : 'NORMALES');
+}
+
 /** Bouton volume : 3 niveaux affichés en pastilles. */
 function updateVolumeLabel() {
   const v = s ? (s.volume ?? 0.7) : getVolume();
@@ -754,7 +773,9 @@ function savePhoto() {
 /* ---------------- Cycle de vie ---------------- */
 function startNew() {
   s = newState(now());
+  s.reduceMotion = mediaReduce(); // nouvelle partie : suit la préférence système
   setMuted(s.mute);
+  applyA11y();
   mg = null;
   ui.hideAllOverlays();
   ui.log('Garde l\'œuf au chaud : touche-le, réchauffe-le… ou secoue doucement ton téléphone pour le bercer !');
@@ -832,6 +853,7 @@ function boot() {
     // migration : une loutre déjà nommée d'avant v3.10 reçoit un caractère (déterministe)
     if (s.name && s.stage !== 'egg' && !s.trait) s.trait = pickTrait(() => (s.born % 1000) / 1000);
     setMuted(s.mute);
+    applyA11y();
     const { elapsed, events } = simulateOffline(s, now());
     applyEvents(events, true);
     if (s.gameOver) ui.showGameOver(s);
@@ -948,6 +970,14 @@ function boot() {
     updateVolumeLabel();
     persist(); sfx.press();
   });
+  $('b-bigtext').addEventListener('click', () => {
+    s.bigText = !s.bigText;
+    applyA11y(); updateA11yLabels(); persist(); sfx.press();
+  });
+  $('b-motion').addEventListener('click', () => {
+    s.reduceMotion = !s.reduceMotion;
+    applyA11y(); updateA11yLabels(); persist(); sfx.press();
+  });
   $('b-push').addEventListener('click', async () => {
     sfx.press();
     if (s.push) {
@@ -1050,6 +1080,7 @@ function boot() {
     $('imp-code').value = '';
     $('b-music').textContent = '🎵 MUSIQUE : ' + (s && s.music !== false ? 'OUI' : 'NON');
     updateVolumeLabel();
+    updateA11yLabels();
     $('b-push').textContent = '🔔 RAPPELS : ' + (s && s.push ? 'OUI' : 'NON');
     ui.showOverlay('ovl-set');
   });

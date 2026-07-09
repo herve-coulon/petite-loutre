@@ -46,6 +46,7 @@ export function makeRenderer(cv) {
   const ctx = cv.getContext('2d');
   let particles = [];
   let squashUntil = 0;
+  let reduced = false; // accessibilité : mouvement réduit -> moins de particules/tremblements
   let idleAnim = null;                              // {kind, start} — petite manie en cours
   let nextIdleAt = 400 + Math.random() * 700;       // en frames
   let jumpFish = null;                              // {x, dir, start} — poisson qui saute
@@ -132,6 +133,7 @@ export function makeRenderer(cv) {
 
   /** Rafale généreuse : confettis qui retombent, étincelles qui montent… */
   function burst(kind, n, stage) {
+    if (reduced) n = Math.min(n, 4); // mouvement réduit : à peine un clin d'œil
     const y0 = (stage === 'egg' ? 78 : otterY(stage)) + 10;
     for (let i = 0; i < n; i++) {
       if (kind === 'confetti') {
@@ -459,7 +461,7 @@ export function makeRenderer(cv) {
     drawAmbient(mg, frame, c.night);
 
     // ambiance saisonnière : feuilles / pétales / neige qui tombent (pas pendant la pêche)
-    if (!mg) drawSeasonAmbient(season.ambient, frame);
+    if (!mg && !reduced) drawSeasonAmbient(season.ambient, frame);
 
     // trésor de saison du jour, à récolter (disparaît une fois pris)
     if (!mg && s.stage !== 'egg' && season.treat && treatAvailable(s)) {
@@ -521,8 +523,9 @@ export function makeRenderer(cv) {
     const bounce = (s.sleeping || s.stage === 'egg' || yawning) ? 0 : ((frame >> 4) % 2 === 0 ? 0 : -2);
     let ox = OTTER_X, oy = otterY(s.stage) + bounce;
     // tremblement : provoqué (réchauffage/secousse) ou spontané quand ça va craquer
-    if (s.stage === 'egg' && (fx.wobble || crack >= 3)) ox += ((frame >> 1) % 2 === 0 ? -2 : 2);
-    else if (s.stage === 'egg' && crack >= 2 && (frame >> 2) % 4 === 0) ox += 1;
+    // (le tremblement spontané est coupé en mouvement réduit)
+    if (s.stage === 'egg' && (fx.wobble || (crack >= 3 && !reduced))) ox += ((frame >> 1) % 2 === 0 ? -2 : 2);
+    else if (s.stage === 'egg' && crack >= 2 && !reduced && (frame >> 2) % 4 === 0) ox += 1;
     if (s.sick && (frame >> 2) % 6 === 0) ox += 1;
     if (idleAnim && idleAnim.kind === 'gratte') ox += (frame >> 2) % 2; // frisson de grattage
 
@@ -733,5 +736,7 @@ export function makeRenderer(cv) {
     });
   }
 
-  return { render, spawn, splashAt, burst, squash, xpText };
+  function setReduced(b) { reduced = !!b; }
+
+  return { render, spawn, splashAt, burst, squash, xpText, setReduced };
 }
