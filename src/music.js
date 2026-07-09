@@ -2,7 +2,8 @@
 // (132 bpm, mélodie pleine, basse qui pompe à la noire, chapeau rythmique).
 // La nuit : berceuse lente, une octave plus bas. Tolérant : sans AudioContext
 // (tests, vieux navigateurs), tout est no-op.
-import { audioCtx, isMuted } from './audio.js';
+import { audioCtx, isMuted, musicBus } from './audio.js';
+import { seasonFor } from './seasons.js';
 
 /* ---------------- Partitions (pures, testées) ---------------- */
 // Grille de croches, 0 = silence. Fa majeur. 64 pas = 8 mesures de 4/4.
@@ -49,6 +50,20 @@ export const isNightHour = h => h >= 21 || h < 7;
 /** Durée d'une croche en secondes. */
 export const stepDur = night => 60 / (night ? NIGHT_BPM : DAY_BPM) / 2;
 
+/**
+ * Voix (timbre + accents) de la mélodie selon la saison. PUR.
+ * mel = forme d'onde de la mélodie ; hat = charleston rythmique ; bell = clochette
+ * cristalline sur certains temps (hiver).
+ */
+export function seasonVoice(season) {
+  switch (season) {
+    case 'printemps': return { mel: 'triangle', hat: true,  bell: false };
+    case 'automne':   return { mel: 'triangle', hat: false, bell: false };
+    case 'hiver':     return { mel: 'sine',     hat: false, bell: true };
+    default:          return { mel: 'square',   hat: true,  bell: false }; // été = son d'origine
+  }
+}
+
 /* ---------------- Séquenceur ---------------- */
 let timer = null, step = 0, nextT = 0, active = false;
 
@@ -58,7 +73,7 @@ function note(ac, freq, t, dur, type, vol) {
     o.type = type; o.frequency.value = freq;
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g); g.connect(ac.destination);
+    o.connect(g); g.connect(musicBus() || ac.destination);
     o.start(t); o.stop(t + dur + 0.03);
   } catch (e) {}
 }
@@ -67,6 +82,7 @@ function schedule() {
   const ac = audioCtx();
   if (!ac) return;
   const night = isNightHour(new Date().getHours());
+  const voice = seasonVoice(seasonFor(new Date()));
   const score = night ? NIGHT : DAY;
   const dur = stepDur(night);
   while (nextT < ac.currentTime + 0.35) {
@@ -74,16 +90,18 @@ function schedule() {
     if (!isMuted()) {
       const m = score.mel[step];
       if (m) {
-        if (night) note(ac, m / 2, nextT, dur * 0.92, 'triangle', 0.045);
-        else note(ac, m, nextT, dur * 0.85, 'square', 0.05); // staccato punchy
+        if (night) note(ac, m / 2, nextT, dur * 0.92, voice.mel === 'square' ? 'triangle' : voice.mel, 0.045);
+        else note(ac, m, nextT, dur * 0.85, voice.mel, 0.05); // staccato, timbre de la saison
       }
       // basse : à la noire le jour (ça pompe), à la blanche la nuit (ça berce)
       const bEvery = night ? 4 : 2;
       if (step % bEvery === 0) {
         note(ac, score.bass[(step / bEvery) | 0], nextT, dur * (night ? 3.6 : 1.7), 'triangle', 0.06);
       }
-      // chapeau rythmique sur les temps, le jour seulement : la pulsation qui entraîne
-      if (!night && step % 2 === 0) note(ac, 5600, nextT, 0.03, 'square', 0.012);
+      // charleston rythmique le jour (saisons vives) : la pulsation qui entraîne
+      if (!night && voice.hat && step % 2 === 0) note(ac, 5600, nextT, 0.03, 'square', 0.012);
+      // clochette cristalline d'hiver, sur le premier temps de chaque mesure
+      if (voice.bell && m && step % 8 === 0) note(ac, (night ? m : m * 2), nextT, dur * 2.4, 'sine', 0.03);
     }
     nextT += dur;
     step = (step + 1) % LOOP;

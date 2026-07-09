@@ -21,6 +21,7 @@ export function newState(now = Date.now(), rnd = Math.random) {
     gameOver: false,
     mute: false,
     music: true,
+    volume: 0.7,   // volume maître 0..1 (réglé dans ⚙️)
     push: false,
     hat: null,
     fur: 'roux',
@@ -50,6 +51,7 @@ function normalizeState(o) {
   if (typeof o.divingUntil !== 'number') o.divingUntil = 0;
   if (typeof o.grumpyUntil !== 'number') o.grumpyUntil = 0;
   if (typeof o.music !== 'boolean') o.music = true;
+  if (typeof o.volume !== 'number' || o.volume < 0 || o.volume > 1) o.volume = 0.7;
   if (typeof o.push !== 'boolean') o.push = false;
   if (typeof o.away !== 'boolean') o.away = false;
   for (const k of ['awayAt', 'awayCare', 'awayNextCare']) {

@@ -65,7 +65,7 @@ L'app se lance alors en plein écran, fonctionne hors-ligne, et la loutre vit sa
 | Partage du jour 📣 | Résultat quotidien façon Wordle (✅✅⬜ 2/3 · NIV · 🔥) à envoyer d'un tap |
 | Rappels 🔔 | Opt-in dans ⚙️ : « elle a faim », « le héron t'attend », « quêtes fraîches » — notifications même app fermée (serveur Supabase gratuit, abonnements anonymes ; iPhone : app installée, iOS 16.4+) |
 | Risques | Cacas à nettoyer, maladie, départ si la santé tombe à 0 |
-| Ambiance | Ciel jour/crépuscule/nuit selon l'heure réelle, musique chiptune (enjouée le jour, berceuse la nuit — désactivable dans ⚙️), sons 8-bit, vibrations, libellule et poissons sauteurs, confettis et squash & stretch |
+| Ambiance 🎧 | Ciel jour/crépuscule/nuit selon l'heure réelle ; **lit sonore procédural** (eau qui clapote, oiseaux au printemps/été, grillons l'été la nuit, vent l'automne/hiver) ; **musique chiptune** enjouée le jour / berceuse la nuit, **teintée par la saison** (clochette d'hiver, timbres qui changent) ; **vrai bus de mixage** (les actions *duckent* la musique) + **réglage de volume** dans ⚙️ ; SFX 8-bit à micro-variation de hauteur (pas de fatigue de répétition), vibrations, libellule et poissons sauteurs, confettis et squash & stretch |
 | Expressivité 🦦 | Le visage suit l'humeur (contente, affamée, boudeuse, malade) ; elle se gratte, bâille et jongle avec un caillou quand tout va bien — et boude 10 min si on la réveille trop tôt (un câlin ou une friandise la déride) |
 | Carte photo 📸 | Carte souvenir générée (nom, chapeau, exploits du jour) à partager sur WhatsApp/Insta via le partage natif |
 | Garde-robe 🎩 | 6 chapeaux, 6 pelages, 5 décors de berge à débloquer (records globaux, conservés entre les vies) |
@@ -104,8 +104,9 @@ src/
   minigame.js         pêche (logique pure)
   toboggan.js         toboggan de rivière : 2e mini-jeu (logique pure)
   render.js           rendu canvas 160×120 (expressions, particules, squash)
-  audio.js            bips 8-bit WebAudio + vibrations
-  music.js            boucle chiptune jour/nuit (partition pure testée)
+  audio.js            bus de mixage WebAudio (master/sfx/musique/ambiance) + ducking + volume + SFX + vibrations
+  music.js            boucle chiptune jour/nuit, timbre par saison (partition pure testée)
+  ambient.js          lit d'ambiance procédural (eau, oiseaux, vent, grillons — pur testé)
   ui.js               DOM : HUD, jauges, overlays
   pwa.js              service worker, bouton installer, persistance
   main.js             orchestrateur
@@ -176,4 +177,7 @@ vraie police pixel embarquée (Pixelify Sans, woff2 en data-URI, accents FR + œ
 (courbe qui se durcit, titres jusqu'à « Gardien légendaire ») et combat repoussé
 au niveau 10. v3.8 : trésors rares équipables (4 raretés, petits bonus de jeu :
 XP, jauges plus lentes, résistance aux saisons…), gagnés par paliers de niveau
-garantis ET par drops aléatoires dans les activités.*
+garantis ET par drops aléatoires dans les activités. v3.9 : refonte audio —
+vrai bus de mixage (ducking, volume réglable), lit d'ambiance procédural
+(eau/oiseaux/vent/grillons selon saison et heure), musique teintée par la
+saison, SFX à micro-variation de hauteur.*

@@ -1,6 +1,6 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v3.8.0';
+const VERSION = 'v3.9.0';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [
@@ -34,6 +34,7 @@ const PRECACHE = [
   './src/render.js',
   './src/audio.js',
   './src/music.js',
+  './src/ambient.js',
   './src/ui.js',
   './src/pwa.js',
   './icons/icon-192.png',

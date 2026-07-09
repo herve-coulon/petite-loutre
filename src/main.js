@@ -10,6 +10,7 @@ import * as push from './push.js';
 import { dailyShareText } from './share.js';
 import { dailyEvent, butterflyPos } from './events.js';
 import * as music from './music.js';
+import * as ambient from './ambient.js';
 import { XP, levelFromXp, titleFor } from './level.js';
 import { bumpQuest, completedQuests, ensureDaily, dayKey } from './quests.js';
 
@@ -21,7 +22,7 @@ import { stepSim, simulateOffline, ageMs } from './sim.js';
 import { newGame, tickGame, clickGame } from './minigame.js';
 import { newSlide, tickSlide, setSlideLane, laneAt } from './toboggan.js';
 import { makeRenderer, OTTER_X, otterY } from './render.js';
-import { sfx, vibrate, setMuted } from './audio.js';
+import { sfx, vibrate, setMuted, setVolume, getVolume } from './audio.js';
 import * as ui from './ui.js';
 import { registerSW, setupInstall, requestPersistentStorage } from './pwa.js';
 import { unlockedHats, hatById } from './accessories.js';
@@ -425,9 +426,19 @@ function onCanvasPointer(e) {
   }
 }
 
-/** La musique joue quand : loutre en vie, option activée, pas coupé, app visible. */
+/** Musique + ambiance jouent quand : loutre en vie, option activée, pas coupé, app visible. */
 function syncMusic() {
-  music.setActive(!!(s && s.music !== false && !s.mute && !s.gameOver && !document.hidden));
+  if (s) setVolume(s.volume ?? 0.7); // garde le volume maître en phase avec la préférence
+  const on = !!(s && s.music !== false && !s.mute && !s.gameOver && !document.hidden);
+  music.setActive(on);
+  ambient.setActive(on);
+}
+
+/** Bouton volume : 3 niveaux affichés en pastilles. */
+function updateVolumeLabel() {
+  const v = s ? (s.volume ?? 0.7) : getVolume();
+  const dots = v >= 0.85 ? '●●●' : v >= 0.55 ? '●●○' : '●○○';
+  const el = $('b-volume'); if (el) el.textContent = '🔊 VOLUME : ' + dots;
 }
 
 /* ---------------- Persistance ---------------- */
@@ -887,6 +898,14 @@ function boot() {
     $('b-music').textContent = '🎵 MUSIQUE : ' + (s.music ? 'OUI' : 'NON');
     syncMusic(); persist(); sfx.press();
   });
+  $('b-volume').addEventListener('click', () => {
+    const levels = [0.35, 0.7, 1.0];
+    const i = levels.findIndex(v => Math.abs(v - (s.volume ?? 0.7)) < 0.01);
+    s.volume = levels[(i + 1) % levels.length];
+    setVolume(s.volume);
+    updateVolumeLabel();
+    persist(); sfx.press();
+  });
   $('b-push').addEventListener('click', async () => {
     sfx.press();
     if (s.push) {
@@ -988,6 +1007,7 @@ function boot() {
     $('exp-code').value = s ? exportSave(s, rec) : '';
     $('imp-code').value = '';
     $('b-music').textContent = '🎵 MUSIQUE : ' + (s && s.music !== false ? 'OUI' : 'NON');
+    updateVolumeLabel();
     $('b-push').textContent = '🔔 RAPPELS : ' + (s && s.push ? 'OUI' : 'NON');
     ui.showOverlay('ovl-set');
   });
