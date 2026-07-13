@@ -1,6 +1,6 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v3.11.0';
+const VERSION = 'v3.11.1';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [
@@ -49,6 +49,11 @@ self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting())
   );
+});
+
+// La page peut demander d'activer tout de suite une version en attente.
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {

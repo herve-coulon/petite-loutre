@@ -1,8 +1,30 @@
 // PWA : service worker, invite d'installation, persistance du stockage.
 export function registerSW() {
   if (!('serviceWorker' in navigator)) return;
+
+  // Y avait-il déjà un SW aux commandes ? (sinon c'est le tout premier install :
+  // on ne veut pas recharger dans ce cas-là).
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+
+  // Le SW fait skipWaiting()+clients.claim() : dès qu'une nouvelle version est
+  // installée elle prend le contrôle, ce qui déclenche 'controllerchange'.
+  // On recharge alors UNE fois pour servir les nouveaux fichiers automatiquement
+  // (le jeu sauvegarde en continu : le reload est indolore).
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloaded || !hadController) return;
+    reloaded = true;
+    window.location.reload();
+  });
+
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js').then((reg) => {
+      // Une version déjà en attente d'un précédent chargement ? On l'active.
+      if (reg.waiting && hadController) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      // Cherche une mise à jour au lancement, puis toutes les heures.
+      reg.update().catch(() => {});
+      setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+    }).catch(() => {});
   });
 }
 
