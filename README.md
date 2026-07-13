@@ -196,4 +196,8 @@ visible en permanence, et menus repensés (garde-robe en onglets, boutons du bas
 libellés, réglages rangés par section). v3.13 : cap « jeu pro » (1/2) — game
 feel (menus qui fondent + zooment à l'ouverture/fermeture, retours de pression
 sur tous les boutons, easing) et vrai écran-titre plein écran (loutre héroïque,
-nom stylisé, accroche, bouton d'adoption soigné).*
+nom stylisé, accroche, bouton d'adoption soigné). v3.14 : cap « jeu pro » (2/2) —
+direction artistique (scène en profondeur : soleil et halo, nuages qui dérivent,
+collines lointaines brumeuses en perspective atmosphérique, brume d'horizon,
+vignettage doux) et loutre plus vivante (respiration continue, clignements
+naturels avec double-clignement occasionnel), le tout coupé en mouvement réduit.*

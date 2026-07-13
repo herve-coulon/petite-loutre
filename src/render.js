@@ -42,10 +42,18 @@ export function squashScale(t) {
 
 const CONFETTI_COLS = ['#e5484d', '#f2c14e', '#5fc9e0', '#8ad05f', '#e8608a', '#ffffff'];
 
+/** Mélange deux couleurs hex (#rrggbb), t=0 -> a, t=1 -> b. Pour la brume/perspective. */
+function mix(a, b, t) {
+  const pa = [1, 3, 5].map(i => parseInt(a.slice(i, i + 2), 16));
+  const pb = [1, 3, 5].map(i => parseInt(b.slice(i, i + 2), 16));
+  return '#' + pa.map((v, i) => Math.round(v + (pb[i] - v) * t).toString(16).padStart(2, '0')).join('');
+}
+
 export function makeRenderer(cv) {
   const ctx = cv.getContext('2d');
   let particles = [];
   let squashUntil = 0;
+  let vignette = null; // dégradé de vignettage, créé une fois (taille fixe)
   let reduced = false; // accessibilité : mouvement réduit -> moins de particules/tremblements
   let idleAnim = null;                              // {kind, start} — petite manie en cours
   let nextIdleAt = 400 + Math.random() * 700;       // en frames
@@ -409,11 +417,36 @@ export function makeRenderer(cv) {
         if ((frame >> 4) % 2 === 0 || (p[0] + p[1]) % 3) ctx.fillRect(p[0], p[1], 1, 1);
       });
     } else {
+      // soleil + halo doux
+      ctx.fillStyle = 'rgba(255,236,150,.28)';
+      ctx.fillRect(122, 6, 24, 24); ctx.fillRect(118, 10, 32, 16); ctx.fillRect(126, 2, 16, 32);
       ctx.fillStyle = '#ffd94a';
       ctx.fillRect(128, 10, 12, 12); ctx.fillRect(126, 12, 16, 8); ctx.fillRect(130, 8, 8, 16);
     }
 
-    // collines + berge
+    // nuages qui dérivent lentement (le jour) — profondeur du ciel
+    if (!c.night) {
+      const cloud = (cx, cy, w) => {
+        ctx.fillStyle = 'rgba(255,255,255,.55)';
+        ctx.fillRect(cx, cy, w, 3); ctx.fillRect(cx + 3, cy - 2, w - 6, 3); ctx.fillRect(cx + 5, cy + 2, w - 12, 2);
+      };
+      const d = frame >> 3;
+      cloud(((d * 0.25) % 200) - 30, 14, 22);
+      cloud((150 - (d * 0.16) % 200 + 200) % 200 - 20, 26, 15);
+    }
+
+    // collines LOINTAINES : perspective atmosphérique (plus claires, brumeuses)
+    const far = mix(c.hill2, c.sky, 0.5);
+    ctx.fillStyle = far;
+    for (let x = 0; x < CANVAS_W; x += 4) {
+      const top = 46 + Math.round(Math.sin(x / 23) * 4 + Math.sin(x / 9) * 2);
+      ctx.fillRect(x, top, 4, 58 - top);
+    }
+    // brume d'horizon
+    ctx.fillStyle = c.night ? 'rgba(200,210,235,.05)' : 'rgba(255,255,255,.13)';
+    ctx.fillRect(0, 49, CANVAS_W, 8);
+
+    // collines + berge (proches)
     ctx.fillStyle = c.hill2;
     ctx.fillRect(0, 54, CANVAS_W, 50);
     for (let x = 0; x < CANVAS_W; x += 16) ctx.fillRect(x, 50 - ((x / 16) % 3) * 2, 16, 8);
@@ -538,8 +571,12 @@ export function makeRenderer(cv) {
     // squash & stretch (ancré aux pieds, tout le corps + chapeau suivent)
     const sqT = 1 - Math.max(0, squashUntil - Date.now()) / SQUASH_MS;
     const squashing = sqT < 1 && s.stage !== 'egg';
-    if (squashing) {
-      const { sx, sy } = squashScale(sqT);
+    // respiration douce quand elle est tranquille (la poitrine se soulève)
+    const breathing = !squashing && !reduced && s.stage !== 'egg' && !s.gameOver;
+    if (squashing || breathing) {
+      let sx, sy;
+      if (squashing) { ({ sx, sy } = squashScale(sqT)); }
+      else { const b = Math.sin(frame / 32); sy = 1 + b * 0.02; sx = 1 - b * 0.012; }
       const cx = ox + 16, cyf = otterY(s.stage) + spr.length * 2;
       ctx.save();
       ctx.translate(cx, cyf);
@@ -562,7 +599,10 @@ export function makeRenderer(cv) {
 
     // paupières (sommeil / clignement)
     if (s.stage !== 'egg') {
-      const blink = !s.sleeping && (frame % 90) < 6;
+      // clignement naturel : ~toutes les 3,7 s, avec un double-clignement de temps en temps
+      const bp = frame % 220;
+      const dbl = ((frame / 220) | 0) % 3 === 0;
+      const blink = !s.sleeping && (bp < 6 || (dbl && bp > 11 && bp < 17));
       if (s.sleeping || blink) {
         const ey = oy + (s.stage === 'baby' ? 10 : 8);
         ctx.fillStyle = (fur && fur.B) || PAL.B;
@@ -634,7 +674,7 @@ export function makeRenderer(cv) {
       }
     }
 
-    if (squashing) ctx.restore();
+    if (squashing || breathing) ctx.restore();
 
     // décompte éclosion (bascule en « ça craque ! » sur la toute fin)
     if (s.stage === 'egg') {
@@ -665,6 +705,16 @@ export function makeRenderer(cv) {
     }
 
     drawParticles();
+
+    // vignettage doux : la scène paraît « éclairée » (bords légèrement assombris)
+    if (vignette === null) {
+      try {
+        vignette = ctx.createRadialGradient(CANVAS_W / 2, 52, 30, CANVAS_W / 2, 66, 118);
+        vignette.addColorStop(0, 'rgba(0,0,0,0)');
+        vignette.addColorStop(1, 'rgba(8,10,18,.28)');
+      } catch (e) { vignette = false; } // canvas sans dégradé (tests) : on s'en passe
+    }
+    if (vignette) { ctx.fillStyle = vignette; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H); }
   }
 
   // Toboggan de rivière : rapides défilants, 3 couloirs, obstacles, la loutre glisse.
