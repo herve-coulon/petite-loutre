@@ -229,12 +229,16 @@ test('garde-robe : déblocage par records + équipement', () => {
   L.records.mealsTotal = 5; // débloque le nœud
   $('b-hats').click();
   assert.ok(!$('ovl-hats').classList.contains('hidden'));
+  // garde-robe en onglets : la section Trésors s'affiche par défaut (26 objets)
+  assert.equal($('hat-list').querySelectorAll('.row-item').length, ITEMS.length, 'onglet Trésors');
+  const tabs = [...$('hat-tabs').querySelectorAll('.tab')];
+  assert.equal(tabs.length, 4, '4 onglets');
+  tabs[1].click(); // onglet Chapeaux 🎩
   const rows = [...$('hat-list').querySelectorAll('.row-item')];
-  assert.equal(rows.length, ITEMS.length + HATS.length + FURS.length + DECORS.length,
-    'trésors + chapeaux + pelages + décors');
-  const noeud = rows[ITEMS.length];       // 1er chapeau (après la section Trésors)
+  assert.equal(rows.length, HATS.length, 'la section Chapeaux seule');
+  const noeud = rows[0];
   assert.ok(!noeud.classList.contains('locked'), 'nœud débloqué');
-  assert.ok(rows[ITEMS.length + 3].classList.contains('locked'), 'couronne verrouillée');
+  assert.ok(rows[3].classList.contains('locked'), 'couronne verrouillée');
   noeud.click();
   assert.equal(L.state.hat, 'noeud');
   $('btn-hats-close').click();

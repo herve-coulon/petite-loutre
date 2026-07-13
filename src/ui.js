@@ -58,6 +58,24 @@ export function renderLevel(rec) {
   $('streak').textContent = st >= 2 ? '🔥' + st : '';
 }
 
+/** Bandeau « objectifs du jour » : les 3 quêtes en un coup d'œil + la série. */
+export function renderDailies(s, rec) {
+  const el = $('dailies');
+  if (!el) return;
+  if (!s || s.stage === 'egg' || s.gameOver || !s.qDaily) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  let html = '';
+  for (const q of dailyQuests(s.qDaily.date)) {
+    const done = s.qDaily.done.includes(q.id);
+    const prog = Math.min(s.qDaily.progress[q.key] || 0, q.target);
+    html += '<span class="daily' + (done ? ' done' : '') + '">' + q.icon + ' ' +
+      (done ? '✓' : prog + '/' + q.target) + '</span>';
+  }
+  const st = Math.max((rec && rec.streakCount) || 0, 1);
+  html += '<span class="daily flame">🔥' + st + '</span>';
+  el.innerHTML = html;
+}
+
 let reducedMotion = false;
 /** Accessibilité : couper les mouvements pilotés par le JS (secousses…). */
 export function setReduced(b) { reducedMotion = !!b; }
@@ -142,7 +160,9 @@ export function updateHUD(s, mg, rec) {
       ['b-feed', 'b-play', 'b-wash', 'b-sleep', 'b-heal'].forEach(id => { $(id).disabled = true; });
     }
   }
-  $('b-mute').textContent = s.mute ? '🔇' : '🔊';
+  const muteIc = $('b-mute').querySelector('.mi') || $('b-mute');
+  muteIc.textContent = s.mute ? '🔇' : '🔊';
+  renderDailies(s, rec);
 }
 
 export function showOverlay(id) { $(id).classList.remove('hidden'); }
@@ -220,22 +240,41 @@ function treasureRows(list, s, rec, onGear) {
   }
 }
 
+let wardrobeTab = 'tresors';
+const WARDROBE_TABS = [
+  { id: 'tresors', label: '💎' }, { id: 'hats', label: '🎩' },
+  { id: 'furs', label: '🦦' }, { id: 'decors', label: '🌿' }
+];
+
 export function renderWardrobe(s, rec, h) {
+  const tabsEl = $('hat-tabs');
   const list = $('hat-list');
+  tabsEl.innerHTML = '';
   list.innerHTML = '';
-  const title = (t) => {
-    const p = document.createElement('p');
-    p.className = 'small'; p.style.marginTop = '4px'; p.textContent = t;
+  for (const t of WARDROBE_TABS) {
+    const b = document.createElement('button');
+    b.className = 'tab' + (wardrobeTab === t.id ? ' on' : '');
+    b.textContent = t.label;
+    b.addEventListener('click', () => { wardrobeTab = t.id; renderWardrobe(s, rec, h); });
+    tabsEl.appendChild(b);
+  }
+  const caption = (t) => {
+    const p = document.createElement('p'); p.className = 'small'; p.textContent = t;
     list.appendChild(p);
   };
-  title('— Trésors — (' + ((rec.items || []).length) + '/' + ITEMS.length + ')');
-  treasureRows(list, s, rec, h.onGear);
-  title('— Chapeaux —');
-  sectionRows(list, HATS, unlockedHats(rec), s && s.hat, h.onHat, true);
-  title('— Pelages —');
-  sectionRows(list, FURS, unlockedFurs(rec), s && s.fur, h.onFur, false);
-  title('— Décor de berge —');
-  sectionRows(list, DECORS, unlockedDecors(rec), s && s.decor, h.onDecor, false);
+  if (wardrobeTab === 'tresors') {
+    caption('Trésors trouvés : ' + ((rec.items || []).length) + ' / ' + ITEMS.length);
+    treasureRows(list, s, rec, h.onGear);
+  } else if (wardrobeTab === 'hats') {
+    caption('Chapeaux — débloqués par tes exploits');
+    sectionRows(list, HATS, unlockedHats(rec), s && s.hat, h.onHat, true);
+  } else if (wardrobeTab === 'furs') {
+    caption('Pelages');
+    sectionRows(list, FURS, unlockedFurs(rec), s && s.fur, h.onFur, false);
+  } else {
+    caption('Décor de berge');
+    sectionRows(list, DECORS, unlockedDecors(rec), s && s.decor, h.onDecor, false);
+  }
 }
 
 /* ---------------- Combat ---------------- */
@@ -291,7 +330,7 @@ export function renderAchievements(rec, s) {
   // Quêtes du jour en tête
   if (s && s.qDaily) {
     const t = document.createElement('p');
-    t.className = 'small'; t.textContent = '— Quêtes du jour —';
+    t.className = 'set-section'; t.textContent = '— 🎯 Quêtes du jour —';
     list.appendChild(t);
     for (const q of dailyQuests(s.qDaily.date)) {
       const done = s.qDaily.done.includes(q.id);
@@ -305,7 +344,7 @@ export function renderAchievements(rec, s) {
       list.appendChild(div);
     }
     const t2 = document.createElement('p');
-    t2.className = 'small'; t2.textContent = '— Succès —';
+    t2.className = 'set-section'; t2.textContent = '— 🏆 Succès —';
     list.appendChild(t2);
   }
   for (const a of ACHIEVEMENTS) {

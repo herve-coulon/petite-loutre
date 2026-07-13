@@ -12,23 +12,47 @@ export const RARITIES = {
 
 // bonus : xp (mult. d'XP gagnée), decay (mult. de décroissance des jauges, <1 = plus lent),
 // luck (mult. de chance de drop), coldResist/heatResist (0..1, atténue les malus de saison).
+// drop:false = exclusif de palier (gagné à un niveau) ; drop:true = à dénicher.
 export const ITEMS = [
-  { id: 'caillou',      emoji: '🪨', name: 'Caillou porte-veine',   rarity: 'commun',     drop: true,  bonus: { xp: 1.03 } },
+  // ---- Communs ----
+  { id: 'caillou',      emoji: '🪨', name: 'Caillou porte-veine',   rarity: 'commun',     drop: false, bonus: { xp: 1.03 } },
+  { id: 'brindille',    emoji: '🌿', name: 'Brindille porte-chance', rarity: 'commun',     drop: false, bonus: { luck: 1.12 } },
+  { id: 'ecaille',      emoji: '🐠', name: 'Écaille chatoyante',    rarity: 'commun',     drop: false, bonus: { xp: 1.04 } },
   { id: 'gland',        emoji: '🌰', name: 'Gland vernissé',        rarity: 'commun',     drop: true,  bonus: { decay: 0.97 } },
   { id: 'plume',        emoji: '🪶', name: 'Plume de héron',        rarity: 'commun',     drop: true,  bonus: { luck: 1.15 } },
-  { id: 'coquillage',   emoji: '🐚', name: 'Coquillage nacré',      rarity: 'rare',       drop: true,  bonus: { xp: 1.08 } },
-  { id: 'trefle',       emoji: '🍀', name: 'Trèfle porte-bonheur',  rarity: 'rare',       drop: true,  bonus: { luck: 1.4 } },
+  { id: 'bulle',        emoji: '🫧', name: 'Bulle irisée',          rarity: 'commun',     drop: true,  bonus: { decay: 0.96 } },
+  { id: 'caillou_lune', emoji: '🌑', name: 'Caillou de lune',       rarity: 'commun',     drop: true,  bonus: { heatResist: 0.35 } },
+  // ---- Rares ----
+  { id: 'coquillage',   emoji: '🐚', name: 'Coquillage nacré',      rarity: 'rare',       drop: false, bonus: { xp: 1.08 } },
+  { id: 'roseau',       emoji: '🎋', name: 'Roseau tressé',         rarity: 'rare',       drop: false, bonus: { decay: 0.91 } },
   { id: 'medaillon',    emoji: '🎖️', name: 'Médaillon du soigneur', rarity: 'rare',       drop: false, bonus: { decay: 0.92 } },
+  { id: 'flocon',       emoji: '❄️', name: 'Flocon éternel',        rarity: 'rare',       drop: false, bonus: { coldResist: 0.5 } },
+  { id: 'trefle',       emoji: '🍀', name: 'Trèfle porte-bonheur',  rarity: 'rare',       drop: true,  bonus: { luck: 1.4 } },
+  { id: 'luciole',      emoji: '💫', name: 'Luciole apprivoisée',   rarity: 'rare',       drop: true,  bonus: { luck: 1.35 } },
+  { id: 'ambre',        emoji: '🍯', name: 'Goutte d\'ambre',       rarity: 'rare',       drop: true,  bonus: { xp: 1.09 } },
+  // ---- Épiques ----
+  { id: 'cristal',      emoji: '🔮', name: 'Cristal de rivière',    rarity: 'epique',     drop: false, bonus: { xp: 1.15 } },
+  { id: 'opale',        emoji: '🔷', name: 'Opale de rivière',      rarity: 'epique',     drop: false, bonus: { xp: 1.13, luck: 1.25 } },
+  { id: 'lune',         emoji: '🌙', name: 'Éclat de lune',         rarity: 'epique',     drop: false, bonus: { decay: 0.86, coldResist: 0.5 } },
+  { id: 'soleil',       emoji: '☀️', name: 'Éclat de soleil',       rarity: 'epique',     drop: false, bonus: { xp: 1.14, heatResist: 0.6 } },
   { id: 'amulette',     emoji: '🧿', name: 'Amulette des saisons',  rarity: 'epique',     drop: true,  bonus: { coldResist: 0.6, heatResist: 0.6 } },
-  { id: 'cristal',      emoji: '🔮', name: 'Cristal de rivière',    rarity: 'epique',     drop: true,  bonus: { xp: 1.15 } },
   { id: 'boussole',     emoji: '🧭', name: 'Boussole d\'ambre',     rarity: 'epique',     drop: true,  bonus: { decay: 0.88 } },
-  { id: 'perle',        emoji: '⚪', name: 'Perle des profondeurs', rarity: 'legendaire', drop: true,  bonus: { xp: 1.2, decay: 0.92 } },
+  // ---- Légendaires ----
+  { id: 'diademe',      emoji: '💎', name: 'Diadème d\'écume',      rarity: 'legendaire', drop: false, bonus: { xp: 1.22, luck: 1.3 } },
+  { id: 'aurore',       emoji: '🌅', name: 'Cœur d\'aurore',        rarity: 'legendaire', drop: false, bonus: { xp: 1.2, decay: 0.88 } },
   { id: 'etoilefilante', emoji: '🌠', name: 'Étoile filante',       rarity: 'legendaire', drop: false, bonus: { xp: 1.25, luck: 1.5 } },
-  { id: 'coeur',        emoji: '💠', name: 'Cœur de la rivière',    rarity: 'legendaire', drop: true,  bonus: { decay: 0.82, coldResist: 0.8, heatResist: 0.8 } }
+  { id: 'perle',        emoji: '⚪', name: 'Perle des profondeurs', rarity: 'legendaire', drop: true,  bonus: { xp: 1.2, decay: 0.92 } },
+  { id: 'coeur',        emoji: '💠', name: 'Cœur de la rivière',    rarity: 'legendaire', drop: true,  bonus: { decay: 0.82, coldResist: 0.8, heatResist: 0.8 } },
+  { id: 'larme',        emoji: '💧', name: 'Larme de la rivière',   rarity: 'legendaire', drop: true,  bonus: { decay: 0.8, coldResist: 0.7, heatResist: 0.7 } }
 ];
 
-// Paliers garantis : atteindre CE niveau octroie le trésor (le reste est à dénicher).
-export const MILESTONES = { 4: 'gland', 8: 'coquillage', 12: 'medaillon', 20: 'amulette', 35: 'perle', 50: 'etoilefilante' };
+// Paliers garantis : atteindre CE niveau octroie le trésor (étalés sur les 50
+// niveaux — de quoi viser en continu). Le reste est à dénicher dans les activités.
+export const MILESTONES = {
+  3: 'caillou', 5: 'brindille', 7: 'ecaille', 10: 'coquillage', 13: 'roseau',
+  16: 'medaillon', 19: 'flocon', 23: 'cristal', 27: 'opale', 31: 'lune',
+  36: 'soleil', 40: 'diademe', 45: 'aurore', 50: 'etoilefilante'
+};
 
 export const itemById = id => ITEMS.find(it => it.id === id) || null;
 

@@ -158,9 +158,14 @@ button.ghost{background:#252a3a; color:var(--dim);}
 button.mini{
   font-family:inherit; background:#252a3a; color:var(--dim);
   border:2px solid var(--ink); font-size:11px; letter-spacing:1px;
-  padding:8px 12px; min-height:38px; cursor:pointer; border-radius:6px;
+  padding:5px 8px; min-height:42px; cursor:pointer; border-radius:6px;
+  display:flex; flex-direction:column; align-items:center; gap:1px;
 }
+button.mini .mi{font-size:16px; line-height:1;}
+button.mini .ml{font-size:8px; letter-spacing:.3px; color:var(--dim); text-transform:uppercase;}
 button.mini:active{color:var(--txt);}
+button.mini:active .ml{color:var(--txt);}
+:root.big-text button.mini .ml{font-size:9.5px;}
 
 /* Overlays à listes (garde-robe, succès, réglages) */
 .ovl.scroll{justify-content:flex-start; overflow-y:auto; gap:9px; padding:14px;}
@@ -174,6 +179,15 @@ button.mini:active{color:var(--txt);}
   padding:7px 10px; margin:-4px -4px -2px 0; cursor:pointer;
 }
 .ovl-x:active{color:var(--accent);}
+/* Onglets (garde-robe…) */
+.tabs{display:flex; gap:6px; justify-content:center; flex-wrap:wrap; width:100%; margin:2px 0 8px;}
+.tab{
+  font-family:inherit; font-size:18px; line-height:1; padding:7px 14px; border-radius:9px;
+  background:#252a3a; color:var(--dim); border:2px solid var(--ink); cursor:pointer; min-height:40px;
+}
+.tab.on{background:linear-gradient(180deg,var(--accent),var(--accent2)); border-color:var(--ink);
+  box-shadow:0 2px 0 var(--ink);}
+
 .list{width:100%; display:flex; flex-direction:column; gap:6px;}
 .row-item{
   display:flex; align-items:center; gap:9px; width:100%;
@@ -193,6 +207,11 @@ button.mini:active{color:var(--txt);}
   -webkit-user-select:text; user-select:text;
 }
 .small{font-size:10px; color:var(--dim); margin:0; line-height:1.5;}
+.set-section{
+  width:100%; text-align:center; font-size:11px; letter-spacing:1px; font-weight:bold;
+  color:var(--accent); margin:9px 0 1px;
+}
+:root.big-text .set-section{font-size:13px;}
 #b-install{background:linear-gradient(180deg,var(--accent),var(--accent2)); color:#241b06; font-weight:bold;}
 #ios-hint{font-size:9.5px; color:var(--dim); letter-spacing:.5px; text-align:center; margin:4px 0 0; flex:none;}
 
@@ -208,6 +227,18 @@ button.mini:active{color:var(--txt);}
 #lvl-fill{background-color:var(--accent); background-image:none; transition:width .4s;}
 #lvl-num{color:var(--dim);}
 #lvl-label{font-weight:bold; white-space:nowrap;}
+
+/* Bandeau objectifs du jour : les 3 quêtes en un coup d'œil + la série */
+#dailies{
+  display:flex; align-items:center; justify-content:center; gap:5px; flex-wrap:wrap;
+  flex:none; margin:0 2px 6px; cursor:pointer;
+}
+.daily{
+  font-size:10px; letter-spacing:.5px; padding:3px 6px; border-radius:6px; white-space:nowrap;
+  background:#252a3a; color:var(--dim); border:1px solid var(--ink);
+}
+.daily.done{background:rgba(138,208,95,.22); color:#bfe6a0; border-color:#3f6d2c;}
+.daily.flame{background:transparent; border:none; color:var(--accent); font-weight:bold;}
 
 /* v2.4 — carte photo */
 #photo-img{
@@ -256,6 +287,7 @@ button.mini:active{color:var(--txt);}
 :root.big-text .row-item{font-size:13px;}
 :root.big-text .row-item small{font-size:11px;}
 :root.big-text .small{font-size:12px;}
+:root.big-text .daily{font-size:12px;}
 :root.big-text button.mini{font-size:13px;}
 
 /* Écrans confortables : look console posée sur la table */

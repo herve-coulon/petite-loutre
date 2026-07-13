@@ -39,7 +39,11 @@ test('paliers : chaque milestone pointe un trésor existant', () => {
     assert.ok(itemById(id), 'niveau ' + lv + ' -> trésor ' + id + ' existe');
     assert.equal(milestoneItem(+lv), id);
   }
-  assert.equal(milestoneItem(7), null, 'pas de palier au niveau 7');
+  assert.equal(milestoneItem(6), null, 'pas de palier au niveau 6');
+  // invariant : un trésor de palier ne se trouve pas aussi en drop (unicité de l'obtention)
+  for (const id of Object.values(MILESTONES)) {
+    assert.equal(itemById(id).drop, false, id + ' : exclusif de palier -> non droppable');
+  }
 });
 
 /* ---------------- bonus ---------------- */

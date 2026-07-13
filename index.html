@@ -34,6 +34,8 @@
     <span id="streak"></span>
   </div>
 
+  <div id="dailies" class="hidden" role="button" tabindex="0" aria-label="Objectifs du jour"></div>
+
   <div id="screenwrap">
     <canvas id="cv" width="160" height="120"></canvas>
 
@@ -70,6 +72,7 @@
     <div id="ovl-hats" class="ovl scroll hidden">
       <button class="ovl-x" aria-label="Fermer">✕</button>
       <p class="big">🎩 Garde-robe</p>
+      <div id="hat-tabs" class="tabs"></div>
       <div id="hat-list" class="list"></div>
       <button class="act ghost" id="btn-hats-close">FERMER</button>
     </div>
@@ -121,18 +124,29 @@
     <div id="ovl-set" class="ovl scroll hidden">
       <button class="ovl-x" aria-label="Fermer">✕</button>
       <p class="big">⚙️ Réglages</p>
-      <p class="small">Code de sauvegarde (pour changer de téléphone) :</p>
+
+      <p class="set-section">— 🎧 Son —</p>
+      <button class="act ghost" id="b-music">🎵 MUSIQUE : OUI</button>
+      <button class="act ghost" id="b-volume">🔊 VOLUME : ●●●</button>
+
+      <p class="set-section">— ♿ Accessibilité —</p>
+      <button class="act ghost" id="b-bigtext">🔠 GROS TEXTE : NON</button>
+      <button class="act ghost" id="b-motion">✨ ANIMATIONS : NORMALES</button>
+
+      <p class="set-section">— 🔔 Rappels —</p>
+      <button class="act ghost" id="b-push">🔔 RAPPELS : NON</button>
+
+      <p class="set-section">— 💾 Sauvegarde (changer de téléphone) —</p>
+      <p class="small">Ton code de sauvegarde :</p>
       <textarea id="exp-code" readonly rows="3"></textarea>
       <button class="act" id="btn-copy">COPIER LE CODE</button>
       <p class="small">Importer un code :</p>
       <textarea id="imp-code" rows="3" placeholder="LOUTRE1…"></textarea>
       <button class="act" id="btn-import">IMPORTER</button>
-      <button class="act ghost" id="b-music">🎵 MUSIQUE : OUI</button>
-      <button class="act ghost" id="b-volume">🔊 VOLUME : ●●●</button>
-      <button class="act ghost" id="b-bigtext">🔠 GROS TEXTE : NON</button>
-      <button class="act ghost" id="b-motion">✨ ANIMATIONS : NORMALES</button>
-      <button class="act ghost" id="b-push">🔔 RAPPELS : NON</button>
+
+      <p class="set-section">— ⚠️ Zone de danger —</p>
       <button class="act ghost" id="b-reset">↺ RECOMMENCER À ZÉRO</button>
+
       <button class="act ghost" id="btn-set-close">FERMER</button>
       <p class="small" id="ver" style="opacity:.7"></p>
     </div>
@@ -183,12 +197,12 @@
   </div>
 
   <div id="foot">
-    <button class="mini" id="b-mute" aria-label="Son">🔊</button>
-    <button class="mini" id="b-hats" aria-label="Garde-robe">🎩</button>
-    <button class="mini" id="b-ach" aria-label="Succès">🏆</button>
-    <button class="mini" id="b-photo" aria-label="Carte photo">📸</button>
+    <button class="mini" id="b-mute" aria-label="Son"><span class="mi">🔊</span><span class="ml">Son</span></button>
+    <button class="mini" id="b-hats" aria-label="Garde-robe"><span class="mi">🎩</span><span class="ml">Garde-robe</span></button>
+    <button class="mini" id="b-ach" aria-label="Succès et quêtes"><span class="mi">🏆</span><span class="ml">Succès</span></button>
+    <button class="mini" id="b-photo" aria-label="Carte photo"><span class="mi">📸</span><span class="ml">Photo</span></button>
     <button class="mini hidden" id="b-install">📲 INSTALLER</button>
-    <button class="mini" id="b-gear" aria-label="Réglages">⚙️</button>
+    <button class="mini" id="b-gear" aria-label="Réglages"><span class="mi">⚙️</span><span class="ml">Réglages</span></button>
   </div>
   <p id="ios-hint" class="hidden">📲 Pour installer : Partager <b>⎋</b> puis « Sur l'écran d'accueil »</p>
 </div>

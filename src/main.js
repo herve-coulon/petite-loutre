@@ -1049,12 +1049,16 @@ function boot() {
   $('btn-photo-close').addEventListener('click', () => { cardCv = null; ui.hideOverlay('ovl-photo'); });
 
   // Succès
-  $('b-ach').addEventListener('click', () => {
+  const openAch = () => {
     sfx.press();
     if (s && s.stage !== 'egg') ensureDaily(s, now());
     ui.renderAchievements(rec, s);
     ui.showOverlay('ovl-ach');
-  });
+  };
+  $('b-ach').addEventListener('click', openAch);
+  // le bandeau « objectifs du jour » ouvre le détail (quêtes + succès)
+  $('dailies').addEventListener('click', openAch);
+  $('dailies').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') openAch(); });
   $('btn-ach-close').addEventListener('click', () => ui.hideOverlay('ovl-ach'));
   $('btn-day-share').addEventListener('click', async () => {
     if (!s) return;

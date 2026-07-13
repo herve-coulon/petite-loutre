@@ -58,7 +58,9 @@ L'app se lance alors en plein écran, fonctionne hors-ligne, et la loutre vit sa
 | Combats ⚔️ | Duels par code de défi à s'échanger entre amis (Niv 10) |
 | Quêtes 🏆 | 3 micro-objectifs par jour, identiques pour tout le monde |
 | Niveaux ⭐ | Chaque geste rapporte de l'XP (« +5 » à l'écran) : **50 niveaux** dont le coût se durcit (le 50 est un objectif long-terme), titres honorifiques jusqu'à « Gardien légendaire », friandise rechargée à chaque montée, cosmétiques de palier — le niveau survit aux loutres |
-| Trésors 💎 | Des objets rares **équipables** à **4 raretés** (commun → légendaire), chacun avec un **petit bonus de jeu** (+XP, jauges plus lentes, résistance aux saisons, meilleure chance…). On les gagne de deux façons : **paliers de niveau** garantis (Niv 4, 8, 12, 20, 35, 50) et **drops** aléatoires dans les activités (plongée, toboggan, combat, pêche, trésor de saison). Un seul équipé à la fois (garde-robe 🎩) ; une lueur de sa rareté orbite près de la loutre |
+| Trésors 💎 | **26 objets rares équipables** à **4 raretés** (commun → légendaire), chacun avec un **petit bonus de jeu** (+XP, jauges plus lentes, résistance aux saisons, meilleure chance…). On les gagne de deux façons : **14 paliers de niveau** garantis (étalés du Niv 3 au 50) et **drops** aléatoires dans les activités (plongée, toboggan, combat, pêche, trésor de saison). Un seul équipé à la fois ; une lueur de sa rareté orbite près de la loutre |
+| Objectifs du jour 🎯 | Un bandeau permanent en haut de l'écran montre les **3 quêtes du jour** avec leur progression et la **série 🔥** — d'un coup d'œil, sans ouvrir de menu (un tap ouvre le détail) |
+| Menus | Garde-robe **en onglets** (💎 Trésors / 🎩 Chapeaux / 🦦 Pelages / 🌿 Décor), boutons du bas **libellés** (Son, Garde-robe, Succès, Photo, Réglages), réglages **rangés par section** (Son / Accessibilité / Rappels / Sauvegarde / Zone de danger) |
 | Série 🔥 | Revenir chaque jour entretient la flamme : paliers 3/7/14/30 jours (XP, pelage Braise, succès) |
 | Chez le héron 🪶 | Plus de mort : négligée, la loutre part bouder chez le héron — on la ramène par 3 soins espacés de 3 h, elle rentre boudeuse |
 | Surprise du jour ✨ | Un événement quotidien identique pour tous (papillon rare à attraper +10 XP, pluie aux champignons, héron pêcheur, canetons, arc-en-ciel) |
@@ -187,4 +189,8 @@ saison, SFX à micro-variation de hauteur. v3.10 : le caractère de la loutre �
 personnalité tirée au baptême (activité préférée + réactions uniques) et lien
 qui grandit avec les soins (paliers célébrés, loutre plus démonstrative à haut
 lien). v3.11 : accessibilité — mouvement réduit (pref système + interrupteur,
-coupe particules/secousses/clignotements) et gros texte.*
+coupe particules/secousses/clignotements) et gros texte. v3.11.1 : mise à jour
+automatique (fini les 2-3 relances). v3.12 : confort & contenu — 26 trésors et
+14 paliers (au lieu de 12/6), bandeau « objectifs du jour » (quêtes + série)
+visible en permanence, et menus repensés (garde-robe en onglets, boutons du bas
+libellés, réglages rangés par section).*
