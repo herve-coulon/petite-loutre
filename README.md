@@ -193,4 +193,7 @@ coupe particules/secousses/clignotements) et gros texte. v3.11.1 : mise à jour
 automatique (fini les 2-3 relances). v3.12 : confort & contenu — 26 trésors et
 14 paliers (au lieu de 12/6), bandeau « objectifs du jour » (quêtes + série)
 visible en permanence, et menus repensés (garde-robe en onglets, boutons du bas
-libellés, réglages rangés par section).*
+libellés, réglages rangés par section). v3.13 : cap « jeu pro » (1/2) — game
+feel (menus qui fondent + zooment à l'ouverture/fermeture, retours de pression
+sur tous les boutons, easing) et vrai écran-titre plein écran (loutre héroïque,
+nom stylisé, accroche, bouton d'adoption soigné).*

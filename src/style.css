@@ -52,10 +52,42 @@ canvas{
   display:flex; flex-direction:column; gap:12px;
   align-items:center; justify-content:center; text-align:center; padding:18px;
   background:rgba(15,18,26,.93); border:2px solid #000;
+  /* game feel : les menus apparaissent/disparaissent en fondu + léger zoom */
+  transition:opacity .2s ease, transform .2s cubic-bezier(.2,.85,.3,1), visibility .2s;
 }
+/* pour l'overlay, .hidden ne coupe pas net : il fond (backdrop compris) */
+.ovl.hidden{
+  display:flex !important; opacity:0; visibility:hidden; pointer-events:none;
+  transform:scale(.96) translateY(8px);
+}
+:root.reduce-motion .ovl{transition:opacity .12s linear; transform:none !important;}
 .ovl p{margin:0; font-size:12px; line-height:1.5; letter-spacing:1px;}
 .ovl .big{font-size:15px; color:var(--accent);}
 .hidden{display:none !important;}
+
+/* ---------------- Écran-titre (première impression) ---------------- */
+#ovl-intro{
+  position:fixed; inset:0; z-index:50; padding:26px; gap:16px; border:none;
+  background:radial-gradient(125% 85% at 50% 22%, #2b3450, #161a26 78%);
+}
+#ovl-intro::after{ /* reflet d'eau stylisé en bas */
+  content:''; position:absolute; left:0; right:0; bottom:0; height:30%; z-index:-1;
+  background:linear-gradient(180deg, transparent, rgba(63,127,209,.22));
+}
+.title-hero{display:flex; flex-direction:column; align-items:center; gap:4px;}
+.title-otter{
+  font-size:70px; line-height:1; filter:drop-shadow(0 6px 0 rgba(0,0,0,.35));
+  animation:bob 3s ease-in-out infinite;
+}
+@keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+:root.reduce-motion .title-otter{animation:none;}
+.title-name{
+  margin:6px 0 0; font-size:30px; line-height:1.05; letter-spacing:2px; text-align:center;
+  color:var(--accent); text-shadow:3px 3px 0 var(--ink), 0 0 20px rgba(244,193,79,.22);
+}
+.title-tag{margin:3px 0 0; font-size:11px; letter-spacing:3px; color:var(--dim); text-transform:uppercase;}
+.title-story{max-width:300px; font-size:12px; line-height:1.7; color:var(--txt); opacity:.92;}
+#ovl-intro #btn-start{padding:14px 28px; font-size:12px; margin-top:6px;}
 
 /* Carte chapitre (fil narratif) — vraie « carte storybook », dimensionnée et scrollable */
 #ovl-story{padding:10px; gap:0; background:rgba(15,18,26,.82); border:none;}
@@ -142,9 +174,10 @@ button.act{
   border:3px solid var(--ink); color:#241b06; font-weight:bold; font-size:10px;
   letter-spacing:.5px; padding:9px 2px; min-height:56px; cursor:pointer; border-radius:8px;
   box-shadow:0 3px 0 var(--ink); text-transform:uppercase;
+  transition:transform .06s ease, box-shadow .06s ease, filter .12s ease;
 }
 button.act .ic{display:block; font-size:19px; margin-bottom:3px;}
-button.act:active{transform:translateY(3px); box-shadow:0 0 0 var(--ink);}
+button.act:active{transform:translateY(3px); box-shadow:0 0 0 var(--ink); filter:brightness(1.08);}
 button.act:disabled{filter:grayscale(1) brightness(.6); cursor:default;
   transform:none; box-shadow:0 3px 0 var(--ink);}
 /* verrouillé par la progression : grisé, mais tapable (explique le déblocage) */
@@ -163,7 +196,8 @@ button.mini{
 }
 button.mini .mi{font-size:16px; line-height:1;}
 button.mini .ml{font-size:8px; letter-spacing:.3px; color:var(--dim); text-transform:uppercase;}
-button.mini:active{color:var(--txt);}
+button.mini{transition:transform .06s ease, background .12s ease, color .12s ease;}
+button.mini:active{color:var(--txt); transform:translateY(1px) scale(.97);}
 button.mini:active .ml{color:var(--txt);}
 :root.big-text button.mini .ml{font-size:9.5px;}
 
@@ -184,7 +218,9 @@ button.mini:active .ml{color:var(--txt);}
 .tab{
   font-family:inherit; font-size:18px; line-height:1; padding:7px 14px; border-radius:9px;
   background:#252a3a; color:var(--dim); border:2px solid var(--ink); cursor:pointer; min-height:40px;
+  transition:transform .08s ease, background .15s ease, box-shadow .15s ease;
 }
+.tab:active{transform:scale(.95);}
 .tab.on{background:linear-gradient(180deg,var(--accent),var(--accent2)); border-color:var(--ink);
   box-shadow:0 2px 0 var(--ink);}
 
@@ -194,13 +230,15 @@ button.mini:active .ml{color:var(--txt);}
   background:#141822; border:2px solid var(--ink); border-radius:4px;
   padding:8px 9px; text-align:left; font-size:11px; color:var(--txt);
   font-family:inherit; cursor:pointer; letter-spacing:.5px;
+  transition:transform .07s ease, border-color .15s ease, background .15s ease;
 }
+.row-item:not(.locked):active{transform:scale(.985); background:#1b2130;}
 .row-item .ic2{font-size:17px; flex:none;}
 .row-item div{flex:1; min-width:0;}
 .row-item small{display:block; color:var(--dim); font-size:9px; letter-spacing:.4px; margin-top:2px;}
 .row-item .tag{flex:none; font-size:9px; color:var(--accent);}
 .row-item.locked{opacity:.5; cursor:default;}
-.row-item.equipped{border-color:var(--accent);}
+.row-item.equipped{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset;}
 .ovl textarea{
   width:100%; background:#141822; border:2px solid var(--ink); color:var(--txt);
   font-family:inherit; font-size:10px; padding:6px; resize:none; border-radius:0;
