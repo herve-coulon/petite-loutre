@@ -200,4 +200,8 @@ nom stylisé, accroche, bouton d'adoption soigné). v3.14 : cap « jeu pro » (2
 direction artistique (scène en profondeur : soleil et halo, nuages qui dérivent,
 collines lointaines brumeuses en perspective atmosphérique, brume d'horizon,
 vignettage doux) et loutre plus vivante (respiration continue, clignements
-naturels avec double-clignement occasionnel), le tout coupé en mouvement réduit.*
+naturels avec double-clignement occasionnel), le tout coupé en mouvement réduit.
+v3.15 : montée en gamme graphique — ciel en dégradé, herbe texturée (brins +
+fleurs) avec berge humide, rivière retravaillée (écume de rive, double couche de
+rides, scintillement du soleil sur l'eau), ombre de contact qui ancre la loutre
+au sol, et roseaux de premier plan qui encadrent la scène (parallaxe/profondeur).*

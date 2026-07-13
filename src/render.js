@@ -405,7 +405,15 @@ export function makeRenderer(cv) {
     const now = new Date();
     const season = seasonInfo(now);
     const c = applySeason(skyColors(now.getHours()), season);
-    ctx.fillStyle = c.sky; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    // ciel en dégradé vertical (plus profond en haut, plus clair vers l'horizon)
+    const skyTop = c.night ? mix(c.sky, '#05060f', 0.4) : mix(c.sky, '#173766', 0.3);
+    const skyBot = c.night ? mix(c.sky, '#161d33', 0.25) : mix(c.sky, '#eaf3ff', 0.24);
+    try {
+      const g = ctx.createLinearGradient(0, 0, 0, 60);
+      g.addColorStop(0, skyTop); g.addColorStop(1, skyBot);
+      ctx.fillStyle = g;
+    } catch (e) { ctx.fillStyle = c.sky; }
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
     // astre + étoiles
     if (c.night) {
@@ -454,13 +462,47 @@ export function makeRenderer(cv) {
     ctx.fillStyle = c.hill2;
     for (let x = 4; x < CANVAS_W; x += 22) ctx.fillRect(x, 66 + ((x * 7) % 18), 2, 3);
 
+    // texture d'herbe : brins clairs/foncés (déterministe -> ne scintille pas)
+    const grassLo = mix(c.hill, '#0f2a18', 0.32), grassHi = mix(c.hill, '#f0ffe0', 0.16);
+    for (let x = 2; x < CANVAS_W; x += 5) {
+      const bh = 2 + ((x * 13) % 3);
+      ctx.fillStyle = ((x >> 2) % 2) ? grassLo : grassHi;
+      ctx.fillRect(x, 100 - bh, 1, bh);
+    }
+    // bande humide plus foncée le long de la berge
+    ctx.fillStyle = mix(c.hill, '#0c2416', 0.42);
+    ctx.fillRect(0, 101, CANVAS_W, 3);
+    // petites fleurs éparses (sur les côtés, couleur selon la saison)
+    const fcol = season.key === 'hiver' ? '#e4edf5' : season.key === 'automne' ? '#e5843a' : '#f2d24e';
+    for (const [fx2, fy2] of [[16, 90], [30, 97], [110, 88], [132, 95], [146, 90]]) {
+      ctx.fillStyle = fcol; ctx.fillRect(fx2, fy2, 2, 2);
+      ctx.fillStyle = mix(fcol, '#ffffff', 0.45); ctx.fillRect(fx2, fy2, 1, 1);
+    }
+
     // rivière animée
     ctx.fillStyle = c.water; ctx.fillRect(0, 104, CANVAS_W, 16);
+    // écume de rive (liseré clair) + fond légèrement dégradé
+    ctx.fillStyle = mix(c.water, '#0a1830', 0.35); ctx.fillRect(0, 116, CANVAS_W, 4);
+    ctx.fillStyle = mix(c.water, '#ffffff', 0.4); ctx.fillRect(0, 104, CANVAS_W, 1);
     ctx.fillStyle = c.wave;
     const off = (frame >> 3) % 16;
     for (let x = -16; x < CANVAS_W; x += 16) {
       ctx.fillRect(x + off, 107, 8, 2);
       ctx.fillRect(x + off + 8, 113, 8, 2);
+    }
+    // fines rides (2e couche, dérive plus lente -> profondeur de l'eau)
+    ctx.fillStyle = mix(c.water, c.wave, 0.55);
+    const off2 = (frame >> 4) % 24;
+    for (let x = -24; x < CANVAS_W; x += 24) {
+      ctx.fillRect(x - off2 + 12, 110, 6, 1);
+      ctx.fillRect(x - off2, 116, 5, 1);
+    }
+    // scintillement du soleil sur l'eau (le jour), aligné sous l'astre
+    if (!c.night) {
+      ctx.fillStyle = 'rgba(255,244,190,.5)';
+      for (let y = 105; y < 118; y += 2) {
+        if (((y + (frame >> 2)) >> 1) % 2) ctx.fillRect(130 + ((y * 3) % 5), y, 3, 1);
+      }
     }
 
     if (!s) return;
@@ -567,6 +609,15 @@ export function makeRenderer(cv) {
     const coldStress = alive && season.key === 'hiver' && (s.energy < SEASON_FX.COLD_LOW_ENERGY || s.sick);
     const heatStress = alive && season.key === 'ete' && s.clean < SEASON_FX.HEAT_OVERHEAT_CLEAN;
     if (coldStress) ox += (frame >> 1) % 2 === 0 ? -1 : 1; // grelottement rapide
+
+    // ombre de contact au sol : ancre la loutre (rétrécit et s'éclaircit quand elle saute)
+    if (s.stage !== 'egg' && !s.away) {
+      const lift = Math.max(0, GROUND_Y - (oy + spr.length * 2));
+      const w = 24 - lift * 2, sx0 = OTTER_X + 16 - (w >> 1);
+      ctx.fillStyle = 'rgba(16,26,16,' + (0.26 - lift * 0.03).toFixed(2) + ')';
+      ctx.fillRect(sx0 + 2, GROUND_Y - 1, w - 4, 2);
+      ctx.fillRect(sx0, GROUND_Y, w, 1);
+    }
 
     // squash & stretch (ancré aux pieds, tout le corps + chapeau suivent)
     const sqT = 1 - Math.max(0, squashUntil - Date.now()) / SQUASH_MS;
@@ -702,6 +753,23 @@ export function makeRenderer(cv) {
       ctx.fillStyle = 'rgba(15,18,26,.8)'; ctx.fillRect(0, 0, CANVAS_W, 11);
       ctx.fillStyle = '#ffe9a8'; ctx.font = '8px monospace';
       ctx.fillText('PÊCHE  ' + left.toFixed(0) + 's   score:' + mg.score, 6, 9);
+    }
+
+    // roseaux de premier plan : silhouettes qui encadrent la scène (parallaxe/profondeur)
+    if (!mg) {
+      const reed = (bx, baseY, h, phase, lean) => {
+        const sway = reduced ? 0 : Math.sin(frame / 38 + phase);
+        ctx.fillStyle = '#152a17';
+        for (let i = 0; i < h; i++) {
+          const t = i / h, xx = bx + Math.round((lean + sway * 2) * t * t);
+          ctx.fillRect(xx, baseY - i, 2, 1);
+        }
+        const tx = bx + Math.round(lean + sway * 2); // massette (épi) au sommet
+        ctx.fillStyle = '#3f2a17'; ctx.fillRect(tx - 1, baseY - h - 5, 4, 6);
+        ctx.fillStyle = '#5a3a22'; ctx.fillRect(tx - 1, baseY - h - 5, 2, 6);
+      };
+      reed(6, 118, 20, 0, 1); reed(12, 120, 26, 1.4, -1); reed(2, 116, 15, 2.1, 2);
+      reed(150, 120, 24, 0.7, -1); reed(156, 117, 18, 2.6, 1);
     }
 
     drawParticles();
