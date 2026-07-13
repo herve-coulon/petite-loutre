@@ -204,4 +204,9 @@ naturels avec double-clignement occasionnel), le tout coupé en mouvement rédui
 v3.15 : montée en gamme graphique — ciel en dégradé, herbe texturée (brins +
 fleurs) avec berge humide, rivière retravaillée (écume de rive, double couche de
 rides, scintillement du soleil sur l'eau), ombre de contact qui ancre la loutre
-au sol, et roseaux de premier plan qui encadrent la scène (parallaxe/profondeur).*
+au sol, et roseaux de premier plan qui encadrent la scène (parallaxe/profondeur).
+v3.16 : loutre vivante (1/… « qualité pro ») — elle flâne librement sur la berge
+(balade d'un point à l'autre + dandinement), relief lumineux sur son pelage
+(liseré soleil le jour / lune la nuit + occlusion sous le ventre pour le volume),
+et une vraie voix (petits couinements de loutre quand on la caresse). Le tap-à-
+câlin suit désormais sa position vivante. Balade coupée en mouvement réduit.*

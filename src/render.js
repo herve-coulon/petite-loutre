@@ -59,6 +59,31 @@ export function makeRenderer(cv) {
   let nextIdleAt = 400 + Math.random() * 700;       // en frames
   let jumpFish = null;                              // {x, dir, start} — poisson qui saute
   let nextJumpAt = 300 + Math.random() * 500;
+  // balade : la loutre flâne sur la berge (position vivante, bord gauche du sprite)
+  let otterWX = OTTER_X;
+  let otterTarget = OTTER_X;
+  let otterDwell = 0;         // frame jusqu'à laquelle elle reste sur place
+  let wanderSeed = 1;         // avance à chaque nouvelle cible (choix pseudo-aléatoire stable)
+
+  // Relief : liseré lumineux sur le bord tourné vers l'astre (haut-droite) + occlusion
+  // sous le ventre. Dessiné par-dessus le sprite -> volume sans retoucher les grilles.
+  function drawRim(rows, x, y, sc, lightCol, occCol) {
+    for (let j = 0; j < rows.length; j++) {
+      const row = rows[j];
+      for (let i = 0; i < row.length; i++) {
+        if (row[i] === '.') continue;
+        const up = j > 0 ? rows[j - 1][i] : '.';
+        const right = i < row.length - 1 ? rows[j][i + 1] : '.';
+        const down = j < rows.length - 1 ? rows[j + 1][i] : '.';
+        if (up === '.' || right === '.') {
+          ctx.fillStyle = lightCol;
+          if (up === '.') ctx.fillRect(x + i * sc, y + j * sc, sc, 1);
+          if (right === '.') ctx.fillRect(x + i * sc + sc - 1, y + j * sc, 1, sc);
+        }
+        if (down === '.') { ctx.fillStyle = occCol; ctx.fillRect(x + i * sc, y + j * sc + sc - 1, sc, 1); }
+      }
+    }
+  }
 
   function drawSprite(rows, x, y, sc = 2, palOver = null, flip = false) {
     for (let j = 0; j < rows.length; j++) {
@@ -595,8 +620,25 @@ export function makeRenderer(cv) {
     // éclosion : plus l'œuf approche, plus il se fissure et tremble tout seul
     const eggProg = s.stage === 'egg' ? Math.max(0, Math.min(1, (Date.now() - s.born) / HATCH_MS)) : 0;
     const crack = s.stage === 'egg' ? eggCrackLevel(eggProg) : 0;
-    const bounce = (s.sleeping || s.stage === 'egg' || yawning) ? 0 : ((frame >> 4) % 2 === 0 ? 0 : -2);
-    let ox = OTTER_X, oy = otterY(s.stage) + bounce;
+    // balade tranquille sur la berge (coupée : sommeil/œuf/absente/mini-jeu/combat/plongée/mvt réduit)
+    const canRoam = s.stage !== 'egg' && !s.sleeping && !s.away && !s.gameOver && !mg && !fx.foe && !fx.diving && !reduced && !idleAnim;
+    let walking = false;
+    if (canRoam) {
+      if (frame >= otterDwell && Math.abs(otterWX - otterTarget) < 0.5) {
+        wanderSeed = (wanderSeed * 1103515245 + 12345) & 0x7fffffff; // LCG : cible stable, pas de Math.random
+        otterTarget = 42 + (wanderSeed % 45);       // 42..86 : reste sur la berge, plein cadre
+        otterDwell = frame + 150 + (wanderSeed % 260);
+      }
+      const d = otterTarget - otterWX;
+      if (Math.abs(d) > 0.5) { otterWX += Math.sign(d) * Math.min(0.4, Math.abs(d)); walking = true; }
+    } else {
+      otterWX += (OTTER_X - otterWX) * 0.15;         // retour en douceur au centre pour ces modes
+    }
+    // rebond : petit pas de dandinement en marchant, sinon léger sautillement
+    const bounce = (s.sleeping || s.stage === 'egg' || yawning) ? 0
+      : walking ? ((frame >> 2) % 2 === 0 ? 0 : -1)
+      : ((frame >> 4) % 2 === 0 ? 0 : -2);
+    let ox = Math.round(otterWX), oy = otterY(s.stage) + bounce;
     // tremblement : provoqué (réchauffage/secousse) ou spontané quand ça va craquer
     // (le tremblement spontané est coupé en mouvement réduit)
     if (s.stage === 'egg' && (fx.wobble || (crack >= 3 && !reduced))) ox += ((frame >> 1) % 2 === 0 ? -2 : 2);
@@ -613,7 +655,7 @@ export function makeRenderer(cv) {
     // ombre de contact au sol : ancre la loutre (rétrécit et s'éclaircit quand elle saute)
     if (s.stage !== 'egg' && !s.away) {
       const lift = Math.max(0, GROUND_Y - (oy + spr.length * 2));
-      const w = 24 - lift * 2, sx0 = OTTER_X + 16 - (w >> 1);
+      const w = 24 - lift * 2, sx0 = ox + 16 - (w >> 1);
       ctx.fillStyle = 'rgba(16,26,16,' + (0.26 - lift * 0.03).toFixed(2) + ')';
       ctx.fillRect(sx0 + 2, GROUND_Y - 1, w - 4, 2);
       ctx.fillRect(sx0, GROUND_Y, w, 1);
@@ -636,6 +678,10 @@ export function makeRenderer(cv) {
     }
 
     drawSprite(spr, ox, oy, 2, s.stage === 'egg' ? null : fur);
+    // relief lumineux (jour : soleil chaud ; nuit : lune froide et discrète)
+    drawRim(spr, ox, oy, 2,
+      c.night ? 'rgba(200,214,255,.28)' : 'rgba(255,246,205,.5)',
+      'rgba(0,0,0,.22)');
     if (crack > 0) drawEggCracks(ox, oy, crack, frame);
 
     // chapeau équipé (posé sur la tête, suit le rebond)
@@ -856,5 +902,11 @@ export function makeRenderer(cv) {
 
   function setReduced(b) { reduced = !!b; }
 
-  return { render, spawn, splashAt, burst, squash, xpText, setReduced };
+  // Boîte de la loutre à sa position vivante (pour le tap-to-câlin, qui bouge avec elle).
+  function otterBox(stage) {
+    const sp = SPRITES[stage] || SPRITES.baby;
+    return { x: Math.round(otterWX), y: otterY(stage), w: 32, h: sp.length * 2 };
+  }
+
+  return { render, spawn, splashAt, burst, squash, xpText, setReduced, otterBox };
 }

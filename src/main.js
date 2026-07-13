@@ -21,7 +21,7 @@ import {
 import { stepSim, simulateOffline, ageMs } from './sim.js';
 import { newGame, tickGame, clickGame } from './minigame.js';
 import { newSlide, tickSlide, setSlideLane, laneAt } from './toboggan.js';
-import { makeRenderer, OTTER_X, otterY } from './render.js';
+import { makeRenderer } from './render.js';
 import { sfx, vibrate, setMuted, setVolume, getVolume } from './audio.js';
 import * as ui from './ui.js';
 import { registerSW, setupInstall, requestPersistentStorage } from './pwa.js';
@@ -288,13 +288,13 @@ function pet() {
     lastPet = t;
     s.fun = clamp(s.fun + 3, 0, 100);
     R.spawn('heart', s.stage);
-    sfx.happy();
+    sfx.happy(); sfx.chirpHappy(); vibrate(10); // elle couine de plaisir
     ui.log(s.name + ' adore les caresses ! 💛');
     gainXp(XP.pet);
     quest('pets');
     careBond('pet');
   } else {
-    sfx.press();
+    sfx.press(); sfx.chirp();
   }
 }
 
@@ -431,8 +431,8 @@ function onCanvasPointer(e) {
       }
     }
 
-    const ox = OTTER_X, oy = otterY(s.stage);
-    if (x >= ox - 4 && x <= ox + 36 && y >= oy - 4 && y <= oy + 40) pet();
+    const box = R.otterBox(s.stage);
+    if (x >= box.x - 6 && x <= box.x + box.w + 6 && y >= box.y - 6 && y <= box.y + box.h + 8) pet();
   }
 }
 

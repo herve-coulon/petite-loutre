@@ -81,6 +81,29 @@ export function beep(freq, dur = 0.09, delay = 0, type = 'square', vol = 0.08) {
   } catch (e) {}
 }
 
+/**
+ * Voix de la loutre : petit couinement (glissando aigu façon loutre).
+ * `tone` module la hauteur -> joyeuse (>1), neutre (1), grognon (<1).
+ */
+export function chirp(tone = 1, rnd = Math.random) {
+  if (muted) return;
+  const ac = ctx(); if (!ac) return;
+  try {
+    const t = ac.currentTime;
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'triangle';
+    const base = 600 * tone * (1 + (rnd() - 0.5) * 0.06);
+    o.frequency.setValueAtTime(base, t);
+    o.frequency.exponentialRampToValueAtTime(base * 1.5, t + 0.05);
+    o.frequency.exponentialRampToValueAtTime(base * 1.08, t + 0.14);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.055, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.17);
+    o.connect(g); g.connect(busSfx || ac.destination);
+    o.start(t); o.stop(t + 0.2);
+  } catch (e) {}
+}
+
 export function vibrate(pattern = 12) {
   try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
 }
@@ -90,6 +113,9 @@ const D = (fn) => () => { duck(); fn(); };
 
 export const sfx = {
   press:  () => beep(520, 0.05),
+  chirp:      () => chirp(1),
+  chirpHappy: D(() => chirp(1.35)),
+  chirpSad:   () => chirp(0.72),
   eat:    D(() => { beep(392, 0.07); beep(494, 0.07, 0.09); }),
   happy:  D(() => { beep(523, 0.07); beep(659, 0.07, 0.08); beep(784, 0.1, 0.16); }),
   wash:   () => { beep(740, 0.06); beep(880, 0.09, 0.07, 'sine'); },
