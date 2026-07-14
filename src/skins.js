@@ -11,7 +11,7 @@ export const FURS = [
   { id: 'doree', icon: '✨', name: 'Dorée', cond: 'Attraper 50 poissons',
     test: r => r.fishTotal >= 50, map: { B: '#c99a3d', C: '#f4e3b2', D: '#6b4e1a' } },
   { id: 'neige', icon: '❄️', name: 'Neige', cond: 'Donner 25 bains',
-    test: r => r.bathsTotal >= 25, map: { B: '#e8e4dc', C: '#ffffff', D: '#8a8578' } },
+    test: r => r.bathsTotal >= 25, map: { B: '#d3dfe9', C: '#ffffff', D: '#4f6170' } },
   { id: 'nuit', icon: '🌙', name: 'Bleu nuit', cond: 'Dormir 20 fois',
     test: r => r.sleepsTotal >= 20, map: { B: '#3d4c6e', C: '#9fb0d0', D: '#1c2438' } },
   { id: 'bonbon', icon: '🍬', name: 'Rose bonbon', cond: 'Gagner 3 combats',

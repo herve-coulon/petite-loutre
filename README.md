@@ -209,4 +209,8 @@ v3.16 : loutre vivante (1/… « qualité pro ») — elle flâne librement sur 
 (balade d'un point à l'autre + dandinement), relief lumineux sur son pelage
 (liseré soleil le jour / lune la nuit + occlusion sous le ventre pour le volume),
 et une vraie voix (petits couinements de loutre quand on la caresse). Le tap-à-
-câlin suit désormais sa position vivante. Balade coupée en mouvement réduit.*
+câlin suit désormais sa position vivante. Balade coupée en mouvement réduit.
+v3.16.1 : la berceuse de nuit ne « disparaissait » plus qu'à moitié — remontée
+d'une octave, tenue et plus audible (une vraie mélodie, pas juste une basse) ; et
+le pelage « Neige » redessiné (corps blanc froid + contour ardoise) pour une
+silhouette nette au lieu d'un aplat blanc.*

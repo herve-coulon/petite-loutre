@@ -90,7 +90,9 @@ function schedule() {
     if (!isMuted()) {
       const m = score.mel[step];
       if (m) {
-        if (night) note(ac, m / 2, nextT, dur * 0.92, voice.mel === 'square' ? 'triangle' : voice.mel, 0.045);
+        // nuit : berceuse douce mais AUDIBLE — registre médium (plus grave, ça disparaissait),
+        // note tenue façon boîte à musique, volume rehaussé pour rester une vraie mélodie
+        if (night) note(ac, m, nextT, dur * 1.15, voice.mel === 'square' ? 'triangle' : voice.mel, 0.058);
         else note(ac, m, nextT, dur * 0.85, voice.mel, 0.05); // staccato, timbre de la saison
       }
       // basse : à la noire le jour (ça pompe), à la blanche la nuit (ça berce)
