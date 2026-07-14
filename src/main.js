@@ -21,7 +21,7 @@ import {
 import { stepSim, simulateOffline, ageMs } from './sim.js';
 import { newGame, tickGame, clickGame } from './minigame.js';
 import { newSlide, tickSlide, setSlideLane, laneAt } from './toboggan.js';
-import { makeRenderer } from './render.js';
+import { makeRenderer, FOOD_POS } from './render.js';
 import { sfx, vibrate, setMuted, setVolume, getVolume } from './audio.js';
 import * as ui from './ui.js';
 import { registerSW, setupInstall, requestPersistentStorage } from './pwa.js';
@@ -45,6 +45,7 @@ let prevHats = new Set();     // pour détecter les nouveaux déblocages
 let mg = null;
 let battle = null;
 let frame = 0;
+let dragFood = null;          // {x,y} quand on glisse le poisson vers la loutre (px canvas)
 let wobbleUntil = 0, lastWarm = 0, lastPet = 0, lastSave = 0, lastTickAt = now();
 let storyOpen = false;        // une carte chapitre est à l'écran
 let coachTarget = null;       // bouton actuellement surligné par le tutoriel
@@ -390,6 +391,17 @@ function onCanvasPointer(e) {
     if (s.stage === 'egg') { actWarm(); return; }
     if (s.away) return; // elle n'est pas là — le bouton du héron fait le travail
 
+    // attraper le poisson posé sur la berge -> on le glissera jusqu'à sa bouche (nourrir)
+    if (!busy() && !s.sleeping && s.hunger < 92) {
+      const f = FOOD_POS;
+      if (x >= f.x - pad && x <= f.x + f.w + pad && y >= f.y - pad && y <= f.y + f.h + pad) {
+        dragFood = { x, y };
+        try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+        vibrate(8);
+        return;
+      }
+    }
+
     // trésor de saison du jour : à récolter une fois (récompense thématique)
     const treat = seasonInfo().treat;
     if (treat && treatAvailable(s)) {
@@ -432,7 +444,36 @@ function onCanvasPointer(e) {
     }
 
     const box = R.otterBox(s.stage);
-    if (x >= box.x - 6 && x <= box.x + box.w + 6 && y >= box.y - 6 && y <= box.y + box.h + 8) pet();
+    if (x >= box.x - 6 && x <= box.x + box.w + 6 && y >= box.y - 6 && y <= box.y + box.h + 8) { pet(); return; }
+
+    // ailleurs sur la scène : on l'appelle vers le point touché (elle vient),
+    // avec un petit plouf si on tapote l'eau
+    if (y >= 60 && !s.sleeping) {
+      R.callTo(x);
+      if (y >= 104) { R.splashAt(x, 108); sfx.chirp(); vibrate(6); }
+    }
+  }
+}
+
+// Glisser le poisson : il suit le doigt ; lâché sur la loutre -> elle mange.
+function onCanvasMove(e) {
+  if (!dragFood) return;
+  const r = cv.getBoundingClientRect();
+  dragFood = {
+    x: (e.clientX - r.left) * (cv.width / r.width),
+    y: (e.clientY - r.top) * (cv.height / r.height)
+  };
+}
+
+function onCanvasUp(e) {
+  if (!dragFood) return;
+  const drop = dragFood; dragFood = null;
+  try { cv.releasePointerCapture(e.pointerId); } catch (_) {}
+  if (!s || busy() || s.sleeping) return;
+  const box = R.otterBox(s.stage);
+  if (drop.x >= box.x - 10 && drop.x <= box.x + box.w + 10 && drop.y >= box.y - 10 && drop.y <= box.y + box.h + 12) {
+    R.splashAt(box.x + 16, box.y + 10); // petit plouf de gourmandise
+    actFeed(); sfx.chirpHappy();
   }
 }
 
@@ -831,7 +872,8 @@ function loop() {
   R.render(s, mg, frame, {
     wobble: s && now() < wobbleUntil,
     diving: diving(),
-    foe: battle ? battle.foe : null
+    foe: battle ? battle.foe : null,
+    dragFood
   });
   requestAnimationFrame(loop);
 }
@@ -1119,6 +1161,9 @@ function boot() {
   });
 
   cv.addEventListener('pointerdown', onCanvasPointer);
+  cv.addEventListener('pointermove', onCanvasMove);
+  cv.addEventListener('pointerup', onCanvasUp);
+  cv.addEventListener('pointercancel', onCanvasUp);
   cv.addEventListener('contextmenu', e => e.preventDefault());
   window.addEventListener('beforeunload', persist);
   document.addEventListener('visibilitychange', () => {

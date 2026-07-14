@@ -213,4 +213,9 @@ câlin suit désormais sa position vivante. Balade coupée en mouvement réduit.
 v3.16.1 : la berceuse de nuit ne « disparaissait » plus qu'à moitié — remontée
 d'une octave, tenue et plus audible (une vraie mélodie, pas juste une basse) ; et
 le pelage « Neige » redessiné (corps blanc froid + contour ardoise) pour une
-silhouette nette au lieu d'un aplat blanc.*
+silhouette nette au lieu d'un aplat blanc.
+v3.17 : interaction directe (« la scène répond au doigt ») — on glisse le poisson
+posé sur la berge jusqu'à sa bouche pour la nourrir, et on tape la berge ou l'eau
+pour l'appeler (elle vient, petit plouf si on tapote l'eau). Les boutons restent.
+Correctif au passage : la loutre ne se recentrait plus toute seule pendant ses
+petites manies (elle reste où elle est, sauf combat/mini-jeu).*

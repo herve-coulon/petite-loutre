@@ -13,6 +13,8 @@ import { LANE_X, SLIDE_OTTER_Y } from './toboggan.js';
 export const CANVAS_W = 160, CANVAS_H = 120;
 export const OTTER_X = 64;
 export const GROUND_Y = 96;
+// jeton de nourriture posé sur la berge : on l'attrape et on le glisse jusqu'à la loutre
+export const FOOD_POS = { x: 16, y: 86, w: 20, h: 10 };
 
 /**
  * Éclosion cinématique : niveau de fissures de l'œuf selon la progression
@@ -64,6 +66,7 @@ export function makeRenderer(cv) {
   let otterTarget = OTTER_X;
   let otterDwell = 0;         // frame jusqu'à laquelle elle reste sur place
   let wanderSeed = 1;         // avance à chaque nouvelle cible (choix pseudo-aléatoire stable)
+  let lastFrame = 0;          // dernier numéro de frame vu (pour les appels externes)
 
   // Relief : liseré lumineux sur le bord tourné vers l'astre (haut-droite) + occlusion
   // sous le ventre. Dessiné par-dessus le sprite -> volume sans retoucher les grilles.
@@ -427,6 +430,7 @@ export function makeRenderer(cv) {
 
   function render(s, mg, frame, fx) {
     fx = fx || {};
+    lastFrame = frame;
     const now = new Date();
     const season = seasonInfo(now);
     const c = applySeason(skyColors(now.getHours()), season);
@@ -631,9 +635,11 @@ export function makeRenderer(cv) {
       }
       const d = otterTarget - otterWX;
       if (Math.abs(d) > 0.5) { otterWX += Math.sign(d) * Math.min(0.4, Math.abs(d)); walking = true; }
-    } else {
-      otterWX += (OTTER_X - otterWX) * 0.15;         // retour en douceur au centre pour ces modes
+    } else if (mg || fx.foe) {
+      // combat / mini-jeu : la loutre revient au centre (position attendue par la scène)
+      otterWX += (OTTER_X - otterWX) * 0.2;
     }
+    // sinon (manie, sommeil, mvt réduit) : elle reste où elle est — pas de recentrage forcé
     // rebond : petit pas de dandinement en marchant, sinon léger sautillement
     const bounce = (s.sleeping || s.stage === 'egg' || yawning) ? 0
       : walking ? ((frame >> 2) % 2 === 0 ? 0 : -1)
@@ -801,6 +807,23 @@ export function makeRenderer(cv) {
       ctx.fillText('PÊCHE  ' + left.toFixed(0) + 's   score:' + mg.score, 6, 9);
     }
 
+    // jeton de nourriture (poisson) : posé sur la berge quand elle a faim, ou suivant
+    // le doigt quand on le glisse vers elle (interaction directe)
+    if (!mg && s.stage !== 'egg') {
+      const drag = fx.dragFood;
+      if (drag || s.hunger < 92) {
+        const tx = drag ? Math.round(drag.x) - 10 : FOOD_POS.x;
+        const wiggle = drag ? 0 : Math.round(Math.sin(frame / 18));
+        const ty = (drag ? Math.round(drag.y) - 5 : FOOD_POS.y) + wiggle;
+        ctx.fillStyle = 'rgba(16,26,16,.22)';
+        ctx.fillRect(tx + 3, (drag ? Math.round(drag.y) + 7 : FOOD_POS.y + 12), 14, 2);
+        drawSprite(SPRITES.fish, tx, ty, 2);
+        if (!drag && (frame >> 4) % 3 === 0) { // petite étincelle « prends-moi »
+          ctx.fillStyle = '#fff6cd'; ctx.fillRect(tx + 20, FOOD_POS.y - 2, 1, 1);
+        }
+      }
+    }
+
     // roseaux de premier plan : silhouettes qui encadrent la scène (parallaxe/profondeur)
     if (!mg) {
       const reed = (bx, baseY, h, phase, lean) => {
@@ -908,5 +931,12 @@ export function makeRenderer(cv) {
     return { x: Math.round(otterWX), y: otterY(stage), w: 32, h: sp.length * 2 };
   }
 
-  return { render, spawn, splashAt, burst, squash, xpText, setReduced, otterBox };
+  // Appel : la loutre rejoint le point touché (on tape la berge/l'eau, elle vient),
+  // puis flâne un moment sur place avant de reprendre sa balade.
+  function callTo(px) {
+    otterTarget = Math.max(42, Math.min(86, Math.round(px - 16)));
+    otterDwell = lastFrame + 260;
+  }
+
+  return { render, spawn, splashAt, burst, squash, xpText, setReduced, otterBox, callTo };
 }
