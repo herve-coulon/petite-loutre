@@ -223,4 +223,9 @@ v3.18 : la Tanière — un second lieu, cosy (mur de terre, plancher, tapis,
 lanterne, nid), où la loutre se repose et où l'on retrouve sa collection de
 trésors exposée sur des étagères (gemmes colorées par rareté, compteur x/26).
 Bouton 🏠/🌊 pour passer de la berge à la tanière ; taper un trésor l'identifie
-(nom · rareté · bonus), et on peut toujours la caresser sur place.*
+(nom · rareté · bonus), et on peut toujours la caresser sur place.
+v3.19 : ball-fetch — une balle est posée sur la berge ; on l'attrape et on la
+lance (glisser puis relâcher, la balle décrit un arc jusqu'au point de largage),
+la loutre court la chercher et la rapporte fièrement dans sa gueule, avec une
+petite récompense de jeu (humeur, lien, XP, couinement). Complète le trio
+d'interactions directes (nourrir · appeler · jouer).*

@@ -46,6 +46,7 @@ let mg = null;
 let battle = null;
 let frame = 0;
 let dragFood = null;          // {x,y} quand on glisse le poisson vers la loutre (px canvas)
+let draggingBall = false;     // vrai pendant qu'on tient la balle pour la lancer
 let wobbleUntil = 0, lastWarm = 0, lastPet = 0, lastSave = 0, lastTickAt = now();
 let storyOpen = false;        // une carte chapitre est à l'écran
 let coachTarget = null;       // bouton actuellement surligné par le tutoriel
@@ -429,6 +430,14 @@ function onCanvasPointer(e) {
       return;
     }
 
+    // attraper la balle posée sur la berge -> on la lancera (glisser puis relâcher)
+    if (!busy() && !s.sleeping && R.grabBall(x, y)) {
+      draggingBall = true;
+      try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+      vibrate(8);
+      return;
+    }
+
     // attraper le poisson posé sur la berge -> on le glissera jusqu'à sa bouche (nourrir)
     if (!busy() && !s.sleeping && s.hunger < 92) {
       const f = FOOD_POS;
@@ -493,17 +502,27 @@ function onCanvasPointer(e) {
   }
 }
 
-// Glisser le poisson : il suit le doigt ; lâché sur la loutre -> elle mange.
-function onCanvasMove(e) {
-  if (!dragFood) return;
+// Gestes de glissement : la balle qu'on lance, ou le poisson qu'on donne. Le doigt
+// pilote le jeton ; on convertit les coords écran -> coords canvas.
+function canvasXY(e) {
   const r = cv.getBoundingClientRect();
-  dragFood = {
-    x: (e.clientX - r.left) * (cv.width / r.width),
-    y: (e.clientY - r.top) * (cv.height / r.height)
-  };
+  return { x: (e.clientX - r.left) * (cv.width / r.width), y: (e.clientY - r.top) * (cv.height / r.height) };
+}
+function onCanvasMove(e) {
+  if (draggingBall) { const p = canvasXY(e); R.dragBall(p.x, p.y); return; }
+  if (dragFood) dragFood = canvasXY(e);
 }
 
 function onCanvasUp(e) {
+  // lâcher la balle -> elle est lancée vers le point de largage, la loutre la rapporte
+  if (draggingBall) {
+    const p = canvasXY(e);
+    R.throwBall(p.x, p.y);
+    draggingBall = false;
+    try { cv.releasePointerCapture(e.pointerId); } catch (_) {}
+    sfx.press(); vibrate(6);
+    return;
+  }
   if (!dragFood) return;
   const drop = dragFood; dragFood = null;
   try { cv.releasePointerCapture(e.pointerId); } catch (_) {}
@@ -513,6 +532,18 @@ function onCanvasUp(e) {
     R.splashAt(box.x + 16, box.y + 10); // petit plouf de gourmandise
     actFeed(); sfx.chirpHappy();
   }
+}
+
+// La loutre vient de rapporter la balle : petite récompense de jeu (humeur, lien, XP).
+function onFetchDone() {
+  if (!s || busy() || s.sleeping) return;
+  s.fun = clamp(s.fun + 8, 0, 100);
+  R.spawn('heart', s.stage); R.burst('sparkle', 4, s.stage);
+  sfx.chirpHappy(); vibrate(12);
+  careBond('play');
+  gainXp(XP.pet);
+  ui.log(s.name + ' rapporte la balle, tout fier ! 🎾');
+  afterAct();
 }
 
 /** Musique + ambiance jouent quand : loutre en vie, option activée, pas coupé, app visible. */
@@ -915,6 +946,7 @@ function loop() {
     dragFood,
     owned: rec ? rec.items : null
   });
+  if (R.consumeFetch()) onFetchDone(); // la loutre vient de rapporter la balle
   requestAnimationFrame(loop);
 }
 

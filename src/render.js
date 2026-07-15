@@ -16,6 +16,9 @@ export const GROUND_Y = 96;
 // jeton de nourriture posé sur la berge : on l'attrape et on le glisse jusqu'à la loutre
 export const FOOD_POS = { x: 16, y: 86, w: 20, h: 10 };
 
+// balle de jeu : posée sur la berge, on l'attrape et on la lance ; la loutre la rapporte
+export const BALL_HOME = { x: 132, y: 92 };
+
 // Tanière : emplacements des trésors sur les étagères (9 colonnes × 3 rangées).
 // Partagé par le rendu ET le hit-test (tape un trésor pour l'identifier).
 export const DEN_SLOTS = (() => {
@@ -83,6 +86,10 @@ export function makeRenderer(cv) {
   let otterDwell = 0;         // frame jusqu'à laquelle elle reste sur place
   let wanderSeed = 1;         // avance à chaque nouvelle cible (choix pseudo-aléatoire stable)
   let lastFrame = 0;          // dernier numéro de frame vu (pour les appels externes)
+  // balle de jeu (ball-fetch). states : idle (au repos) / held (dans la main) /
+  // flying (en vol) / resting (retombée, à rapporter) / carried (dans la gueule).
+  let ball = { state: 'idle', x: BALL_HOME.x, y: BALL_HOME.y, sx: 0, sy: 0, t: 0 };
+  let fetchDone = 0;          // livraisons en attente de récompense (consommées par le jeu)
 
   // Relief : liseré lumineux sur le bord tourné vers l'astre (haut-droite) + occlusion
   // sous le ventre. Dessiné par-dessus le sprite -> volume sans retoucher les grilles.
@@ -455,6 +462,19 @@ export function makeRenderer(cv) {
     ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(x + 2, y + 1, 2, 1); // éclat
   }
 
+  // Balle de jeu (ball-fetch) : rouge à bande blanche, avec son ombre au sol.
+  function drawBall(b) {
+    const bx = Math.round(b.x), by = Math.round(b.y);
+    const groundY = (b.state === 'flying') ? 100 : by + 7;
+    const shW = (b.state === 'flying') ? 4 : 7;
+    ctx.fillStyle = 'rgba(16,26,16,.2)'; ctx.fillRect(bx - (shW >> 1), groundY, shW, 2);
+    ctx.fillStyle = '#e5484d';
+    ctx.fillRect(bx - 3, by - 4, 6, 8); ctx.fillRect(bx - 4, by - 3, 8, 6);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(bx - 3, by - 1, 6, 2);
+    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(bx - 2, by - 3, 2, 1);
+    if (b.state === 'idle' && (lastFrame >> 4) % 3 === 0) { ctx.fillStyle = '#fff6cd'; ctx.fillRect(bx + 5, by - 5, 1, 1); }
+  }
+
   // La loutre au repos dans sa tanière (calme : respiration, clignement, visage paisible).
   function drawDenOtter(s, frame) {
     const spr = SPRITES[s.stage] || SPRITES.adult;
@@ -728,7 +748,7 @@ export function makeRenderer(cv) {
       idleAnim = null;
       nextIdleAt = frame + 500 + Math.random() * 900;
     }
-    if (!idleAnim && calm && frame >= nextIdleAt) idleAnim = { kind: pickIdle(), start: frame };
+    if (!idleAnim && calm && frame >= nextIdleAt && ball.state === 'idle') idleAnim = { kind: pickIdle(), start: frame };
     const yawning = !!idleAnim && idleAnim.kind === 'baille';
 
     // loutre / œuf
@@ -736,9 +756,29 @@ export function makeRenderer(cv) {
     // éclosion : plus l'œuf approche, plus il se fissure et tremble tout seul
     const eggProg = s.stage === 'egg' ? Math.max(0, Math.min(1, (Date.now() - s.born) / HATCH_MS)) : 0;
     const crack = s.stage === 'egg' ? eggCrackLevel(eggProg) : 0;
-    // balade tranquille sur la berge (coupée : sommeil/œuf/absente/mini-jeu/combat/plongée/mvt réduit)
-    const canRoam = s.stage !== 'egg' && !s.sleeping && !s.away && !s.gameOver && !mg && !fx.foe && !fx.diving && !reduced && !idleAnim;
     let walking = false;
+    // ball-fetch : la balle lancée décrit un arc, retombe, puis la loutre la rapporte
+    const ballActive = s.stage !== 'egg' && !s.sleeping && !s.away && !s.gameOver && !mg && !fx.foe && !fx.diving;
+    if (!ballActive && ball.state !== 'idle' && ball.state !== 'held') {
+      ball.state = 'idle'; ball.x = BALL_HOME.x; ball.y = BALL_HOME.y; // partie interrompue -> la balle revient
+    }
+    if (ball.state === 'flying') {
+      ball.t = Math.min(1, ball.t + 0.045);
+      ball.x = ball.sx + (ball.tx - ball.sx) * ball.t;
+      ball.y = ball.sy + (ball.ty - ball.sy) * ball.t - 34 * Math.sin(Math.PI * ball.t); // cloche
+      if (ball.t >= 1) { ball.state = 'resting'; ball.x = ball.tx; ball.y = ball.ty; }
+    }
+    let fetching = false;
+    if (ballActive && (ball.state === 'resting' || ball.state === 'carried')) {
+      fetching = true;
+      const targetX = ball.state === 'resting' ? ball.x - 16 : OTTER_X; // va à la balle, puis rentre
+      const d = targetX - otterWX;
+      if (Math.abs(d) > 1) { otterWX += Math.sign(d) * Math.min(0.9, Math.abs(d)); walking = true; } // course vive
+      else if (ball.state === 'resting') ball.state = 'carried';                    // ramassée
+      else { ball.state = 'idle'; ball.x = BALL_HOME.x; ball.y = BALL_HOME.y; fetchDone++; } // rapportée !
+    }
+    // balade tranquille sur la berge (coupée : fetch/sommeil/œuf/absente/mini-jeu/combat/plongée/mvt réduit)
+    const canRoam = !fetching && s.stage !== 'egg' && !s.sleeping && !s.away && !s.gameOver && !mg && !fx.foe && !fx.diving && !reduced && !idleAnim;
     if (canRoam) {
       if (frame >= otterDwell && Math.abs(otterWX - otterTarget) < 0.5) {
         wanderSeed = (wanderSeed * 1103515245 + 12345) & 0x7fffffff; // LCG : cible stable, pas de Math.random
@@ -747,7 +787,7 @@ export function makeRenderer(cv) {
       }
       const d = otterTarget - otterWX;
       if (Math.abs(d) > 0.5) { otterWX += Math.sign(d) * Math.min(0.4, Math.abs(d)); walking = true; }
-    } else if (mg || fx.foe) {
+    } else if (!fetching && (mg || fx.foe)) {
       // combat / mini-jeu : la loutre revient au centre (position attendue par la scène)
       otterWX += (OTTER_X - otterWX) * 0.2;
     }
@@ -936,6 +976,12 @@ export function makeRenderer(cv) {
       }
     }
 
+    // balle de jeu : socle sur la berge / en vol / dans la gueule (ball-fetch)
+    if (!mg && s.stage !== 'egg' && !s.away) {
+      if (ball.state === 'carried') { ball.x = ox + 16; ball.y = oy + 18; } // portée à la gueule
+      drawBall(ball);
+    }
+
     // roseaux de premier plan : silhouettes qui encadrent la scène (parallaxe/profondeur)
     if (!mg) {
       const reed = (bx, baseY, h, phase, lean) => {
@@ -1053,5 +1099,32 @@ export function makeRenderer(cv) {
     otterDwell = lastFrame + 260;
   }
 
-  return { render, spawn, splashAt, burst, squash, xpText, setReduced, otterBox, callTo };
+  /* ---------------- Balle (ball-fetch) ---------------- */
+  // La balle n'est saisissable qu'au repos sur son socle (state idle).
+  function ballGrabbable(px, py) {
+    if (ball.state !== 'idle') return false;
+    return px >= ball.x - 8 && px <= ball.x + 8 && py >= ball.y - 8 && py <= ball.y + 8;
+  }
+  function grabBall(px, py) {
+    if (!ballGrabbable(px, py)) return false;
+    ball.state = 'held'; ball.x = px; ball.y = py; return true;
+  }
+  function dragBall(px, py) {
+    if (ball.state === 'held') { ball.x = px; ball.y = py; }
+  }
+  // Lâcher -> la balle décrit un arc jusqu'au point de largage (sur la berge).
+  function throwBall(px, py) {
+    if (ball.state !== 'held') return;
+    ball.sx = ball.x; ball.sy = ball.y;              // départ de l'arc
+    ball.tx = Math.max(14, Math.min(150, px));       // atterrissage clampé à la berge
+    ball.ty = Math.max(78, Math.min(100, py));
+    ball.t = 0; ball.state = 'flying';
+  }
+  /** Vrai une seule fois quand la loutre vient de rapporter la balle (récompense). */
+  function consumeFetch() { if (fetchDone > 0) { fetchDone--; return true; } return false; }
+
+  return {
+    render, spawn, splashAt, burst, squash, xpText, setReduced, otterBox, callTo,
+    ballGrabbable, grabBall, dragBall, throwBall, consumeFetch
+  };
 }
