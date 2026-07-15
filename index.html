@@ -19,8 +19,6 @@
 </head>
 <body>
 <div id="app">
-  <h1>MA PETITE LOUTRE</h1>
-
   <div id="hud">
     <div><b id="hud-name">???</b></div>
     <div id="hud-stage">ŒUF</div>
@@ -36,9 +34,34 @@
 
   <div id="dailies" class="hidden" role="button" tabindex="0" aria-label="Objectifs du jour"></div>
 
+  <div id="playfield">
   <div id="screenwrap">
-    <canvas id="cv" width="160" height="120"></canvas>
-    <button id="b-place" type="button" aria-label="Changer de lieu" title="Aller à la tanière">🏠</button>
+    <!-- Rangée « console » : colonne d'actions | écran de la loutre | colonne d'actions -->
+    <div id="stage-row">
+      <div id="act-left" class="act-col hidden">
+        <button class="act ei" id="b-feed"><span class="ic">🐟</span>Manger</button>
+        <button class="act ei" id="b-wash"><span class="ic">🧼</span>Laver</button>
+        <button class="act ei" id="b-treat"><span class="ic">🍡</span>Friandise</button>
+      </div>
+      <div id="screen">
+        <canvas id="cv" width="160" height="120"></canvas>
+        <button id="b-place" type="button" aria-label="Changer de lieu" title="Aller à la tanière">🏠</button>
+      </div>
+      <div id="act-right" class="act-col hidden">
+        <button class="act ei" id="b-play"><span class="ic">🎣</span>Jouer</button>
+        <button class="act ei" id="b-sleep"><span class="ic">💤</span>Dodo</button>
+        <button class="act ei" id="b-more"><span class="ic">➕</span>Plus</button>
+      </div>
+    </div>
+
+    <!-- Jauges compactes, en bas du cadre -->
+    <div id="bars-ov" class="hidden">
+      <div class="mg"><span class="bic">🍖</span><div class="track"><div class="fill" id="f-hunger"></div></div></div>
+      <div class="mg"><span class="bic">😊</span><div class="track"><div class="fill" id="f-fun"></div></div></div>
+      <div class="mg"><span class="bic">⚡</span><div class="track"><div class="fill" id="f-energy"></div></div></div>
+      <div class="mg"><span class="bic">🫧</span><div class="track"><div class="fill" id="f-clean"></div></div></div>
+      <div class="mg"><span class="bic">❤️</span><div class="track"><div class="fill" id="f-health"></div></div></div>
+    </div>
 
     <div id="ovl-intro" class="ovl hidden">
       <div class="title-sky"></div>
@@ -88,6 +111,7 @@
       <div id="ach-list" class="list"></div>
       <p id="rec-line" class="small"></p>
       <button class="act" id="btn-day-share" style="width:100%">📣 PARTAGER MON RÉSULTAT DU JOUR</button>
+      <button class="act ghost" id="b-photo" style="width:100%">📸 CARTE SOUVENIR</button>
       <button class="act ghost" id="btn-ach-close">FERMER</button>
     </div>
 
@@ -131,6 +155,7 @@
       <p class="big">⚙️ Réglages</p>
 
       <p class="set-section">🎧 Son</p>
+      <button class="act ghost" id="b-mute"><span class="mi">🔊</span> SON : ACTIVÉ</button>
       <button class="act ghost" id="b-music">🎵 MUSIQUE : OUI</button>
       <button class="act ghost" id="b-volume">🔊 VOLUME : ●●●</button>
 
@@ -177,20 +202,23 @@
       </div>
     </div>
 
+    <!-- Menu « Plus » : activités secondaires + soin -->
+    <div id="ovl-more" class="ovl scroll hidden">
+      <button class="ovl-x" aria-label="Fermer">✕</button>
+      <p class="big">➕ Activités</p>
+      <div class="more-grid">
+        <button class="act" id="b-dive"><span class="ic">🤿</span>Plongée</button>
+        <button class="act" id="b-slide"><span class="ic">🛝</span>Toboggan</button>
+        <button class="act" id="b-battle"><span class="ic">⚔️</span>Combat</button>
+        <button class="act" id="b-heal"><span class="ic">💊</span>Soigner</button>
+      </div>
+      <button class="act ghost" id="btn-more-close">FERMER</button>
+    </div>
+
     <div id="toast"></div>
   </div>
 
   <p id="log">…</p>
-
-  <div id="bars">
-    <div class="bar"><span class="bic">🍖</span><label>Faim</label><div class="track"><div class="fill" id="f-hunger"></div></div><span class="bval" id="v-hunger"></span></div>
-    <div class="bar"><span class="bic">😊</span><label>Humeur</label><div class="track"><div class="fill" id="f-fun"></div></div><span class="bval" id="v-fun"></span></div>
-    <div class="bar"><span class="bic">⚡</span><label>Énergie</label><div class="track"><div class="fill" id="f-energy"></div></div><span class="bval" id="v-energy"></span></div>
-    <div class="bar"><span class="bic">🫧</span><label>Propreté</label><div class="track"><div class="fill" id="f-clean"></div></div><span class="bval" id="v-clean"></span></div>
-    <div class="bar"><span class="bic">❤️</span><label>Santé</label><div class="track"><div class="fill" id="f-health"></div></div><span class="bval" id="v-health"></span></div>
-  </div>
-
-  <div id="spacer"></div>
 
   <div id="btnrow-egg" class="hidden">
     <button class="act" id="b-warm"><span class="ic">🔥</span>RÉCHAUFFER L'ŒUF</button>
@@ -199,26 +227,13 @@
   <div id="btnrow-away" class="hidden">
     <button class="act" id="b-care"><span class="ic">🐟</span>Lui porter un poisson (0/3)</button>
   </div>
-
-  <div id="buttons" class="hidden">
-    <button class="act" id="b-feed"><span class="ic">🐟</span>Manger</button>
-    <button class="act" id="b-play"><span class="ic">🎣</span>Jouer</button>
-    <button class="act" id="b-wash"><span class="ic">🧼</span>Laver</button>
-    <button class="act" id="b-sleep"><span class="ic">💤</span>Dodo</button>
-    <button class="act" id="b-heal"><span class="ic">💊</span>Soigner</button>
-    <button class="act" id="b-treat"><span class="ic">🍡</span>Friandise</button>
-    <button class="act" id="b-dive"><span class="ic">🤿</span>Plongée</button>
-    <button class="act" id="b-battle"><span class="ic">⚔️</span>Combat</button>
-    <button class="act" id="b-slide"><span class="ic">🛝</span>Toboggan</button>
-  </div>
+  </div><!-- /#playfield -->
 
   <div id="foot">
-    <button class="mini" id="b-mute" aria-label="Son"><span class="mi">🔊</span><span class="ml">Son</span></button>
     <button class="mini" id="b-hats" aria-label="Garde-robe"><span class="mi">🎩</span><span class="ml">Garde-robe</span></button>
     <button class="mini" id="b-ach" aria-label="Succès et quêtes"><span class="mi">🏆</span><span class="ml">Succès</span></button>
-    <button class="mini" id="b-photo" aria-label="Carte photo"><span class="mi">📸</span><span class="ml">Photo</span></button>
-    <button class="mini hidden" id="b-install">📲 INSTALLER</button>
     <button class="mini" id="b-gear" aria-label="Réglages"><span class="mi">⚙️</span><span class="ml">Réglages</span></button>
+    <button class="mini hidden" id="b-install">📲 INSTALLER</button>
   </div>
   <p id="ios-hint" class="hidden">📲 Pour installer : Partager <b>⎋</b> puis « Sur l'écran d'accueil »</p>
 </div>

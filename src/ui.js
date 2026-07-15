@@ -56,8 +56,8 @@ function setBar(id, v) {
   const val = clamp(v, 0, 100);
   el.style.width = val + '%';
   el.classList.toggle('low', v < 20);
-  const bar = el.closest && el.closest('.bar');
-  if (bar) bar.classList.toggle('crit', v < 20);       // alerte : glow + valeur rouge
+  const bar = el.closest && (el.closest('.mg') || el.closest('.bar'));
+  if (bar) bar.classList.toggle('crit', v < 20);       // alerte : glow
   const vEl = $('v-' + id.slice(2));
   if (vEl) vEl.textContent = Math.round(val);
   const prev = barPrev[id];
@@ -141,9 +141,11 @@ export function updateHUD(s, mg, rec) {
 
   const isEgg = s.stage === 'egg';
   const isAway = !!s.away && !s.gameOver;
-  $('bars').style.visibility = isEgg ? 'hidden' : 'visible';
+  const playing = !isEgg && !s.gameOver && !isAway;
+  $('act-left').classList.toggle('hidden', !playing);
+  $('act-right').classList.toggle('hidden', !playing);
+  $('bars-ov').classList.toggle('hidden', !playing);
   $('btnrow-egg').classList.toggle('hidden', !isEgg || s.gameOver);
-  $('buttons').classList.toggle('hidden', isEgg || s.gameOver || isAway);
   $('btnrow-away').classList.toggle('hidden', !isAway);
   if (isAway) {
     const b = $('b-care');
@@ -202,8 +204,8 @@ export function updateHUD(s, mg, rec) {
       ['b-feed', 'b-play', 'b-wash', 'b-sleep', 'b-heal'].forEach(id => { $(id).disabled = true; });
     }
   }
-  const muteIc = $('b-mute').querySelector('.mi') || $('b-mute');
-  muteIc.textContent = s.mute ? '🔇' : '🔊';
+  const mb = $('b-mute');
+  if (mb) mb.innerHTML = s.mute ? '<span class="mi">🔇</span> SON : COUPÉ' : '<span class="mi">🔊</span> SON : ACTIVÉ';
   renderDailies(s, rec);
 }
 

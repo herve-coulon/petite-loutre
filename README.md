@@ -260,4 +260,11 @@ affiche une note d'emblée dans les Réglages, et on détecte aussi l'iPad réce
 v3.24 : overlays transformés en vrais « panneaux de jeu » (garde-robe, succès,
 réglages, combat, photo) — cadre doré arrondi, bandeau de titre plein-largeur
 avec bouton fermer épinglé dans le coin, séparateurs de section à filets, et
-barre de défilement discrète.*
+barre de défilement discrète.
+v3.25 : refonte de la mise en page — l'écran de la loutre devient la pièce
+maîtresse (plein-largeur, centré). Les actions passent en surimpression sur ses
+bords : colonne de gauche (Manger · Laver · Friandise), colonne de droite
+(Jouer · Dodo · ➕). Le ➕ ouvre un menu « Activités » (Plongée · Toboggan ·
+Combat · Soigner). Jauges compactes en bande basse. Pied de page réduit à 3
+(Garde-robe · Succès · Réglages) — le Son rejoint les Réglages, la Photo le
+panneau Succès. Titre retiré. Bouton tanière recentré en haut.*

@@ -82,7 +82,7 @@ test('éclosion -> nommage', () => {
   $('btn-name').click();
   assert.equal(L.state.name, 'Kiwi');
   assert.ok($('ovl-name').classList.contains('hidden'));
-  assert.ok(!$('buttons').classList.contains('hidden'));
+  assert.ok(!$('act-left').classList.contains('hidden'));
 });
 
 test('fil narratif : Chapitre 1 s\'affiche, puis les premiers pas guident vers Manger', () => {
@@ -191,7 +191,7 @@ test('négligence -> chez le héron -> rituel de retour en 3 soins (v2.7)', () =
   assert.ok($('ovl-over').classList.contains('hidden'), 'pas d\'écran de fin');
   tick();
   assert.match($('hud-stage').textContent, /HÉRON/);
-  assert.ok($('buttons').classList.contains('hidden'), 'actions normales masquées');
+  assert.ok($('act-left').classList.contains('hidden'), 'actions normales masquées');
   assert.ok(!$('btnrow-away').classList.contains('hidden'), 'bouton de soin visible');
 
   $('b-feed').click();
