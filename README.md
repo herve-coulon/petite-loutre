@@ -256,4 +256,8 @@ v3.23.1 : correctif notifications iPhone. Sur iOS, le push web n'existe QUE dans
 l'app installée sur l'écran d'accueil (jamais en onglet Safari) — au lieu d'un
 « indisponible » opaque, on guide désormais l'utilisateur (Partager → écran
 d'accueil → rouvrir depuis l'icône), on révèle l'astuce d'installation, on
-affiche une note d'emblée dans les Réglages, et on détecte aussi l'iPad récent.*
+affiche une note d'emblée dans les Réglages, et on détecte aussi l'iPad récent.
+v3.24 : overlays transformés en vrais « panneaux de jeu » (garde-robe, succès,
+réglages, combat, photo) — cadre doré arrondi, bandeau de titre plein-largeur
+avec bouton fermer épinglé dans le coin, séparateurs de section à filets, et
+barre de défilement discrète.*

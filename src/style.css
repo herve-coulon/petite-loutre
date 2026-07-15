@@ -265,18 +265,38 @@ button.mini:active{color:var(--txt); transform:translateY(1px) scale(.97);}
 button.mini:active .ml{color:var(--txt);}
 :root.big-text button.mini .ml{font-size:9.5px;}
 
-/* Overlays à listes (garde-robe, succès, réglages) */
-.ovl.scroll{justify-content:flex-start; overflow-y:auto; gap:9px; padding:14px;}
-
-/* v2.7.1 — fermer sans scroller : ✕ collant en haut, toujours sous le pouce */
-.ovl-x{
-  position:sticky; top:0; align-self:flex-end; z-index:3; flex:none;
-  background:#252a3a; color:var(--txt);
-  border:2px solid var(--ink); border-radius:6px;
-  font-family:inherit; font-size:13px; font-weight:bold; line-height:1;
-  padding:7px 10px; margin:-4px -4px -2px 0; cursor:pointer;
+/* Overlays à listes (garde-robe, succès, réglages) — vrais « panneaux de jeu » */
+.ovl.scroll{
+  justify-content:flex-start; overflow-y:auto; gap:9px; padding:0 12px 14px;
+  border:3px solid var(--accent); border-radius:13px;
+  background:linear-gradient(180deg,#1b2131,#11141d);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.55), 0 10px 26px rgba(0,0,0,.55);
 }
-.ovl-x:active{color:var(--accent);}
+.ovl.scroll::-webkit-scrollbar{width:6px;}
+.ovl.scroll::-webkit-scrollbar-thumb{background:rgba(242,193,78,.35); border-radius:3px;}
+.ovl.scroll::-webkit-scrollbar-track{background:transparent;}
+/* barre de titre du panneau (le .big devient un vrai bandeau) */
+.ovl.scroll .big{
+  align-self:stretch; position:sticky; top:0; z-index:4;
+  margin:0 -12px 8px; padding:12px 46px 12px 14px;
+  text-align:left; font-size:14px; font-weight:bold; letter-spacing:1px; color:#241b06;
+  background:linear-gradient(180deg,var(--accent),var(--accent2));
+  border-bottom:3px solid var(--ink); border-radius:10px 10px 0 0;
+  box-shadow:0 3px 7px rgba(0,0,0,.45);
+}
+
+/* v2.7.1 — fermer sans scroller : ✕ collant en haut, toujours sous le pouce.
+   Panneau de jeu : épinglé dans le coin du bandeau de titre. */
+.ovl-x{
+  position:sticky; top:8px; align-self:flex-end; z-index:6; flex:none;
+  margin:0 4px -38px 0;
+  background:rgba(16,18,26,.72); color:#f4ead2;
+  border:2px solid var(--ink); border-radius:8px;
+  font-family:inherit; font-size:13px; font-weight:bold; line-height:1;
+  padding:7px 10px; cursor:pointer; box-shadow:0 2px 0 rgba(0,0,0,.4);
+  transition:transform .08s ease, color .12s ease;
+}
+.ovl-x:active{color:var(--accent); transform:translateY(1px) scale(.94);}
 /* Onglets (garde-robe…) */
 .tabs{display:flex; gap:6px; justify-content:center; flex-wrap:wrap; width:100%; margin:2px 0 8px;}
 .tab{
@@ -310,9 +330,15 @@ button.mini:active .ml{color:var(--txt);}
 }
 .small{font-size:10px; color:var(--dim); margin:0; line-height:1.5;}
 .set-section{
-  width:100%; text-align:center; font-size:11px; letter-spacing:1px; font-weight:bold;
-  color:var(--accent); margin:9px 0 1px;
+  display:flex; align-items:center; gap:9px;
+  width:100%; text-align:center; font-size:10px; letter-spacing:1.5px; font-weight:bold;
+  color:var(--accent); margin:12px 0 2px;
 }
+.set-section::before, .set-section::after{
+  content:''; flex:1; height:2px; border-radius:1px;
+  background:linear-gradient(90deg,transparent,rgba(242,193,78,.45));
+}
+.set-section::before{transform:scaleX(-1);}
 :root.big-text .set-section{font-size:13px;}
 #b-install{background:linear-gradient(180deg,var(--accent),var(--accent2)); color:#241b06; font-weight:bold;}
 #ios-hint{font-size:9.5px; color:var(--dim); letter-spacing:.5px; text-align:center; margin:4px 0 0; flex:none;}
