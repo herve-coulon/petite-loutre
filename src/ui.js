@@ -1,5 +1,5 @@
 // Couche DOM : HUD, jauges, overlays, messages. Aucune logique de jeu ici.
-import { STAGES, H, MIN, clamp, UNLOCK_LEVEL } from './constants.js';
+import { STAGES, H, MIN, clamp, UNLOCK_LEVEL, TREAT_CD, DIVE_MS } from './constants.js';
 import { ageMs } from './sim.js';
 import { levelFromXp, titleFor } from './level.js';
 import { HATS, unlockedHats } from './accessories.js';
@@ -35,8 +35,13 @@ export function fmtAge(s, now = Date.now()) {
 const barPrev = {}; // dernière valeur par jauge -> détection des remontées
 function setBar(id, v) {
   const el = $(id);
-  el.style.width = clamp(v, 0, 100) + '%';
+  const val = clamp(v, 0, 100);
+  el.style.width = val + '%';
   el.classList.toggle('low', v < 20);
+  const bar = el.closest && el.closest('.bar');
+  if (bar) bar.classList.toggle('crit', v < 20);       // alerte : glow + valeur rouge
+  const vEl = $('v-' + id.slice(2));
+  if (vEl) vEl.textContent = Math.round(val);
   const prev = barPrev[id];
   if (prev !== undefined && v > prev + 0.5) {
     el.classList.remove('up');
@@ -46,6 +51,19 @@ function setBar(id, v) {
     el._up = setTimeout(() => el.classList.remove('up'), 700);
   }
   barPrev[id] = v;
+}
+
+/** Recharge d'un bouton : voile radial (--cd) + compte à rebours ; frac=0 -> prêt. */
+function setCooldown(id, frac, icon, totalMs) {
+  const b = $(id); if (!b) return;
+  if (frac > 0) {
+    b.classList.add('cooling');
+    b.style.setProperty('--cd', frac.toFixed(3));
+    b.innerHTML = '<span class="ic">' + icon + '</span>' + Math.ceil(frac * totalMs / 60000) + ' min';
+  } else {
+    b.classList.remove('cooling');
+    b.style.setProperty('--cd', '0');
+  }
 }
 
 /** Bandeau de niveau : NIV, titre honorifique, progression vers le suivant. */
@@ -156,6 +174,12 @@ export function updateHUD(s, mg, rec) {
     $('b-dive').disabled = dis || s.sleeping || diving;
     $('b-battle').disabled = dis || s.sleeping || diving;
     $('b-slide').disabled = dis || s.sleeping || diving;
+
+    // recharge visible : voile radial + compte à rebours (game feel de cooldown)
+    setCooldown('b-treat', level >= UNLOCK_LEVEL.treat && !diving
+      ? Math.max(0, (s.lastTreat || 0) + TREAT_CD - Date.now()) / TREAT_CD : 0, '🍡', TREAT_CD);
+    setCooldown('b-dive', diving
+      ? Math.max(0, (s.divingUntil || 0) - Date.now()) / DIVE_MS : 0, '🤿', DIVE_MS);
     if (diving) {
       ['b-feed', 'b-play', 'b-wash', 'b-sleep', 'b-heal'].forEach(id => { $(id).disabled = true; });
     }

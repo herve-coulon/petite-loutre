@@ -234,4 +234,9 @@ jaillissent (pop-in + fondu), onde de choc à l'impact, secousse d'écran amorti
 calibrée par événement, et hit-stop (micro-gel qui donne du poids aux gros
 moments). Feedback branché sur chaque action (repas · bain · caresse · pêche ·
 soin · friandise · plongée · balle · montée de niveau · éclosion · évolution),
-le tout coupé/atténué en mouvement réduit.*
+le tout coupé/atténué en mouvement réduit.
+v3.21 : cap « expérience de jeu » (2/4) — le shell d'UI de jeu. Jauges refondues
+(icône + valeur chiffrée + piste creusée à liseré arrondi + reflet, remplissage
+animé) avec alerte critique (glow rouge pulsé quand une jauge tombe sous 20).
+Recharge visible sur les boutons d'action : voile radial qui s'ouvre + compte à
+rebours (friandise, plongée). Barre de niveau retravaillée (dégradé + reflet).*
