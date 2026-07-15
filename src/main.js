@@ -2,7 +2,7 @@
 import {
   SEC, MIN, clamp, TREAT_CD, DIVE_MS, GRUMPY_MS, WAKE_OK_ENERGY,
   WARM_BOOST, WARM_CD, SHAKE_BOOST, SHAKE_CD, SHAKE_G,
-  AWAY_CARE_NEEDED, AWAY_CARE_CD, SEASON_FX, UNLOCK_LEVEL, GAME_VERSION
+  AWAY_CARE_NEEDED, AWAY_CARE_CD, SEASON_FX, UNLOCK_LEVEL, GAME_VERSION, STAGES
 } from './constants.js';
 import { touchStreak } from './streak.js';
 import { greeting } from './mood.js';
@@ -75,7 +75,7 @@ function applyEvents(events, offline = false) {
     const msg = ui.liveEventMessage(ev, s);
     if (msg) ui.log(msg);
     if (ev.type === 'evolve') {
-      ui.toast('✨ ' + s.name + ' a grandi ! ✨');
+      ui.celebrate({ kicker: 'Évolution', big: '🦦', title: s.name + ' a grandi !', reward: STAGES[s.stage], rewardColor: 'var(--accent)' });
       sfx.evolve();
       R.burst('confetti', 40, s.stage); feel('big'); // pluie de confettis d'évolution
       gainXp(XP.evolve);
@@ -781,16 +781,21 @@ function gainXp(n) {
       const mid = milestoneItem(lv);
       if (mid && !rec.items.includes(mid)) { rec.items.push(mid); gotItems.push(itemById(mid)); }
     }
-    ui.toast('⭐ NIVEAU ' + L.level + ' · ' + titleFor(L.level) + ' !');
     const opened = featuresOpenedBetween(before, L.level);
+    let reward, rewardColor;
     if (gotItems.length) {
       const it = gotItems[gotItems.length - 1];
+      reward = '🎁 Trésor ' + RARITIES[it.rarity].label.toLowerCase() + '<br>' + it.emoji + ' <b>' + it.name + '</b>';
+      rewardColor = RARITIES[it.rarity].color;
       ui.log('🏅 Niveau ' + L.level + ' ! Trésor ' + RARITIES[it.rarity].label.toLowerCase() + ' : ' + it.emoji + ' ' + it.name + ' ! Équipe-le dans 🎩.');
     } else if (opened.length) {
+      reward = '🔓 Débloqué<br><b>' + opened.join(' + ') + '</b>';
       ui.log('⭐ Niveau ' + L.level + ' ! Débloqué : ' + opened.join(' + ') + ' ! Va essayer !');
     } else {
+      reward = '🍡 Friandise rechargée';
       ui.log('Niveau ' + L.level + ' ! Récompense : friandise rechargée. 🍡');
     }
+    ui.celebrate({ kicker: 'Niveau', big: L.level, title: titleFor(L.level), reward, rewardColor });
     sfx.levelup(); vibrate([20, 40, 20]); feel('big');
   }
   ui.renderLevel(rec);
@@ -1243,6 +1248,7 @@ function boot() {
   // Carte photo
   $('b-photo').addEventListener('click', openPhoto);
   $('b-place').addEventListener('click', togglePlace);
+  $('ovl-cheer').addEventListener('click', ui.closeCheer); // fermer la célébration au toucher
   $('btn-photo-share').addEventListener('click', sharePhoto);
   $('btn-photo-save').addEventListener('click', savePhoto);
   $('btn-photo-close').addEventListener('click', () => { cardCv = null; ui.hideOverlay('ovl-photo'); });

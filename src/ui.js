@@ -23,6 +23,24 @@ export function toast(msg) {
   t._h = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
+/**
+ * Bannière de célébration plein-écran (montée de niveau, trésor…) : rayons +
+ * gros chiffre qui pop + récompense. Auto-disparaît, ou se ferme au toucher.
+ */
+export function celebrate({ kicker, big, title, reward, rewardColor }) {
+  $('cheer-kicker').textContent = kicker || '';
+  $('cheer-big').textContent = big != null ? big : '';
+  $('cheer-title').textContent = title || '';
+  const r = $('cheer-reward');
+  r.innerHTML = reward || '';
+  r.style.color = rewardColor || 'var(--dim)';
+  const el = $('ovl-cheer');
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); // relance l'anim
+  clearTimeout(el._h);
+  el._h = setTimeout(() => el.classList.remove('show'), 2900);
+}
+export function closeCheer() { $('ovl-cheer').classList.remove('show'); }
+
 export function fmtAge(s, now = Date.now()) {
   if (s.stage === 'egg') return 'bientôt là…';
   const a = ageMs(s, now);

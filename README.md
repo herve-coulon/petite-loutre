@@ -245,4 +245,10 @@ tuto de base, des astuces de gestes se révèlent UNE PAR UNE (flèche jaune qui
 rebondit vers la cible + message) : caresser la loutre, glisser le poisson pour
 la nourrir, tapoter l'eau pour l'appeler, lancer la balle, ouvrir la tanière 🏠.
 Chaque astuce se classe dès que le joueur fait le geste (ou après un temps),
-et n'apparaît qu'une fois (mémorisé). Coupée en mouvement réduit (flèche fixe).*
+et n'apparaît qu'une fois (mémorisé). Coupée en mouvement réduit (flèche fixe).
+v3.23 : cap « expérience de jeu » (4/4) — célébration de la progression. Les
+montées de niveau déclenchent une vraie bannière plein-écran : rayons de lumière
+qui tournent, gros numéro doré qui pop, titre honorifique, et la récompense mise
+en avant (trésor coloré par sa rareté / déblocage / friandise). Même traitement
+pour les évolutions (bébé → jeune → adulte). Ferme au toucher, coupée en
+mouvement réduit. Clôt les 4 piliers du cap « proche du gaming ».*

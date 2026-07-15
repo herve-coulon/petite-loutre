@@ -497,7 +497,9 @@ test('montée de niveau : toast étoilé, friandise rechargée, sauvegardé', ()
   L.state.lastTreat = Date.now(); // friandise en recharge
   L.state.hunger = 50;
   $('b-feed').click();
-  assert.match($('toast').textContent, /NIVEAU \d/, 'toast de montée de niveau');
+  assert.ok($('ovl-cheer').classList.contains('show'), 'bannière de célébration affichée');
+  assert.match($('cheer-kicker').textContent, /niveau/i, 'la bannière annonce le niveau');
+  assert.match($('cheer-big').textContent, /^\d+$/, 'le numéro de niveau est affiché');
   assert.equal(L.state.lastTreat, 0, 'récompense : friandise rechargée');
   assert.notEqual($('lvl-label').textContent, lv0, 'le bandeau a changé de niveau');
   const savedRec = JSON.parse(window.localStorage.getItem('petite_loutre_records_v1'));
