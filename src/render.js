@@ -7,7 +7,7 @@ import { moodOf, pickIdle, canIdle, IDLE_FRAMES } from './mood.js';
 import { dailyEvent, butterflyPos } from './events.js';
 import { dayKey } from './quests.js';
 import { seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
-import { itemById, RARITIES } from './items.js';
+import { itemById, RARITIES, ITEMS } from './items.js';
 import { LANE_X, SLIDE_OTTER_Y } from './toboggan.js';
 
 export const CANVAS_W = 160, CANVAS_H = 120;
@@ -15,6 +15,22 @@ export const OTTER_X = 64;
 export const GROUND_Y = 96;
 // jeton de nourriture posé sur la berge : on l'attrape et on le glisse jusqu'à la loutre
 export const FOOD_POS = { x: 16, y: 86, w: 20, h: 10 };
+
+// Tanière : emplacements des trésors sur les étagères (9 colonnes × 3 rangées).
+// Partagé par le rendu ET le hit-test (tape un trésor pour l'identifier).
+export const DEN_SLOTS = (() => {
+  const slots = [], cols = 9, x0 = 12, dx = 16, rows = [18, 33, 48];
+  for (const y of rows) for (let cx = 0; cx < cols; cx++) slots.push({ x: x0 + cx * dx, y });
+  return slots;
+})();
+/** Index du trésor touché sur l'étagère de la tanière, ou -1. */
+export function denItemAt(px, py) {
+  for (let i = 0; i < DEN_SLOTS.length; i++) {
+    const p = DEN_SLOTS[i];
+    if (px >= p.x - 2 && px <= p.x + 10 && py >= p.y - 2 && py <= p.y + 10) return i;
+  }
+  return -1;
+}
 
 /**
  * Éclosion cinématique : niveau de fissures de l'œuf selon la progression
@@ -428,12 +444,108 @@ export function makeRenderer(cv) {
     }
   }
 
+  /* ---------------- Tanière : le second lieu, cosy, qu'on décore de ses trésors ---------------- */
+
+  // Petite gemme facettée (couleur = rareté du trésor).
+  function drawGem(x, y, col) {
+    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(x + 1, y + 8, 6, 1); // ombre sur l'étagère
+    ctx.fillStyle = col;
+    ctx.fillRect(x + 1, y, 6, 7); ctx.fillRect(x, y + 2, 8, 3);
+    ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(x + 1, y + 5, 6, 2);      // base plus sombre
+    ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(x + 2, y + 1, 2, 1); // éclat
+  }
+
+  // La loutre au repos dans sa tanière (calme : respiration, clignement, visage paisible).
+  function drawDenOtter(s, frame) {
+    const spr = SPRITES[s.stage] || SPRITES.adult;
+    const fur = furById(s.fur).map;
+    const ox = 64, oy = 62;
+    const breathing = !reduced && !s.gameOver;
+    if (breathing) {
+      const b = Math.sin(frame / 32), sy = 1 + b * 0.02, sx = 1 - b * 0.012;
+      const cx = ox + 16, cyf = oy + spr.length * 2;
+      ctx.save(); ctx.translate(cx, cyf); ctx.scale(sx, sy); ctx.translate(-cx, -cyf);
+    }
+    drawSprite(spr, ox, oy, 2, fur);
+    drawRim(spr, ox, oy, 2, 'rgba(255,224,150,.42)', 'rgba(0,0,0,.24)'); // baignée dans la lueur chaude
+    if (breathing) ctx.restore();
+    if (s.hat) { const hat = hatById(s.hat); if (hat) drawSprite(hat.rows, ox, oy - hat.rows.length * 2 + 4, 2); }
+    drawFace(s, s.sleeping ? 'dodo' : 'contente', ox, oy, frame, fur, false);
+    const ey = oy + (s.stage === 'baby' ? 10 : 8);
+    const bp = frame % 220, dbl = ((frame / 220) | 0) % 3 === 0;
+    const blink = !s.sleeping && (bp < 6 || (dbl && bp > 11 && bp < 17));
+    if (s.sleeping || blink) {
+      ctx.fillStyle = (fur && fur.B) || PAL.B; ctx.fillRect(ox + 4, ey, 6, 2); ctx.fillRect(ox + 22, ey, 6, 2);
+      ctx.fillStyle = (fur && fur.D) || PAL.D; ctx.fillRect(ox + 4, ey + 1, 6, 1); ctx.fillRect(ox + 22, ey + 1, 6, 1);
+    }
+    if (s.sleeping) {
+      ctx.fillStyle = '#ffffff'; ctx.font = '9px monospace';
+      const ph = (frame >> 4) % 3;
+      ctx.fillText('z', ox + 34, oy - 2 + ph); ctx.fillText('Z', ox + 40, oy - 8 + ph);
+    }
+  }
+
+  // La tanière : mur de terre, plancher, tapis, lanterne, étagères de trésors, nid.
+  function drawDen(s, frame, fx, c) {
+    const owned = fx.owned || [];
+    ctx.fillStyle = '#33231a'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    for (let y = 4; y < 88; y += 6) for (let x = 6; x < CANVAS_W; x += 11) { // texture de terre
+      ctx.fillStyle = ((x + y) % 2) ? 'rgba(255,220,170,.045)' : 'rgba(0,0,0,.06)';
+      ctx.fillRect(x + ((y >> 1) % 3), y, 2, 2);
+    }
+    // plancher + lattes
+    ctx.fillStyle = '#4a3221'; ctx.fillRect(0, 90, CANVAS_W, 30);
+    ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(0, 90, CANVAS_W, 2);
+    ctx.fillStyle = '#5a3f2a';
+    for (let x = 8; x < CANVAS_W; x += 22) ctx.fillRect(x, 92, 1, 28);
+    // tapis douillet
+    ctx.fillStyle = '#7a4a5a'; ctx.fillRect(38, 104, 84, 12);
+    ctx.fillStyle = '#94586c'; ctx.fillRect(42, 106, 76, 3);
+    ctx.fillStyle = '#5f3a48'; ctx.fillRect(38, 114, 84, 2);
+    // lanterne suspendue (coin) + halo chaud
+    const lx = 146, ly = 6;
+    ctx.fillStyle = 'rgba(255,214,120,.12)';
+    ctx.fillRect(lx - 22, ly - 2, 40, 62); ctx.fillRect(lx - 14, ly, 26, 84);
+    ctx.fillStyle = '#3a2a16'; ctx.fillRect(lx, 0, 2, 6);
+    ctx.fillStyle = '#c98a2a'; ctx.fillRect(lx - 4, ly, 10, 11);
+    ctx.fillStyle = '#ffe08a'; ctx.fillRect(lx - 2, ly + 2, 6, 7);
+    if ((frame >> 4) % 2) { ctx.fillStyle = '#fff3c8'; ctx.fillRect(lx, ly + 3, 2, 3); }
+    // étagères
+    for (const sy of [26, 41, 56]) {
+      ctx.fillStyle = '#6b4a2e'; ctx.fillRect(8, sy, 144, 3);
+      ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(8, sy + 3, 144, 1);
+    }
+    // trésors possédés (gemmes colorées par rareté)
+    owned.forEach((id, i) => {
+      if (i >= DEN_SLOTS.length) return;
+      const it = itemById(id); if (!it) return;
+      drawGem(DEN_SLOTS[i].x, DEN_SLOTS[i].y, RARITIES[it.rarity].color);
+    });
+    // compteur de collection
+    ctx.fillStyle = '#e9c98a'; ctx.font = '7px monospace';
+    ctx.fillText(owned.length + '/' + ITEMS.length + ' tresors', 9, 12);
+    // nid douillet
+    ctx.fillStyle = '#7a5a24'; ctx.fillRect(52, 94, 60, 6);
+    ctx.fillStyle = '#9a7a2e'; ctx.fillRect(56, 92, 52, 3);
+    // la loutre au repos
+    drawDenOtter(s, frame);
+  }
+
   function render(s, mg, frame, fx) {
     fx = fx || {};
     lastFrame = frame;
     const now = new Date();
     const season = seasonInfo(now);
     const c = applySeason(skyColors(now.getHours()), season);
+
+    // La tanière : second lieu, cosy, où l'on retrouve la loutre et sa collection.
+    if (s && s.place === 'taniere' && !mg && s.stage !== 'egg' && !s.away && !s.gameOver) {
+      drawDen(s, frame, fx, c);
+      drawParticles();
+      paintVignette();
+      return;
+    }
+
     // ciel en dégradé vertical (plus profond en haut, plus clair vers l'horizon)
     const skyTop = c.night ? mix(c.sky, '#05060f', 0.4) : mix(c.sky, '#173766', 0.3);
     const skyBot = c.night ? mix(c.sky, '#161d33', 0.25) : mix(c.sky, '#eaf3ff', 0.24);
@@ -842,8 +954,11 @@ export function makeRenderer(cv) {
     }
 
     drawParticles();
+    paintVignette();
+  }
 
-    // vignettage doux : la scène paraît « éclairée » (bords légèrement assombris)
+  // Vignettage doux : la scène paraît « éclairée » (bords légèrement assombris). Créé une fois.
+  function paintVignette() {
     if (vignette === null) {
       try {
         vignette = ctx.createRadialGradient(CANVAS_W / 2, 52, 30, CANVAS_W / 2, 66, 118);

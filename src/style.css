@@ -46,6 +46,19 @@ canvas{
   image-rendering:pixelated; image-rendering:crisp-edges;
   border:2px solid #000; background:#9fd9e8;
 }
+/* Bascule de lieu (berge <-> tanière), posée dans le coin de l'écran */
+#b-place{
+  position:absolute; top:12px; right:12px; z-index:4; /* sous les overlays (z5) */
+  width:34px; height:34px; padding:0;
+  font-size:17px; line-height:1; cursor:pointer;
+  border:2px solid var(--ink); border-radius:8px;
+  background:rgba(20,24,34,.72); color:#fff;
+  box-shadow:0 2px 0 rgba(0,0,0,.4);
+  transition:transform .1s ease, background .15s ease;
+}
+#b-place:hover{ background:rgba(30,36,50,.85); }
+#b-place:active{ transform:translateY(1px) scale(.94); }
+#b-place.hidden{ display:none; }
 
 .ovl{
   position:absolute; inset:6px; z-index:5;

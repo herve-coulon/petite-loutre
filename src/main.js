@@ -21,7 +21,7 @@ import {
 import { stepSim, simulateOffline, ageMs } from './sim.js';
 import { newGame, tickGame, clickGame } from './minigame.js';
 import { newSlide, tickSlide, setSlideLane, laneAt } from './toboggan.js';
-import { makeRenderer, FOOD_POS } from './render.js';
+import { makeRenderer, FOOD_POS, denItemAt } from './render.js';
 import { sfx, vibrate, setMuted, setVolume, getVolume } from './audio.js';
 import * as ui from './ui.js';
 import { registerSW, setupInstall, requestPersistentStorage } from './pwa.js';
@@ -32,7 +32,7 @@ import { encodeCard, decodeCard, newBattle, playTurn } from './battle.js';
 import { makeCard, CARD_URL } from './photocard.js';
 import { nextBeat, markSeen, coachStep } from './story.js';
 import { seasonFor, seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
-import { ITEMS, RARITIES, itemById, bonusOf, rollDrop, milestoneItem } from './items.js';
+import { ITEMS, RARITIES, itemById, bonusOf, rollDrop, milestoneItem, describeBonus } from './items.js';
 import { pickTrait, traitById, isFavorite, favoriteLine, bondGain, bondLevel } from './personality.js';
 
 const $ = id => document.getElementById(id);
@@ -375,6 +375,30 @@ function endSlide(res) {
   careBond('play');
 }
 
+/* ---------------- Lieux : berge <-> tanière ---------------- */
+// La tanière est accessible quand la loutre est là, disponible et hors mini-jeu.
+function denAvailable() {
+  return s && !s.gameOver && !s.away && s.stage !== 'egg' && !mg;
+}
+function updatePlaceBtn() {
+  const b = $('b-place'); if (!b) return;
+  const overlayOpen = !!document.querySelector('.ovl:not(.hidden)');
+  const show = !!denAvailable() && !overlayOpen;
+  b.classList.toggle('hidden', !show);
+  const inDen = show && s.place === 'taniere';
+  b.textContent = inDen ? '🌊' : '🏠';
+  b.title = inDen ? 'Retourner à la rivière' : 'Aller à la tanière';
+}
+function togglePlace() {
+  if (!denAvailable()) return;
+  s.place = s.place === 'taniere' ? 'berge' : 'taniere';
+  sfx.press(); vibrate(8);
+  if (s.place === 'taniere') { sfx.chirp(); ui.log(s.name + ' rentre dans sa tanière douillette. 🏠'); }
+  else ui.log(s.name + ' retourne au bord de la rivière. 🌊');
+  updatePlaceBtn();
+  persist();
+}
+
 /* ---------------- Canvas (pêche, caresses, œuf) ---------------- */
 function onCanvasPointer(e) {
   const r = cv.getBoundingClientRect();
@@ -390,6 +414,20 @@ function onCanvasPointer(e) {
   if (s && !s.gameOver) {
     if (s.stage === 'egg') { actWarm(); return; }
     if (s.away) return; // elle n'est pas là — le bouton du héron fait le travail
+
+    // dans la tanière : taper un trésor l'identifie ; taper la loutre la caresse
+    if (s.place === 'taniere') {
+      const owned = rec.items || [];
+      const idx = denItemAt(x, y);
+      if (idx >= 0 && idx < owned.length) {
+        const it = itemById(owned[idx]);
+        if (it) { ui.log(it.emoji + ' ' + it.name + ' — ' + RARITIES[it.rarity].label + ' · ' + describeBonus(it.bonus)); sfx.press(); }
+        return;
+      }
+      const h = R.otterBox(s.stage).h; // la loutre est fixe dans la tanière (centre 64, haut 62)
+      if (x >= 58 && x <= 102 && y >= 56 && y <= 62 + h + 8) pet();
+      return;
+    }
 
     // attraper le poisson posé sur la berge -> on le glissera jusqu'à sa bouche (nourrir)
     if (!busy() && !s.sleeping && s.hunger < 92) {
@@ -847,6 +885,7 @@ function tick() {
     ui.log('✨ Nouveau jour ! ' + dailyEvent(dayKey(t)).label);
   }
   ui.updateHUD(s, mg, rec);
+  updatePlaceBtn();  // la tanière n'est accessible que quand la loutre est là (hors œuf/héron/mini-jeu)
   maybeStory();      // un chapitre vient peut-être de se débloquer (évolution en direct/au retour)
   maybeSeasonCard(); // la saison a peut-être tourné (minuit / retour d'absence)
   updateCoach();     // garde le surlignage du tutoriel en phase (dodo, overlays…)
@@ -873,7 +912,8 @@ function loop() {
     wobble: s && now() < wobbleUntil,
     diving: diving(),
     foe: battle ? battle.foe : null,
-    dragFood
+    dragFood,
+    owned: rec ? rec.items : null
   });
   requestAnimationFrame(loop);
 }
@@ -918,6 +958,7 @@ function boot() {
     ui.showOverlay('ovl-intro');
   }
   ui.updateHUD(s, mg, rec);
+  updatePlaceBtn();
 
   $('btn-start').addEventListener('click', () => { sfx.press(); vibrate(15); enableMotion(); startNew(); });
   window.addEventListener('devicemotion', onMotion);
@@ -1086,6 +1127,7 @@ function boot() {
 
   // Carte photo
   $('b-photo').addEventListener('click', openPhoto);
+  $('b-place').addEventListener('click', togglePlace);
   $('btn-photo-share').addEventListener('click', sharePhoto);
   $('btn-photo-save').addEventListener('click', savePhoto);
   $('btn-photo-close').addEventListener('click', () => { cardCv = null; ui.hideOverlay('ovl-photo'); });

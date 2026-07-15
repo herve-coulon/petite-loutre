@@ -218,4 +218,9 @@ v3.17 : interaction directe (« la scène répond au doigt ») — on glisse le 
 posé sur la berge jusqu'à sa bouche pour la nourrir, et on tape la berge ou l'eau
 pour l'appeler (elle vient, petit plouf si on tapote l'eau). Les boutons restent.
 Correctif au passage : la loutre ne se recentrait plus toute seule pendant ses
-petites manies (elle reste où elle est, sauf combat/mini-jeu).*
+petites manies (elle reste où elle est, sauf combat/mini-jeu).
+v3.18 : la Tanière — un second lieu, cosy (mur de terre, plancher, tapis,
+lanterne, nid), où la loutre se repose et où l'on retrouve sa collection de
+trésors exposée sur des étagères (gemmes colorées par rareté, compteur x/26).
+Bouton 🏠/🌊 pour passer de la berge à la tanière ; taper un trésor l'identifie
+(nom · rareté · bonus), et on peut toujours la caresser sur place.*
