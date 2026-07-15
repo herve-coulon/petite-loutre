@@ -24,7 +24,7 @@ import { newSlide, tickSlide, setSlideLane, laneAt } from './toboggan.js';
 import { makeRenderer, FOOD_POS, BALL_HOME, denItemAt } from './render.js';
 import { sfx, vibrate, setMuted, setVolume, getVolume } from './audio.js';
 import * as ui from './ui.js';
-import { registerSW, setupInstall, requestPersistentStorage } from './pwa.js';
+import { registerSW, setupInstall, requestPersistentStorage, isIOS, isStandalone } from './pwa.js';
 import { unlockedHats, hatById } from './accessories.js';
 import { unlockedFurs, unlockedDecors } from './skins.js';
 import { newAchievements } from './achievements.js';
@@ -1043,6 +1043,8 @@ function boot() {
   registerSW();
   requestPersistentStorage();
   setupInstall($('b-install'), $('ios-hint'));
+  // iPhone/iPad en onglet Safari : les rappels exigent l'app installée -> on prévient d'emblée
+  if (isIOS() && !isStandalone()) $('push-note').classList.remove('hidden');
   $('ver').textContent = 'Ma Petite Loutre · v' + GAME_VERSION;
 
   rec = loadRecords(storage);
@@ -1191,6 +1193,14 @@ function boot() {
       ui.toast('🔕 Rappels coupés.');
       return;
     }
+    // iPhone/iPad : les notifications web n'existent QUE dans l'app installée sur
+    // l'écran d'accueil et lancée depuis son icône — jamais dans un onglet Safari.
+    if (isIOS() && !isStandalone()) {
+      $('ios-hint').classList.remove('hidden');   // révèle la marche à suivre (Partager → écran d'accueil)
+      ui.log('📲 Sur iPhone, les rappels ne marchent que dans l\'app installée : appuie sur Partager ⎋ en bas de Safari, choisis « Sur l\'écran d\'accueil », puis rouvre Loutre depuis son icône et réactive les rappels ici. (iOS 16.4+)');
+      ui.toast('📲 iPhone : installe l\'app d\'abord (voir en bas).');
+      return;
+    }
     const res = await push.enablePush();
     if (res === 'ok') {
       s.push = true;
@@ -1199,9 +1209,13 @@ function boot() {
       push.syncReminders(s);
       ui.toast('🔔 Rappels activés — elle saura te joindre !');
     } else if (res === 'refuse') {
-      ui.toast('Notifications refusées — réactivable dans les réglages du navigateur.');
+      ui.toast(isIOS()
+        ? 'Notifications refusées — Réglages iPhone › Loutre › Notifications pour les réautoriser.'
+        : 'Notifications refusées — réactivable dans les réglages du navigateur.');
     } else {
-      ui.toast('Rappels indisponibles ici (iPhone : app installée, iOS 16.4+).');
+      ui.toast(isIOS()
+        ? 'Rappels indisponibles : il faut iOS 16.4 ou plus récent.'
+        : 'Rappels indisponibles sur ce navigateur.');
     }
   });
   $('b-reset').addEventListener('click', () => {

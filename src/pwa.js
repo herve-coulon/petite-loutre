@@ -35,12 +35,15 @@ export function requestPersistentStorage() {
   } catch (e) {}
 }
 
-function isStandalone() {
+/** L'app tourne-t-elle en mode installé (écran d'accueil) plutôt qu'en onglet ? */
+export function isStandalone() {
   return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
     || window.navigator.standalone === true;
 }
-function isIOS() {
-  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+/** iPhone / iPad (y compris iPadOS 13+ qui se présente comme un Mac tactile). */
+export function isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
 
 /**

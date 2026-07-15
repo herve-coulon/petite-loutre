@@ -251,4 +251,9 @@ montées de niveau déclenchent une vraie bannière plein-écran : rayons de lum
 qui tournent, gros numéro doré qui pop, titre honorifique, et la récompense mise
 en avant (trésor coloré par sa rareté / déblocage / friandise). Même traitement
 pour les évolutions (bébé → jeune → adulte). Ferme au toucher, coupée en
-mouvement réduit. Clôt les 4 piliers du cap « proche du gaming ».*
+mouvement réduit. Clôt les 4 piliers du cap « proche du gaming ».
+v3.23.1 : correctif notifications iPhone. Sur iOS, le push web n'existe QUE dans
+l'app installée sur l'écran d'accueil (jamais en onglet Safari) — au lieu d'un
+« indisponible » opaque, on guide désormais l'utilisateur (Partager → écran
+d'accueil → rouvrir depuis l'icône), on révèle l'astuce d'installation, on
+affiche une note d'emblée dans les Réglages, et on détecte aussi l'iPad récent.*

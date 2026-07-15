@@ -316,6 +316,7 @@ button.mini:active .ml{color:var(--txt);}
 :root.big-text .set-section{font-size:13px;}
 #b-install{background:linear-gradient(180deg,var(--accent),var(--accent2)); color:#241b06; font-weight:bold;}
 #ios-hint{font-size:9.5px; color:var(--dim); letter-spacing:.5px; text-align:center; margin:4px 0 0; flex:none;}
+.set-note{font-size:9.5px; color:var(--dim); letter-spacing:.3px; line-height:1.5; margin:6px 2px 0; text-align:left;}
 
 /* La confirmation (reset, import) doit passer devant les autres overlays */
 #ovl-confirm{z-index:7;}
