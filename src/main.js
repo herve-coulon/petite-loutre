@@ -21,7 +21,7 @@ import {
 import { stepSim, simulateOffline, ageMs } from './sim.js';
 import { newGame, tickGame, clickGame } from './minigame.js';
 import { newSlide, tickSlide, setSlideLane, laneAt } from './toboggan.js';
-import { makeRenderer, FOOD_POS, denItemAt } from './render.js';
+import { makeRenderer, FOOD_POS, BALL_HOME, denItemAt } from './render.js';
 import { sfx, vibrate, setMuted, setVolume, getVolume } from './audio.js';
 import * as ui from './ui.js';
 import { registerSW, setupInstall, requestPersistentStorage } from './pwa.js';
@@ -50,6 +50,7 @@ let draggingBall = false;     // vrai pendant qu'on tient la balle pour la lance
 let wobbleUntil = 0, lastWarm = 0, lastPet = 0, lastSave = 0, lastTickAt = now();
 let storyOpen = false;        // une carte chapitre est à l'écran
 let coachTarget = null;       // bouton actuellement surligné par le tutoriel
+let activeHint = null, hintAt = 0, hintCooldown = 0; // astuce de geste en cours (onboarding)
 let lastSeasonHint = 0;       // throttle des rappels saisonniers (froid/chaud)
 
 const cv = $('cv');
@@ -295,6 +296,7 @@ function pet() {
     gainXp(XP.pet);
     quest('pets');
     careBond('pet');
+    hintDone('pet');
   } else {
     sfx.press(); sfx.chirp();
   }
@@ -397,6 +399,7 @@ function togglePlace() {
   if (s.place === 'taniere') { sfx.chirp(); ui.log(s.name + ' rentre dans sa tanière douillette. 🏠'); }
   else ui.log(s.name + ' retourne au bord de la rivière. 🌊');
   updatePlaceBtn();
+  hintDone('den');
   persist();
 }
 
@@ -497,6 +500,7 @@ function onCanvasPointer(e) {
     // avec un petit plouf si on tapote l'eau
     if (y >= 60 && !s.sleeping) {
       R.callTo(x);
+      hintDone('callwater');
       if (y >= 104) { R.splashAt(x, 108); sfx.chirp(); vibrate(6); }
     }
   }
@@ -519,6 +523,7 @@ function onCanvasUp(e) {
     const p = canvasXY(e);
     R.throwBall(p.x, p.y);
     draggingBall = false;
+    hintDone('ball');
     try { cv.releasePointerCapture(e.pointerId); } catch (_) {}
     sfx.press(); vibrate(6);
     return;
@@ -530,7 +535,7 @@ function onCanvasUp(e) {
   const box = R.otterBox(s.stage);
   if (drop.x >= box.x - 10 && drop.x <= box.x + box.w + 10 && drop.y >= box.y - 10 && drop.y <= box.y + box.h + 12) {
     R.splashAt(box.x + 16, box.y + 10); // petit plouf de gourmandise
-    actFeed(); sfx.chirpHappy();
+    actFeed(); sfx.chirpHappy(); hintDone('dragfood');
   }
 }
 
@@ -680,6 +685,56 @@ function updateCoach() {
   ui.setCoach(blocked ? null : step);
   if (!blocked && step.target !== coachTarget) { coachTarget = step.target; ui.log(step.msg); }
   else if (blocked) coachTarget = null;
+}
+
+/* ---------------- Découvrabilité : astuces de gestes (après le tuto de base) ---------------- */
+const HINT_MAX = 22000, HINT_GAP = 6000;
+const HINTS = [
+  { id: 'pet',       msg: '💡 Astuce : touche ta loutre pour la câliner. 💛',
+    when: () => s.place === 'berge' },
+  { id: 'dragfood',  msg: '💡 Tu peux glisser le poisson 🐟 posé sur la berge jusqu\'à sa bouche pour la nourrir.',
+    when: () => s.place === 'berge' && s.hunger < 92 },
+  { id: 'callwater', msg: '💡 Tape la berge ou l\'eau 💧 : ta loutre vient à cet endroit.',
+    when: () => s.place === 'berge' },
+  { id: 'ball',      msg: '💡 Attrape la balle 🎾 sur la berge et lance-la : elle court la rapporter !',
+    when: () => s.place === 'berge' },
+  { id: 'den',       msg: '💡 Le bouton 🏠 (en haut à droite) ouvre sa tanière — ta collection de trésors s\'y expose.',
+    when: () => denAvailable() }
+];
+
+function hintTargetFor(id) {
+  if (id === 'pet') { const b = R.otterBox(s.stage); return { x: b.x + b.w / 2, y: b.y - 2 }; }
+  if (id === 'dragfood') return { x: FOOD_POS.x + 10, y: FOOD_POS.y + 2 };
+  if (id === 'callwater') return { x: 104, y: 110 };
+  if (id === 'ball') return { x: BALL_HOME.x, y: BALL_HOME.y - 2 };
+  if (id === 'den') return { x: 146, y: 30, up: true };
+  return null;
+}
+
+/** Le joueur a fait le geste -> l'astuce est classée. */
+function hintDone(id) {
+  if (!s || !s.hints) return;
+  if (!s.hints[id]) { s.hints[id] = 1; persist(); }
+  if (activeHint === id) { activeHint = null; hintCooldown = now() + HINT_GAP; }
+}
+
+/** Révèle les astuces de gestes une par une, une fois le tuto de base terminé. */
+function maybeHint() {
+  const blocked = !s || s.coach || s.gameOver || s.away || s.stage === 'egg' || !s.name
+    || s.sleeping || mg || storyOpen || diving();
+  if (blocked) { activeHint = null; return; }
+  if (!s.hints) s.hints = {};
+  if (activeHint) {
+    const h = HINTS.find(x => x.id === activeHint);
+    if (!h || s.hints[activeHint] || !h.when() || now() - hintAt > HINT_MAX) {
+      if (h && now() - hintAt > HINT_MAX) { s.hints[activeHint] = 1; persist(); } // vue assez longtemps -> classée
+      activeHint = null; hintCooldown = now() + HINT_GAP;
+    }
+    return;
+  }
+  if (now() < hintCooldown) return;
+  const next = HINTS.find(h => !s.hints[h.id] && h.when());
+  if (next) { activeHint = next.id; hintAt = now(); ui.log(next.msg); }
 }
 
 /** Détecte chapeaux et succès nouvellement débloqués -> toast + son. */
@@ -917,6 +972,7 @@ function tick() {
   }
   ui.updateHUD(s, mg, rec);
   updatePlaceBtn();  // la tanière n'est accessible que quand la loutre est là (hors œuf/héron/mini-jeu)
+  maybeHint();       // révèle une astuce de geste une fois le tuto de base terminé
   maybeStory();      // un chapitre vient peut-être de se débloquer (évolution en direct/au retour)
   maybeSeasonCard(); // la saison a peut-être tourné (minuit / retour d'absence)
   updateCoach();     // garde le surlignage du tutoriel en phase (dodo, overlays…)
@@ -969,7 +1025,8 @@ function loop() {
     diving: diving(),
     foe: battle ? battle.foe : null,
     dragFood,
-    owned: rec ? rec.items : null
+    owned: rec ? rec.items : null,
+    hint: (s && activeHint) ? hintTargetFor(activeHint) : null
   });
   if (R.consumeFetch()) onFetchDone(); // la loutre vient de rapporter la balle
   applyShake();

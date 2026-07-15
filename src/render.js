@@ -469,6 +469,28 @@ export function makeRenderer(cv) {
     ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(x + 2, y + 1, 2, 1); // éclat
   }
 
+  // Astuce d'onboarding : flèche jaune qui rebondit vers une cible (geste à découvrir).
+  function drawHint(h, frame) {
+    const hx = Math.round(h.x), ty = Math.round(h.y);
+    const bob = reduced ? 0 : Math.round(Math.abs(Math.sin(frame / 9)) * 3);
+    ctx.fillStyle = 'rgba(255,224,102,' + (0.4 + (reduced ? 0 : Math.sin(frame / 6) * 0.18)).toFixed(2) + ')';
+    ctx.fillRect(hx - 2, ty - 2, 4, 4); // halo pulsé sur la cible
+    const dark = '#5a4410';
+    if (h.up) {                          // sous la cible, pointe vers le haut
+      const y0 = ty + 8 + bob;
+      ctx.fillStyle = dark; ctx.fillRect(hx - 2, y0 - 2, 4, 12);
+      ctx.fillStyle = '#ffe066';
+      ctx.fillRect(hx - 1, y0 + 3, 2, 6);
+      ctx.fillRect(hx - 4, y0 + 2, 9, 1); ctx.fillRect(hx - 3, y0 + 1, 7, 1); ctx.fillRect(hx - 2, y0, 5, 1); ctx.fillRect(hx - 1, y0 - 1, 2, 1);
+    } else {                             // au-dessus de la cible, pointe vers le bas
+      const y0 = ty - 15 - bob;
+      ctx.fillStyle = dark; ctx.fillRect(hx - 2, y0 - 1, 4, 12);
+      ctx.fillStyle = '#ffe066';
+      ctx.fillRect(hx - 1, y0, 2, 6);
+      ctx.fillRect(hx - 4, y0 + 6, 9, 1); ctx.fillRect(hx - 3, y0 + 7, 7, 1); ctx.fillRect(hx - 2, y0 + 8, 5, 1); ctx.fillRect(hx - 1, y0 + 9, 2, 1);
+    }
+  }
+
   // Balle de jeu (ball-fetch) : rouge à bande blanche, avec son ombre au sol.
   function drawBall(b) {
     const bx = Math.round(b.x), by = Math.round(b.y);
@@ -988,6 +1010,9 @@ export function makeRenderer(cv) {
       if (ball.state === 'carried') { ball.x = ox + 16; ball.y = oy + 18; } // portée à la gueule
       drawBall(ball);
     }
+
+    // astuce d'onboarding (flèche vers le geste à découvrir)
+    if (!mg && fx.hint) drawHint(fx.hint, frame);
 
     // roseaux de premier plan : silhouettes qui encadrent la scène (parallaxe/profondeur)
     if (!mg) {

@@ -77,6 +77,7 @@ function normalizeState(o) {
   if (o.trait === undefined) o.trait = null; // personnalité (assignée au besoin par l'orchestrateur)
   if (typeof o.bond !== 'number') o.bond = 0;
   if (o.place !== 'taniere') o.place = 'berge'; // lieu courant (berge / tanière)
+  if (!o.hints || typeof o.hints !== 'object') o.hints = {}; // astuces de gestes déjà vues
   return o;
 }
 

@@ -239,4 +239,10 @@ v3.21 : cap « expérience de jeu » (2/4) — le shell d'UI de jeu. Jauges refo
 (icône + valeur chiffrée + piste creusée à liseré arrondi + reflet, remplissage
 animé) avec alerte critique (glow rouge pulsé quand une jauge tombe sous 20).
 Recharge visible sur les boutons d'action : voile radial qui s'ouvre + compte à
-rebours (friandise, plongée). Barre de niveau retravaillée (dégradé + reflet).*
+rebours (friandise, plongée). Barre de niveau retravaillée (dégradé + reflet).
+v3.22 : cap « expérience de jeu » (3/4) — onboarding & découvrabilité. Après le
+tuto de base, des astuces de gestes se révèlent UNE PAR UNE (flèche jaune qui
+rebondit vers la cible + message) : caresser la loutre, glisser le poisson pour
+la nourrir, tapoter l'eau pour l'appeler, lancer la balle, ouvrir la tanière 🏠.
+Chaque astuce se classe dès que le joueur fait le geste (ou après un temps),
+et n'apparaît qu'une fois (mémorisé). Coupée en mouvement réduit (flèche fixe).*
