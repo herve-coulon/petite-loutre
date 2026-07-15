@@ -37,10 +37,11 @@ h1{
 #hud > div{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 
 #screenwrap{
-  position:relative; flex:none;
+  position:relative; flex:none; overflow:hidden; /* la secousse d'écran reste dans le cadre */
   border:4px solid var(--ink); border-radius:10px;
   background:var(--bezel); padding:6px;
 }
+canvas{ will-change:transform; } /* secousse fluide (game feel) */
 canvas{
   display:block; width:100%;
   image-rendering:pixelated; image-rendering:crisp-edges;

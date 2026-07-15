@@ -228,4 +228,10 @@ v3.19 : ball-fetch — une balle est posée sur la berge ; on l'attrape et on la
 lance (glisser puis relâcher, la balle décrit un arc jusqu'au point de largage),
 la loutre court la chercher et la rapporte fièrement dans sa gueule, avec une
 petite récompense de jeu (humeur, lien, XP, couinement). Complète le trio
-d'interactions directes (nourrir · appeler · jouer).*
+d'interactions directes (nourrir · appeler · jouer).
+v3.20 : cap « expérience de jeu » (1/4) — le juice / game feel. Chiffres qui
+jaillissent (pop-in + fondu), onde de choc à l'impact, secousse d'écran amortie
+calibrée par événement, et hit-stop (micro-gel qui donne du poids aux gros
+moments). Feedback branché sur chaque action (repas · bain · caresse · pêche ·
+soin · friandise · plongée · balle · montée de niveau · éclosion · évolution),
+le tout coupé/atténué en mouvement réduit.*

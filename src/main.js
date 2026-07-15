@@ -60,7 +60,7 @@ function applyEvents(events, offline = false) {
   for (const ev of events) {
     if (ev.type === 'hatch') {
       ui.showNaming();
-      if (!offline) { sfx.hatch(); R.burst('confetti', 26, 'egg'); gainXp(XP.hatch); }
+      if (!offline) { sfx.hatch(); R.burst('confetti', 26, 'egg'); feel('big'); gainXp(XP.hatch); }
       continue;
     }
     if (ev.type === 'away') {
@@ -76,7 +76,7 @@ function applyEvents(events, offline = false) {
     if (ev.type === 'evolve') {
       ui.toast('✨ ' + s.name + ' a grandi ! ✨');
       sfx.evolve();
-      R.burst('confetti', 40, s.stage); // pluie de confettis d'évolution
+      R.burst('confetti', 40, s.stage); feel('big'); // pluie de confettis d'évolution
       gainXp(XP.evolve);
     }
     if (ev.type === 'sick') sfx.sad();
@@ -113,8 +113,8 @@ function actTreat() {
   s.fun = clamp(s.fun + 8, 0, 100);
   s.grumpyUntil = 0; // une brochette de baies répare toutes les bouderies
   R.spawn('heart', s.stage); R.spawn('heart', s.stage); R.spawn('heart', s.stage);
-  R.burst('sparkle', 5, s.stage);
-  sfx.happy();
+  R.burst('sparkle', 5, s.stage); R.ring(s.stage);
+  sfx.happy(); feel('med');
   ui.log(s.name + ' savoure sa brochette de baies ! 🍡');
   gainXp(XP.treat);
   afterAct();
@@ -139,8 +139,8 @@ function resolveDive() {
   s.hunger = clamp(s.hunger - 8, 0, 100);
   const finds = ['une perle nacrée 🦪', 'un coquillage rare 🐚', 'une pièce ancienne 🪙', 'un caillou qui brille ✨'];
   ui.log(s.name + ' remonte avec ' + finds[Math.floor(Math.random() * finds.length)] + ' !');
-  R.burst('sparkle', 10, s.stage);
-  sfx.hatch(); vibrate([15, 30, 15]);
+  R.burst('sparkle', 10, s.stage); R.ring(s.stage);
+  sfx.hatch(); vibrate([15, 30, 15]); feel('med');
   gainXp(XP.dive);
   tryDrop(2.5); // la plongée est une vraie chasse au trésor : meilleure chance
   persist();
@@ -158,7 +158,7 @@ function actFeed() {
   rec.mealsTotal++;
   s.nextPoop = Math.min(s.nextPoop, now() + (2 + Math.random() * 2) * 60 * MIN);
   R.spawn('fish', s.stage); R.spawn('heart', s.stage); R.spawn('heart', s.stage);
-  sfx.eat();
+  R.ring(s.stage); sfx.eat(); feel('soft');
   ui.log('Miam ! ' + s.name + ' dévore un poisson frais. 🐟');
   gainXp(XP.meal);
   afterAct();
@@ -175,8 +175,8 @@ function actWash() {
   s.washed++;
   rec.bathsTotal++;
   for (let i = 0; i < 10; i++) R.spawn('bubble', s.stage);
-  R.burst('sparkle', 4, s.stage);
-  sfx.wash();
+  R.burst('sparkle', 4, s.stage); R.ring(s.stage);
+  sfx.wash(); feel('soft');
   // été : le bain rafraîchit vraiment (contre la chaleur)
   const summer = seasonFor(new Date(now())) === 'ete';
   if (summer) { s.fun = clamp(s.fun + 10, 0, 100); s.energy = clamp(s.energy + 8, 0, 100); }
@@ -221,9 +221,9 @@ function actHeal() {
   s.health = clamp(s.health + 20, 0, 100);
   s.healed++;
   R.spawn('heart', s.stage);
-  R.burst('sparkle', 8, s.stage);
+  R.burst('sparkle', 8, s.stage); R.ring(s.stage);
   R.squash();
-  sfx.heal();
+  sfx.heal(); feel('med');
   ui.log('Le médicament fait effet. ' + s.name + ' va mieux ! 💊');
   afterAct();
   careBond('heal');
@@ -289,8 +289,8 @@ function pet() {
   if (t - lastPet > 5 * SEC) {
     lastPet = t;
     s.fun = clamp(s.fun + 3, 0, 100);
-    R.spawn('heart', s.stage);
-    sfx.happy(); sfx.chirpHappy(); vibrate(10); // elle couine de plaisir
+    R.spawn('heart', s.stage); R.ring(s.stage);
+    sfx.happy(); sfx.chirpHappy(); vibrate(10); feel('soft'); // elle couine de plaisir
     ui.log(s.name + ' adore les caresses ! 💛');
     gainXp(XP.pet);
     quest('pets');
@@ -320,8 +320,8 @@ function endGame(res) {
   rec.fishTotal += sc;
   if (sc >= tot && tot >= 5) rec.perfectGames++;
   mg = null;
-  if (sc >= tot && tot >= 5) R.burst('confetti', 24, s.stage);       // partie parfaite !
-  else if (sc >= tot - 1 && sc > 0) R.burst('sparkle', 8, s.stage);
+  if (sc >= tot && tot >= 5) { R.burst('confetti', 24, s.stage); feel('big'); }  // partie parfaite !
+  else if (sc >= tot - 1 && sc > 0) { R.burst('sparkle', 8, s.stage); feel('med'); }
   if (sc >= tot - 1) { sfx.happy(); ui.log('Pêche royale : ' + sc + ' poisson' + (sc > 1 ? 's' : '') + ' ! ' + s.name + ' est ravie ! 🎉'); }
   else if (sc > 0) { sfx.eat(); ui.log(sc + ' poisson' + (sc > 1 ? 's' : '') + ' attrapé' + (sc > 1 ? 's' : '') + ' ! Pas mal !'); }
   else { sfx.sad(); ui.log('Aucun poisson… ils étaient rusés aujourd\'hui.'); }
@@ -409,7 +409,7 @@ function onCanvasPointer(e) {
 
   if (mg) {
     if (mg.mode === 'slide') { setSlideLane(mg, laneAt(x)); vibrate(6); }
-    else if (clickGame(mg, x, y, pad)) { R.splashAt(x, y); sfx.catch(); vibrate(8); }
+    else if (clickGame(mg, x, y, pad)) { R.splashAt(x, y); sfx.catch(); vibrate(8); feel('soft'); }
     return;
   }
   if (s && !s.gameOver) {
@@ -538,8 +538,8 @@ function onCanvasUp(e) {
 function onFetchDone() {
   if (!s || busy() || s.sleeping) return;
   s.fun = clamp(s.fun + 8, 0, 100);
-  R.spawn('heart', s.stage); R.burst('sparkle', 4, s.stage);
-  sfx.chirpHappy(); vibrate(12);
+  R.spawn('heart', s.stage); R.burst('sparkle', 4, s.stage); R.ring(s.stage);
+  sfx.chirpHappy(); vibrate(12); feel('med');
   careBond('play');
   gainXp(XP.pet);
   ui.log(s.name + ' rapporte la balle, tout fier ! 🎾');
@@ -736,7 +736,7 @@ function gainXp(n) {
     } else {
       ui.log('Niveau ' + L.level + ' ! Récompense : friandise rechargée. 🍡');
     }
-    sfx.levelup(); vibrate([20, 40, 20]);
+    sfx.levelup(); vibrate([20, 40, 20]); feel('big');
   }
   ui.renderLevel(rec);
   persistRec();
@@ -933,8 +933,33 @@ function tick() {
   }
 }
 
+/* ---------------- Game feel : hit-stop, screen-shake, feedback calibré ---------------- */
+let freezeUntil = 0, shakeAmp = 0, shakeMs = 1, shakeStart = 0;
+const reducedMotion = () => !!(s && s.reduceMotion);
+/** Gel bref à l'impact : donne du poids aux gros moments. */
+function hitStop(ms) { if (!reducedMotion()) freezeUntil = Math.max(freezeUntil, now() + ms); }
+/** Secousse d'écran amortie (px), coupée en mouvement réduit. */
+function screenShake(amp, ms) { if (reducedMotion()) return; shakeAmp = amp; shakeMs = ms; shakeStart = now(); }
+/** Combo de feedback calibré par intensité. */
+function feel(tier) {
+  if (tier === 'soft') screenShake(1.2, 90);
+  else if (tier === 'med') { screenShake(2.4, 160); hitStop(35); }
+  else if (tier === 'big') { screenShake(5, 340); hitStop(80); }
+}
+function applyShake() {
+  if (!cv) return;
+  const t = now() - shakeStart;
+  if (shakeAmp > 0 && t < shakeMs) {
+    const k = (1 - t / shakeMs) * shakeAmp;
+    cv.style.transform = 'translate(' + ((Math.random() * 2 - 1) * k).toFixed(1) + 'px,' + ((Math.random() * 2 - 1) * k).toFixed(1) + 'px)';
+  } else if (shakeAmp > 0) { shakeAmp = 0; cv.style.transform = ''; }
+}
+
 function loop() {
-  frame++;
+  // hit-stop : on gèle l'animation de la scène (le compteur de frames), jamais la
+  // logique de jeu — un mini-jeu en cours continue toujours de tourner.
+  const frozen = !mg && now() < freezeUntil;
+  if (!frozen) frame++;
   if (mg) {
     const res = mg.mode === 'slide' ? tickSlide(mg, now()) : tickGame(mg, now());
     if (res) (mg.mode === 'slide' ? endSlide : endGame)(res);
@@ -947,6 +972,7 @@ function loop() {
     owned: rec ? rec.items : null
   });
   if (R.consumeFetch()) onFetchDone(); // la loutre vient de rapporter la balle
+  applyShake();
   requestAnimationFrame(loop);
 }
 

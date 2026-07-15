@@ -215,12 +215,19 @@ export function makeRenderer(cv) {
   /** Squash & stretch au prochain rendu (caresse, réception d'un soin…). */
   function squash() { squashUntil = Date.now() + SQUASH_MS; }
 
-  /** Petit « +5 » doré qui s'envole (gain d'XP). */
-  function xpText(txt, stage) {
+  /** Chiffre/mot juteux qui jaillit et retombe (pop-in + fondu). col = couleur. */
+  function pop(txt, col, stage, dx = 34) {
     particles.push({
-      x: OTTER_X + 34, y: otterY(stage) + 4,
-      vx: 0.12, vy: -0.45, life: 48, kind: 'xp', txt
+      x: OTTER_X + dx, y: otterY(stage) + 2,
+      vx: 0.05, vy: -0.5, life: 46, max: 46, kind: 'pop', txt, col: col || '#ffd94a'
     });
+  }
+  /** Petit « +5 » doré qui s'envole (gain d'XP). */
+  function xpText(txt, stage) { pop(txt, '#ffd94a', stage, 34); }
+
+  /** Onde de choc pixel qui s'ouvre à l'impact (ponctue une action). */
+  function ring(stage) {
+    particles.push({ x: OTTER_X + 16, y: otterY(stage) + 16, vx: 0, vy: 0, life: 15, max: 15, kind: 'ring' });
   }
 
   /* ---------------- Vie du décor : libellule, luciole, poissons sauteurs ---------------- */
@@ -1076,10 +1083,25 @@ export function makeRenderer(cv) {
       } else if (p.kind === 'sparkle') {
         ctx.fillStyle = (p.life >> 2) % 2 ? '#ffe9a8' : '#ffffff';
         ctx.fillRect(p.x, p.y - 1, 1, 3); ctx.fillRect(p.x - 1, p.y, 3, 1);
-      } else if (p.kind === 'xp') {
-        ctx.fillStyle = p.life > 12 ? '#ffd94a' : '#c9a94a'; // s'estompe en fin de vie
-        ctx.font = 'bold 7px monospace';
-        ctx.fillText(p.txt, p.x, p.y);
+      } else if (p.kind === 'pop') {
+        const age = (p.max || 46) - p.life;
+        const sc = age < 6 ? 0.5 + age * 0.11 : (p.life < 8 ? 1 + (8 - p.life) * 0.03 : 1); // pop-in
+        ctx.save();
+        ctx.globalAlpha = p.life < 12 ? p.life / 12 : 1;
+        ctx.translate(Math.round(p.x), Math.round(p.y)); ctx.scale(sc, sc);
+        ctx.font = 'bold 8px monospace'; ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(18,14,8,.75)'; ctx.fillText(p.txt, 0, 1); // liseré lisible
+        ctx.fillStyle = p.col; ctx.fillText(p.txt, 0, 0);
+        ctx.restore();
+        ctx.globalAlpha = 1; ctx.textAlign = 'left';
+      } else if (p.kind === 'ring') {
+        const age = (p.max || 15) - p.life, rad = Math.round(3 + age * 1.5);
+        ctx.fillStyle = 'rgba(255,255,255,' + (p.life / (p.max || 15) * 0.55).toFixed(2) + ')';
+        ctx.fillRect(p.x - rad, p.y, 2, 1); ctx.fillRect(p.x + rad - 1, p.y, 2, 1);
+        ctx.fillRect(p.x, p.y - rad, 1, 2); ctx.fillRect(p.x, p.y + rad - 1, 1, 2);
+        const d = Math.round(rad * 0.7);
+        ctx.fillRect(p.x - d, p.y - d, 1, 1); ctx.fillRect(p.x + d, p.y - d, 1, 1);
+        ctx.fillRect(p.x - d, p.y + d, 1, 1); ctx.fillRect(p.x + d, p.y + d, 1, 1);
       }
     });
   }
@@ -1124,7 +1146,7 @@ export function makeRenderer(cv) {
   function consumeFetch() { if (fetchDone > 0) { fetchDone--; return true; } return false; }
 
   return {
-    render, spawn, splashAt, burst, squash, xpText, setReduced, otterBox, callTo,
+    render, spawn, splashAt, burst, squash, xpText, pop, ring, setReduced, otterBox, callTo,
     ballGrabbable, grabBall, dragBall, throwBall, consumeFetch
   };
 }
