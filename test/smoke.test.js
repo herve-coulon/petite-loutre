@@ -468,6 +468,9 @@ test('partage du jour : bouton présent, clic sans API -> message propre', () =>
 /* ---------------- v2.6 : niveaux ---------------- */
 
 test('XP : nourrir rapporte 5 XP, la barre de niveau est affichée', () => {
+  // neutralise les quêtes du jour : sinon, selon la date, nourrir peut EN plus
+  // compléter la quête « repas » et ajouter son bonus -> +5 non déterministe
+  L.state.qDaily = { date: dayKey(), progress: {}, done: dailyQuests(dayKey()).map(q => q.id) };
   const xp0 = L.records.xp || 0;
   L.state.hunger = 50;
   L.state.sleeping = false;
