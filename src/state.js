@@ -76,7 +76,8 @@ function normalizeState(o) {
   if (o.gear === undefined) o.gear = null; // trésor équipé
   if (o.trait === undefined) o.trait = null; // personnalité (assignée au besoin par l'orchestrateur)
   if (typeof o.bond !== 'number') o.bond = 0;
-  if (o.place !== 'taniere') o.place = 'berge'; // lieu courant (berge / tanière)
+  // échelle courante de l'aventure (monde / berge / tanière) — repli sur berge
+  if (o.place !== 'taniere' && o.place !== 'monde') o.place = 'berge';
   if (!o.hints || typeof o.hints !== 'object') o.hints = {}; // astuces de gestes déjà vues
   return o;
 }

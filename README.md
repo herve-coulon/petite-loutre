@@ -267,4 +267,8 @@ bords : colonne de gauche (Manger · Laver · Friandise), colonne de droite
 (Jouer · Dodo · ➕). Le ➕ ouvre un menu « Activités » (Plongée · Toboggan ·
 Combat · Soigner). Jauges compactes en bande basse. Pied de page réduit à 3
 (Garde-robe · Succès · Réglages) — le Son rejoint les Réglages, la Photo le
-panneau Succès. Titre retiré. Bouton tanière recentré en haut.*
+panneau Succès. Titre retiré. Bouton tanière recentré en haut.
+v3.26 : fondation de l'aventure à trois échelles (Monde → Berge → Tanière).
+Nouveau module world.js (pur, testé) : les échelles, la carte d'exploration à
+débloquer par niveau (berge, amont, cascade, forêt, grand lac) et la logique de
+navigation. Charpente pour la refonte plein écran immersive à venir.*
