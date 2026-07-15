@@ -271,4 +271,10 @@ panneau Succès. Titre retiré. Bouton tanière recentré en haut.
 v3.26 : fondation de l'aventure à trois échelles (Monde → Berge → Tanière).
 Nouveau module world.js (pur, testé) : les échelles, la carte d'exploration à
 débloquer par niveau (berge, amont, cascade, forêt, grand lac) et la logique de
-navigation. Charpente pour la refonte plein écran immersive à venir.*
+navigation. Charpente pour la refonte plein écran immersive à venir.
+v3.27 : architecture de l'aventure (couche logique, sans visuel). Navigation
+entre échelles dans world.js (zoom avant/arrière : monde ↔ berge ↔ tanière, avec
+règles d'accès). Nouveau module gang.js (pur, testé) : la couche sociale —
+créer/recruter un gang de loutres, puissance de bande, génération de gangs
+adverses dosés (seedée), et combats de gangs en relais (roi de la colline,
+reproductibles) bâtis sur le moteur de duel existant.*

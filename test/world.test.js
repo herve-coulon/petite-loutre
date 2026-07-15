@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert';
 import {
   SCALES, LOCATIONS, locationById, locationUnlocked,
-  unlockedLocations, nextLocation, canEnter, normalizeScale
+  unlockedLocations, nextLocation, canEnter, normalizeScale,
+  scaleIndex, zoomIn, zoomOut, canZoomIn, canZoomOut
 } from '../src/world.js';
 
 test('échelles : les trois vues emboîtées existent', () => {
@@ -51,4 +52,27 @@ test('normalizeScale : replie une valeur inconnue sur la berge', () => {
   assert.equal(normalizeScale('taniere'), 'taniere');
   assert.equal(normalizeScale('n\'importe'), 'berge');
   assert.equal(normalizeScale(undefined), 'berge');
+});
+
+test('navigation : zoom avant descend d\'un cran (monde → berge → tanière)', () => {
+  const otter = { stage: 'adult' };
+  assert.equal(scaleIndex('monde'), 0);
+  assert.equal(scaleIndex('taniere'), 2);
+  assert.equal(zoomIn('monde', otter), 'berge');
+  assert.equal(zoomIn('berge', otter), 'taniere');
+  assert.equal(zoomIn('taniere', otter), 'taniere', 'la tanière est le cran le plus proche');
+});
+
+test('navigation : on ne peut pas descendre dans la tanière sans loutre présente', () => {
+  assert.equal(zoomIn('berge', { stage: 'egg' }), 'berge', 'un œuf ne descend pas dans la tanière');
+  assert.ok(!canZoomIn('berge', { stage: 'egg' }));
+  assert.ok(canZoomIn('berge', { stage: 'adult' }));
+});
+
+test('navigation : zoom arrière remonte (tanière → berge → monde), borné au monde', () => {
+  assert.equal(zoomOut('taniere'), 'berge');
+  assert.equal(zoomOut('berge'), 'monde');
+  assert.equal(zoomOut('monde'), 'monde', 'le monde est la vue la plus large');
+  assert.ok(!canZoomOut('monde'));
+  assert.ok(canZoomOut('taniere'));
 });

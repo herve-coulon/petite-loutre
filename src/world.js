@@ -58,3 +58,31 @@ export function canEnter(scale, s) {
 export function normalizeScale(scale) {
   return SCALES.includes(scale) ? scale : 'berge';
 }
+
+/* ---------------- Navigation (zoom entre échelles) ----------------
+   SCALES est ordonné du plus large au plus proche : monde(0) → berge(1) →
+   tanière(2). Zoomer = descendre d'un cran (se rapprocher), dézoomer = remonter. */
+
+/** Rang d'une échelle (0 = plus large). */
+export const scaleIndex = scale => SCALES.indexOf(normalizeScale(scale));
+
+/**
+ * Échelle cible en zoomant (se rapprocher) depuis `place`, en respectant les
+ * accès (`canEnter`). Retourne `place` si on ne peut pas descendre.
+ */
+export function zoomIn(place, s) {
+  const i = scaleIndex(place);
+  const next = SCALES[i + 1];
+  return next && canEnter(next, s) ? next : normalizeScale(place);
+}
+
+/** Échelle cible en dézoomant (prendre du recul). Retourne `place` au max. */
+export function zoomOut(place) {
+  const i = scaleIndex(place);
+  return SCALES[i - 1] || normalizeScale(place);
+}
+
+/** Peut-on encore se rapprocher depuis `place` (dans l'état `s`) ? */
+export const canZoomIn = (place, s) => zoomIn(place, s) !== normalizeScale(place);
+/** Peut-on encore prendre du recul depuis `place` ? */
+export const canZoomOut = place => scaleIndex(place) > 0;
