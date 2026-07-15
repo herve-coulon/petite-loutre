@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert';
 import {
   MAX_MEMBERS, makeGang, makeMember, recruit, gangPower, fighterPower,
-  generateRival, autoDuel, resolveGangBattle, applyGangResult
+  generateRival, autoDuel, resolveGangBattle, applyGangResult,
+  recruitBoard, recruitCost
 } from '../src/gang.js';
 import { makeFighter, makeRng } from '../src/battle.js';
 
@@ -80,6 +81,25 @@ test('combat de gang : une bande beaucoup plus forte l\'emporte largement', () =
     if (resolveGangBattle(strong, weak, 'm' + i).winner === 'a') strongWins++;
   }
   assert.ok(strongWins >= 10, 'les costauds gagnent la vaste majorité (' + strongWins + '/12)');
+});
+
+test('recrutement : tableau du jour seedé (mêmes recrues le même jour), coûts positifs', () => {
+  const a = recruitBoard(10, '2026-07-15');
+  const b = recruitBoard(10, '2026-07-15');
+  assert.deepEqual(a, b, 'même jour + niveau -> mêmes recrues');
+  assert.equal(a.length, 3);
+  for (const c of a) {
+    assert.ok(c.name && c.stage && c.power > 0, 'recrue valide : ' + c.name);
+    assert.ok(c.cost >= 20, 'coût en XP plancher respecté');
+    assert.equal(c.cost, recruitCost(c), 'coût cohérent');
+  }
+  assert.notDeepEqual(a, recruitBoard(10, '2026-07-16'), 'le lendemain, d\'autres recrues');
+});
+
+test('recrutement : une recrue plus puissante coûte plus cher', () => {
+  const strong = { stage: 'adult', health: 100, fun: 100, energy: 100 };
+  const weak = { stage: 'baby', health: 30, fun: 10, energy: 10 };
+  assert.ok(recruitCost(strong) > recruitCost(weak));
 });
 
 test('applyGangResult : met à jour victoires/défaites des deux gangs', () => {

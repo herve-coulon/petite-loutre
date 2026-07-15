@@ -277,4 +277,10 @@ entre échelles dans world.js (zoom avant/arrière : monde ↔ berge ↔ tanièr
 règles d'accès). Nouveau module gang.js (pur, testé) : la couche sociale —
 créer/recruter un gang de loutres, puissance de bande, génération de gangs
 adverses dosés (seedée), et combats de gangs en relais (roi de la colline,
-reproductibles) bâtis sur le moteur de duel existant.*
+reproductibles) bâtis sur le moteur de duel existant.
+v3.28 : suite de la couche logique (toujours sans visuel). Persistance du gang
+et des cadeaux de saison dans les records globaux (survivent aux loutres, testé
+en aller-retour). Système de recrutement (gang.js) : tableau de recrues du jour
+seedé + coût en XP proportionnel à la puissance. Nouveau module seasonpass.js
+(pur, testé) : un cadeau exclusif par saison, réclamable une fois par (saison,
+année), preuve de jeu requise.*

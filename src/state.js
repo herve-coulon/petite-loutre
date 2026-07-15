@@ -130,7 +130,9 @@ export function newRecords() {
     streakCount: 0,
     streakDay: null,
     streakBest: 0,
-    achievements: []
+    achievements: [],
+    gang: null,          // le gang du joueur (survit aux loutres) — cf. gang.js
+    seasonGifts: {}      // cadeaux de saison réclamés, par clé (cf. seasonpass.js)
   };
 }
 
@@ -142,6 +144,8 @@ function normalizeRecords(o) {
   }
   if (!Array.isArray(o.achievements)) o.achievements = [];
   if (!Array.isArray(o.items)) o.items = [];
+  if (!o.seasonGifts || typeof o.seasonGifts !== 'object') o.seasonGifts = {};
+  if (o.gang !== null && (typeof o.gang !== 'object')) o.gang = null;
   return o;
 }
 

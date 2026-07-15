@@ -135,4 +135,16 @@ test('records : sauvegarde/lecture avec valeurs par défaut', () => {
   assert.equal(partial.bestAge, 5);
   assert.equal(partial.perfectGames, 0);
   assert.deepEqual(partial.achievements, []);
+  // nouveaux champs d'aventure (gang, cadeaux de saison) : présents par défaut…
+  assert.equal(partial.gang, null);
+  assert.deepEqual(partial.seasonGifts, {});
+  // …et le gang persiste en aller-retour
+  const rec2 = newRecords();
+  rec2.gang = { name: 'Les Griffes', emblem: '⚔️', members: [{ name: 'Kiwi', stage: 'adult' }], wins: 2, losses: 1 };
+  rec2.seasonGifts = { 'ete-2026': true };
+  saveRecords(rec2, storage);
+  const back = loadRecords(storage);
+  assert.equal(back.gang.name, 'Les Griffes', 'le gang survit à la sauvegarde');
+  assert.equal(back.gang.wins, 2);
+  assert.equal(back.seasonGifts['ete-2026'], true, 'les cadeaux réclamés persistent');
 });

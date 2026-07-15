@@ -49,6 +49,40 @@ export function recruit(gang, o) {
   return true;
 }
 
+/** Coût de recrutement d'une recrue, en XP (proportionnel à sa puissance). */
+export function recruitCost(candidate) {
+  const p = (candidate && candidate.power) || fighterPower(makeFighter(candidate || {}));
+  return Math.max(20, Math.round(p * 0.6));
+}
+
+/**
+ * Tableau de recrues du jour : des loutres candidates à enrôler, générées de
+ * façon SEEDÉE (mêmes recrues pour tous ce jour-là, se renouvelle chaque jour).
+ * Chaque candidate porte sa puissance et son coût en XP.
+ */
+export function recruitBoard(level, dayKey, count = 3) {
+  const rng = makeRng(hashSeed('recruit|' + (dayKey || '?') + '|' + (level || 1)));
+  const pick = arr => arr[Math.floor(rng() * arr.length)];
+  const topStage = level >= 12 ? 'adult' : level >= 5 ? 'child' : 'baby';
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const t = rng();
+    const stage = t < 0.4 ? topStage : (t < 0.75 ? 'child' : 'baby');
+    const cand = {
+      id: 'rec|' + dayKey + '|' + i,
+      name: pick(RIVAL_NAMES),
+      stage, fur: pick(RIVAL_FUR), hat: null,
+      health: 60 + Math.round(rng() * 40),
+      fun: 40 + Math.round(rng() * 55),
+      energy: 30 + Math.round(rng() * 60)
+    };
+    cand.power = fighterPower(makeFighter(cand));
+    cand.cost = recruitCost(cand);
+    out.push(cand);
+  }
+  return out;
+}
+
 /** Puissance totale d'un gang (somme des puissances de membres). */
 export function gangPower(gang) {
   if (!gang || !Array.isArray(gang.members)) return 0;
