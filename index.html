@@ -20,6 +20,17 @@
 <body>
 <div id="app">
 
+  <!-- Berge en PLEIN ÉCRAN : fond immersif (façon arène), le HUD flotte dessus -->
+  <div id="screenwrap">
+    <div id="screen"><canvas id="cv" width="160" height="120"></canvas></div>
+    <div id="btnrow-egg" class="hidden">
+      <button class="act" id="b-warm"><span class="ic">🔥</span>RÉCHAUFFER L'ŒUF</button>
+    </div>
+    <div id="btnrow-away" class="hidden">
+      <button class="act" id="b-care"><span class="ic">🐟</span>Lui porter un poisson (0/3)</button>
+    </div>
+  </div>
+
   <!-- Rangée 1 : avatar + nom/XP · boutique · gemmes -->
   <div id="topbar">
     <div id="avatar" role="img" aria-label="Ta loutre">
@@ -53,166 +64,13 @@
     <div class="gauge"><span class="gic">❤️</span><div class="track"><div class="fill" id="f-health"></div></div></div>
   </div>
 
-  <!-- Zone centrale : colonnes latérales + écran de la loutre -->
+  <!-- Zone centrale transparente : boutons latéraux en surimpression sur la berge -->
   <div id="playfield">
     <div id="stage">
       <div id="side-left" class="side">
         <button id="b-place" class="sidebtn"><span class="ic">🏠</span><span class="lbl">Tanière</span></button>
         <button id="b-gift" class="sidebtn"><span class="ic">🎁</span><span class="lbl">Cadeau</span><span class="badge">!</span></button>
       </div>
-
-      <div id="screenwrap">
-        <div id="screen">
-          <canvas id="cv" width="160" height="120"></canvas>
-        </div>
-
-        <div id="ovl-intro" class="ovl hidden">
-          <div class="title-sky"></div>
-          <div class="title-hero">
-            <div class="title-otter">🦦</div>
-            <h2 class="title-name">MA&nbsp;PETITE<br>LOUTRE</h2>
-            <p class="title-tag">un tamagotchi de rivière</p>
-          </div>
-          <p class="title-story">Au bord de l'eau, un œuf abandonné frémit…<br>Quelque chose vit là-dedans.</p>
-          <button class="act" id="btn-start">🥚 ADOPTER L'ŒUF</button>
-        </div>
-
-        <div id="ovl-name" class="ovl hidden">
-          <p class="big">✨ L'œuf a éclos ! ✨</p>
-          <p>Une petite loutre te regarde<br>avec de grands yeux…</p>
-          <p>Comment vas-tu l'appeler ?</p>
-          <input id="name-input" maxlength="12" placeholder="SON NOM" autocomplete="off">
-          <button class="act" id="btn-name" style="padding:12px 22px;">C'EST PARTI !</button>
-        </div>
-
-        <div id="ovl-story" class="ovl hidden">
-          <div class="story-card">
-            <div class="story-emoji" id="story-emoji">✨</div>
-            <p class="story-title" id="story-title"></p>
-            <div class="story-body" id="story-body"></div>
-            <button class="act" id="btn-story-next">CONTINUER</button>
-          </div>
-        </div>
-
-        <div id="ovl-over" class="ovl hidden">
-          <p class="big">🌊</p>
-          <p id="over-text"></p>
-          <button class="act" id="btn-restart" style="padding:12px 22px;">RECOMMENCER</button>
-        </div>
-
-        <div id="ovl-hats" class="ovl scroll hidden">
-          <button class="ovl-x" aria-label="Fermer">✕</button>
-          <p class="big">🎩 Garde-robe</p>
-          <div id="hat-tabs" class="tabs"></div>
-          <div id="hat-list" class="list"></div>
-          <button class="act ghost" id="btn-hats-close">FERMER</button>
-        </div>
-
-        <div id="ovl-ach" class="ovl scroll hidden">
-          <button class="ovl-x" aria-label="Fermer">✕</button>
-          <p class="big">🏆 Succès</p>
-          <div id="ach-list" class="list"></div>
-          <p id="rec-line" class="small"></p>
-          <button class="act" id="btn-day-share" style="width:100%">📣 PARTAGER MON RÉSULTAT DU JOUR</button>
-          <button class="act ghost" id="b-photo" style="width:100%">📸 CARTE SOUVENIR</button>
-          <button class="act ghost" id="btn-ach-close">FERMER</button>
-        </div>
-
-        <div id="ovl-battle" class="ovl scroll hidden">
-          <button class="ovl-x" aria-label="Fermer">✕</button>
-          <p class="big">⚔️ Combat de loutres</p>
-          <div id="bt-setup" style="width:100%">
-            <p class="small">Ton code de combat — envoie-le à ton adversaire :</p>
-            <textarea id="bt-mycode" readonly rows="2"></textarea>
-            <button class="act" id="bt-copy" style="width:100%">COPIER MON CODE</button>
-            <p class="small">Colle ici le code de ton adversaire :</p>
-            <textarea id="bt-foecode" rows="2" placeholder="LBATTLE1…"></textarea>
-            <button class="act" id="bt-start" style="width:100%">COMBATTRE !</button>
-          </div>
-          <div id="bt-arena" class="hidden" style="width:100%">
-            <div class="bar"><label id="bt-mename" style="width:auto;min-width:70px">Moi</label>
-              <div class="track"><div class="fill" id="bt-mehp" style="background-color:#4F8B76"></div></div></div>
-            <div class="bar"><label id="bt-foename" style="width:auto;min-width:70px">Adv.</label>
-              <div class="track"><div class="fill" id="bt-foehp" style="background-color:#B34A36"></div></div></div>
-            <p id="bt-log" class="small" style="min-height:56px"></p>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-              <button class="act" id="bt-splash">💦 Splash</button>
-              <button class="act" id="bt-roulade">🌀 Roulade</button>
-              <button class="act" id="bt-calin">💛 Câlin</button>
-            </div>
-          </div>
-          <button class="act ghost" id="bt-close">FERMER</button>
-        </div>
-
-        <div id="ovl-photo" class="ovl scroll hidden">
-          <button class="ovl-x" aria-label="Fermer">✕</button>
-          <p class="big">📸 Carte souvenir</p>
-          <img id="photo-img" alt="Carte souvenir de ma loutre">
-          <button class="act" id="btn-photo-share" style="width:100%">PARTAGER 🦦</button>
-          <button class="act ghost" id="btn-photo-save" style="width:100%">ENREGISTRER L'IMAGE</button>
-          <button class="act ghost" id="btn-photo-close">FERMER</button>
-        </div>
-
-        <div id="ovl-set" class="ovl scroll hidden">
-          <button class="ovl-x" aria-label="Fermer">✕</button>
-          <p class="big">⚙️ Réglages</p>
-
-          <p class="set-section">🎧 Son</p>
-          <button class="act ghost" id="b-mute"><span class="mi">🔊</span> SON : ACTIVÉ</button>
-          <button class="act ghost" id="b-music">🎵 MUSIQUE : OUI</button>
-          <button class="act ghost" id="b-volume">🔊 VOLUME : ●●●</button>
-
-          <p class="set-section">♿ Accessibilité</p>
-          <button class="act ghost" id="b-bigtext">🔠 GROS TEXTE : NON</button>
-          <button class="act ghost" id="b-motion">✨ ANIMATIONS : NORMALES</button>
-
-          <p class="set-section">🔔 Rappels</p>
-          <button class="act ghost" id="b-push">🔔 RAPPELS : NON</button>
-          <p id="push-note" class="set-note hidden">📲 Sur iPhone, les rappels ne fonctionnent que dans l'app installée : Partager ⎋ → « Sur l'écran d'accueil », puis rouvre Loutre depuis son icône. (iOS 16.4+)</p>
-
-          <p class="set-section">💾 Sauvegarde</p>
-          <p class="small">Ton code de sauvegarde :</p>
-          <textarea id="exp-code" readonly rows="3"></textarea>
-          <button class="act" id="btn-copy">COPIER LE CODE</button>
-          <p class="small">Importer un code :</p>
-          <textarea id="imp-code" rows="3" placeholder="LOUTRE1…"></textarea>
-          <button class="act" id="btn-import">IMPORTER</button>
-
-          <p class="set-section">⚠️ Zone de danger</p>
-          <button class="act ghost" id="b-reset">↺ RECOMMENCER À ZÉRO</button>
-
-          <button class="act ghost" id="btn-set-close">FERMER</button>
-          <p class="small" id="ver" style="opacity:.7"></p>
-        </div>
-
-        <div id="ovl-confirm" class="ovl hidden">
-          <p id="confirm-text"></p>
-          <div style="display:flex; gap:10px;">
-            <button class="act" id="btn-confirm-yes" style="padding:12px 18px;">OUI</button>
-            <button class="act ghost" id="btn-confirm-no" style="padding:12px 18px;">NON</button>
-          </div>
-        </div>
-
-        <div id="ovl-cheer" role="button" tabindex="-1" aria-label="Célébration">
-          <div class="cheer-rays"></div>
-          <div class="cheer-card">
-            <div class="cheer-kicker" id="cheer-kicker"></div>
-            <div class="cheer-big" id="cheer-big"></div>
-            <div class="cheer-title" id="cheer-title"></div>
-            <div class="cheer-reward" id="cheer-reward"></div>
-          </div>
-        </div>
-
-        <div id="toast"></div>
-
-        <div id="btnrow-egg" class="hidden">
-          <button class="act" id="b-warm"><span class="ic">🔥</span>RÉCHAUFFER L'ŒUF</button>
-        </div>
-        <div id="btnrow-away" class="hidden">
-          <button class="act" id="b-care"><span class="ic">🐟</span>Lui porter un poisson (0/3)</button>
-        </div>
-      </div><!-- /#screenwrap -->
-
       <div id="side-right" class="side">
         <button id="b-hats" class="sidebtn"><span class="ic">🎩</span><span class="lbl">Garde-robe</span></button>
         <button id="b-ach" class="sidebtn"><span class="ic">🏆</span><span class="lbl">Succès</span><span class="badge count" id="ach-badge"></span></button>
@@ -221,10 +79,9 @@
         <button id="b-slide" class="roundbtn" aria-label="Toboggan"><span class="ic">🛝</span></button>
         <button id="b-battle" class="roundbtn" aria-label="Combat"><span class="ic">⚔️</span><span class="badge"></span></button>
       </div>
-    </div><!-- /#stage -->
-
+    </div>
     <p id="log">…</p>
-  </div><!-- /#playfield -->
+  </div>
 
   <!-- Bannière de quête -->
   <div id="quest" class="hidden" role="button" tabindex="0" aria-label="Objectifs du jour">
@@ -244,6 +101,146 @@
 
   <button class="mini hidden" id="b-install">📲 INSTALLER</button>
   <p id="ios-hint" class="hidden">📲 Pour installer : Partager <b>⎋</b> puis « Sur l'écran d'accueil »</p>
+
+  <!-- ===================== Overlays plein écran (au-dessus de tout) ===================== -->
+  <div id="toast"></div>
+
+  <div id="ovl-intro" class="ovl hidden">
+    <div class="title-sky"></div>
+    <div class="title-hero">
+      <div class="title-otter">🦦</div>
+      <h2 class="title-name">MA&nbsp;PETITE<br>LOUTRE</h2>
+      <p class="title-tag">un tamagotchi de rivière</p>
+    </div>
+    <p class="title-story">Au bord de l'eau, un œuf abandonné frémit…<br>Quelque chose vit là-dedans.</p>
+    <button class="act" id="btn-start">🥚 ADOPTER L'ŒUF</button>
+  </div>
+
+  <div id="ovl-name" class="ovl hidden">
+    <p class="big">✨ L'œuf a éclos ! ✨</p>
+    <p>Une petite loutre te regarde<br>avec de grands yeux…</p>
+    <p>Comment vas-tu l'appeler ?</p>
+    <input id="name-input" maxlength="12" placeholder="SON NOM" autocomplete="off">
+    <button class="act" id="btn-name" style="padding:12px 22px;">C'EST PARTI !</button>
+  </div>
+
+  <div id="ovl-story" class="ovl hidden">
+    <div class="story-card">
+      <div class="story-emoji" id="story-emoji">✨</div>
+      <p class="story-title" id="story-title"></p>
+      <div class="story-body" id="story-body"></div>
+      <button class="act" id="btn-story-next">CONTINUER</button>
+    </div>
+  </div>
+
+  <div id="ovl-over" class="ovl hidden">
+    <p class="big">🌊</p>
+    <p id="over-text"></p>
+    <button class="act" id="btn-restart" style="padding:12px 22px;">RECOMMENCER</button>
+  </div>
+
+  <div id="ovl-hats" class="ovl scroll hidden">
+    <button class="ovl-x" aria-label="Fermer">✕</button>
+    <p class="big">🎩 Garde-robe</p>
+    <div id="hat-tabs" class="tabs"></div>
+    <div id="hat-list" class="list"></div>
+    <button class="act ghost" id="btn-hats-close">FERMER</button>
+  </div>
+
+  <div id="ovl-ach" class="ovl scroll hidden">
+    <button class="ovl-x" aria-label="Fermer">✕</button>
+    <p class="big">🏆 Succès</p>
+    <div id="ach-list" class="list"></div>
+    <p id="rec-line" class="small"></p>
+    <button class="act" id="btn-day-share" style="width:100%">📣 PARTAGER MON RÉSULTAT DU JOUR</button>
+    <button class="act ghost" id="b-photo" style="width:100%">📸 CARTE SOUVENIR</button>
+    <button class="act ghost" id="btn-ach-close">FERMER</button>
+  </div>
+
+  <div id="ovl-battle" class="ovl scroll hidden">
+    <button class="ovl-x" aria-label="Fermer">✕</button>
+    <p class="big">⚔️ Combat de loutres</p>
+    <div id="bt-setup" style="width:100%">
+      <p class="small">Ton code de combat — envoie-le à ton adversaire :</p>
+      <textarea id="bt-mycode" readonly rows="2"></textarea>
+      <button class="act" id="bt-copy" style="width:100%">COPIER MON CODE</button>
+      <p class="small">Colle ici le code de ton adversaire :</p>
+      <textarea id="bt-foecode" rows="2" placeholder="LBATTLE1…"></textarea>
+      <button class="act" id="bt-start" style="width:100%">COMBATTRE !</button>
+    </div>
+    <div id="bt-arena" class="hidden" style="width:100%">
+      <div class="bar"><label id="bt-mename" style="width:auto;min-width:70px">Moi</label>
+        <div class="track"><div class="fill" id="bt-mehp" style="background-color:#4F8B76"></div></div></div>
+      <div class="bar"><label id="bt-foename" style="width:auto;min-width:70px">Adv.</label>
+        <div class="track"><div class="fill" id="bt-foehp" style="background-color:#B34A36"></div></div></div>
+      <p id="bt-log" class="small" style="min-height:56px"></p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <button class="act" id="bt-splash">💦 Splash</button>
+        <button class="act" id="bt-roulade">🌀 Roulade</button>
+        <button class="act" id="bt-calin">💛 Câlin</button>
+      </div>
+    </div>
+    <button class="act ghost" id="bt-close">FERMER</button>
+  </div>
+
+  <div id="ovl-photo" class="ovl scroll hidden">
+    <button class="ovl-x" aria-label="Fermer">✕</button>
+    <p class="big">📸 Carte souvenir</p>
+    <img id="photo-img" alt="Carte souvenir de ma loutre">
+    <button class="act" id="btn-photo-share" style="width:100%">PARTAGER 🦦</button>
+    <button class="act ghost" id="btn-photo-save" style="width:100%">ENREGISTRER L'IMAGE</button>
+    <button class="act ghost" id="btn-photo-close">FERMER</button>
+  </div>
+
+  <div id="ovl-set" class="ovl scroll hidden">
+    <button class="ovl-x" aria-label="Fermer">✕</button>
+    <p class="big">⚙️ Réglages</p>
+
+    <p class="set-section">🎧 Son</p>
+    <button class="act ghost" id="b-mute"><span class="mi">🔊</span> SON : ACTIVÉ</button>
+    <button class="act ghost" id="b-music">🎵 MUSIQUE : OUI</button>
+    <button class="act ghost" id="b-volume">🔊 VOLUME : ●●●</button>
+
+    <p class="set-section">♿ Accessibilité</p>
+    <button class="act ghost" id="b-bigtext">🔠 GROS TEXTE : NON</button>
+    <button class="act ghost" id="b-motion">✨ ANIMATIONS : NORMALES</button>
+
+    <p class="set-section">🔔 Rappels</p>
+    <button class="act ghost" id="b-push">🔔 RAPPELS : NON</button>
+    <p id="push-note" class="set-note hidden">📲 Sur iPhone, les rappels ne fonctionnent que dans l'app installée : Partager ⎋ → « Sur l'écran d'accueil », puis rouvre Loutre depuis son icône. (iOS 16.4+)</p>
+
+    <p class="set-section">💾 Sauvegarde</p>
+    <p class="small">Ton code de sauvegarde :</p>
+    <textarea id="exp-code" readonly rows="3"></textarea>
+    <button class="act" id="btn-copy">COPIER LE CODE</button>
+    <p class="small">Importer un code :</p>
+    <textarea id="imp-code" rows="3" placeholder="LOUTRE1…"></textarea>
+    <button class="act" id="btn-import">IMPORTER</button>
+
+    <p class="set-section">⚠️ Zone de danger</p>
+    <button class="act ghost" id="b-reset">↺ RECOMMENCER À ZÉRO</button>
+
+    <button class="act ghost" id="btn-set-close">FERMER</button>
+    <p class="small" id="ver" style="opacity:.7"></p>
+  </div>
+
+  <div id="ovl-confirm" class="ovl hidden">
+    <p id="confirm-text"></p>
+    <div style="display:flex; gap:10px;">
+      <button class="act" id="btn-confirm-yes" style="padding:12px 18px;">OUI</button>
+      <button class="act ghost" id="btn-confirm-no" style="padding:12px 18px;">NON</button>
+    </div>
+  </div>
+
+  <div id="ovl-cheer" role="button" tabindex="-1" aria-label="Célébration">
+    <div class="cheer-rays"></div>
+    <div class="cheer-card">
+      <div class="cheer-kicker" id="cheer-kicker"></div>
+      <div class="cheer-big" id="cheer-big"></div>
+      <div class="cheer-title" id="cheer-title"></div>
+      <div class="cheer-reward" id="cheer-reward"></div>
+    </div>
+  </div>
 </div>
 
 <noscript><p style="text-align:center;padding:20px;">Ce jeu a besoin de JavaScript.</p></noscript>

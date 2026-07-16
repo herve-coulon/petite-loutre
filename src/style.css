@@ -19,13 +19,14 @@ html,body{
 
 #app{
   height:100dvh; display:flex; flex-direction:column; gap:8px;
-  max-width:460px; margin:0 auto;
+  max-width:460px; margin:0 auto; position:relative;
   padding:calc(8px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right))
           calc(8px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
-  background:
-    repeating-linear-gradient(0deg, rgba(38,54,78,.03) 0 1px, transparent 1px 3px),
-    linear-gradient(180deg,#F3EAC9,var(--washi));
+  background:transparent;
 }
+/* le HUD flotte au-dessus de la berge plein écran */
+#topbar, #counters, #gauges, #playfield, #quest, #actionbar,
+#b-install, #ios-hint{ position:relative; z-index:3; }
 
 /* ---------------- Composants parchemin de base ---------------- */
 .pill{
@@ -140,15 +141,14 @@ button{font-family:inherit;}
 .sidebtn:active, .roundbtn:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,54,78,.34);}
 .sidebtn.locked, .roundbtn.locked{opacity:.5;}
 
+/* Berge PLEIN ÉCRAN, fond immersif derrière tout le HUD (façon arène) */
 #screenwrap{
-  position:absolute; inset:0; overflow:hidden;
-  border:2.5px solid var(--ink); border-radius:14px;
-  background:#9fd9e8; box-shadow:var(--shadow), inset 0 0 0 2px rgba(201,162,75,.4);
+  position:fixed; inset:0; z-index:0; overflow:hidden; background:#9fd9e8;
 }
 #screen{position:absolute; inset:0; line-height:0;}
 canvas#cv{
   display:block; width:100%; height:100%;
-  object-fit:cover; object-position:50% 54%;   /* remplit tout le cadre, otter centré */
+  object-fit:cover; object-position:42% 56%;   /* remplit l'écran, Némo recentrée */
   image-rendering:pixelated; image-rendering:crisp-edges; background:#9fd9e8;
 }
 #screenwrap.shake{animation:shake .34s steps(2);}
@@ -215,11 +215,10 @@ canvas#cv{
 
 /* ---------------- Overlays (panneaux de jeu, recolorés parchemin) ---------------- */
 .ovl{
-  position:absolute; inset:6px; z-index:5;
+  position:fixed; inset:0; z-index:20;
   display:flex; flex-direction:column; gap:12px;
-  align-items:center; justify-content:center; text-align:center; padding:18px;
-  background:rgba(240,230,198,.94); border:2.5px solid var(--ink); border-radius:12px;
-  color:var(--ink);
+  align-items:center; justify-content:center; text-align:center; padding:26px;
+  background:rgba(240,230,198,.96); color:var(--ink);
   transition:opacity .2s ease, transform .2s cubic-bezier(.2,.85,.3,1), visibility .2s;
 }
 .ovl.hidden{display:flex !important; opacity:0; visibility:hidden; pointer-events:none;
@@ -278,15 +277,15 @@ input#name-input{
 input#name-input:focus{border-color:var(--teal);}
 
 #toast{
-  position:absolute; top:14px; left:50%; transform:translateX(-50%) scale(0);
+  position:fixed; top:calc(14px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%) scale(0);
   background:var(--ink); color:#f3e9c8; border:2px solid var(--gold);
-  font-size:13px; font-weight:700; padding:8px 14px; border-radius:999px; z-index:6;
+  font-size:13px; font-weight:700; padding:8px 14px; border-radius:999px; z-index:30;
   transition:transform .25s; white-space:nowrap;
 }
 #toast.show{transform:translateX(-50%) scale(1);}
 
 /* Célébration */
-#ovl-cheer{position:absolute; inset:6px; z-index:8; overflow:hidden;
+#ovl-cheer{position:fixed; inset:0; z-index:22; overflow:hidden;
   display:flex; align-items:center; justify-content:center;
   background:radial-gradient(ellipse at center, rgba(240,230,198,.5), rgba(38,54,78,.55));
   opacity:0; visibility:hidden; pointer-events:none; transition:opacity .25s ease, visibility .25s;}
@@ -337,7 +336,7 @@ input#name-input:focus{border-color:var(--teal);}
 .set-section::before{transform:scaleX(-1);}
 .set-note{font-size:11px; color:var(--dim); line-height:1.5; margin:6px 2px 0; text-align:left;}
 .more-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; width:100%;}
-#ovl-confirm{z-index:7;}
+#ovl-confirm{z-index:25;}
 
 /* photo */
 #photo-img{width:78%; max-width:280px; display:block; image-rendering:pixelated;

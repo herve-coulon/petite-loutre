@@ -405,9 +405,7 @@ function togglePlace() {
 
 /* ---------------- Canvas (pêche, caresses, œuf) ---------------- */
 function onCanvasPointer(e) {
-  const r = cv.getBoundingClientRect();
-  const x = (e.clientX - r.left) * (cv.width / r.width);
-  const y = (e.clientY - r.top) * (cv.height / r.height);
+  const { x, y } = canvasXY(e);
   const pad = e.pointerType === 'touch' ? 8 : 4; // hitbox élargie au doigt
 
   if (mg) {
@@ -508,8 +506,22 @@ function onCanvasPointer(e) {
 
 // Gestes de glissement : la balle qu'on lance, ou le poisson qu'on donne. Le doigt
 // pilote le jeton ; on convertit les coords écran -> coords canvas.
+// Convertit un pointeur écran -> coordonnées du canvas (0..W, 0..H), en tenant
+// compte d'object-fit (cover/contain) et d'object-position : sinon, plein écran
+// « cover » rogne l'image et le repère se décale (perte de précision au glisser).
 function canvasXY(e) {
   const r = cv.getBoundingClientRect();
+  const cs = getComputedStyle(cv);
+  const fit = cs.objectFit;
+  let scaleX = r.width / cv.width, scaleY = r.height / cv.height, s = null;
+  if (fit === 'cover') s = Math.max(scaleX, scaleY);
+  else if (fit === 'contain') s = Math.min(scaleX, scaleY);
+  if (s) {
+    const pos = cs.objectPosition.split(' ');
+    const px = (parseFloat(pos[0]) || 0) / 100, py = (parseFloat(pos[1]) || 0) / 100;
+    const left = (r.width - cv.width * s) * px, top = (r.height - cv.height * s) * py;
+    return { x: (e.clientX - r.left - left) / s, y: (e.clientY - r.top - top) / s };
+  }
   return { x: (e.clientX - r.left) * (cv.width / r.width), y: (e.clientY - r.top) * (cv.height / r.height) };
 }
 function onCanvasMove(e) {
