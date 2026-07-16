@@ -31,6 +31,10 @@
     </div>
   </div>
 
+  <!-- Retour à la berge depuis la vallée (visible seulement dans le Monde) -->
+  <button id="b-world-back" aria-label="Retour à la berge">🌊</button>
+  <div id="world-hint">🗺️ Touche le sol pour te déplacer · approche une loutre 💬</div>
+
   <!-- Rangée 1 : avatar + nom/XP · boutique · gemmes -->
   <div id="topbar">
     <div id="avatar">
@@ -67,6 +71,7 @@
     <div id="stage">
       <div id="side-left" class="side">
         <button id="b-place" class="sidebtn"><span class="ic">🏠</span><span class="lbl">Tanière</span></button>
+        <button id="b-world" class="sidebtn hidden"><span class="ic">🗺️</span><span class="lbl">Explorer</span></button>
         <button id="b-gift" class="sidebtn"><span class="ic">🎁</span><span class="lbl">Cadeau</span><span class="badge">!</span></button>
       </div>
       <div id="side-right" class="side">
@@ -240,6 +245,19 @@
     <button class="ovl-x" aria-label="Fermer">✕</button>
     <p class="big">🦦 Escouade</p>
     <div id="gang-body"></div>
+  </div>
+
+  <!-- Rencontre : amadouer une loutre sauvage pour l'enrôler -->
+  <div id="ovl-encounter" class="ovl hidden">
+    <div class="enc-card">
+      <button class="ovl-x" aria-label="Fermer">✕</button>
+      <span class="enc-face" id="enc-face" aria-hidden="true">🦦</span>
+      <p class="big" id="enc-name">Loutre sauvage</p>
+      <p class="small" id="enc-sub"></p>
+      <div class="enc-meter"><div class="enc-fill" id="enc-fill"></div></div>
+      <button class="act" id="enc-fish"><span class="ic">🐟</span> Offrir un poisson</button>
+      <p class="small" id="enc-hint"></p>
+    </div>
   </div>
 
   <div id="ovl-set" class="ovl scroll hidden">

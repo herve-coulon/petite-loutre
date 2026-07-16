@@ -22,7 +22,7 @@ import {
 import { stepSim, simulateOffline, ageMs } from './sim.js';
 import { newGame, tickGame, clickGame } from './minigame.js';
 import { newSlide, tickSlide, setSlideLane, laneAt } from './toboggan.js';
-import { makeRenderer, FOOD_POS, BALL_HOME, denItemAt } from './render.js';
+import { makeRenderer, FOOD_POS, BALL_HOME, denItemAt, CANVAS_W, CANVAS_H } from './render.js';
 import { sfx, vibrate, setMuted, setVolume, getVolume } from './audio.js';
 import * as ui from './ui.js';
 import { registerSW, setupInstall, requestPersistentStorage, isIOS, isStandalone } from './pwa.js';
@@ -54,6 +54,11 @@ let storyOpen = false;        // une carte chapitre est à l'écran
 let coachTarget = null;       // bouton actuellement surligné par le tutoriel
 let activeHint = null, hintAt = 0, hintCooldown = 0; // astuce de geste en cours (onboarding)
 let lastSeasonHint = 0;       // throttle des rappels saisonniers (froid/chaud)
+let world = null;             // état runtime du Monde (balade libre) — non persisté
+let encounterOtter = null;    // loutre sauvage dont la rencontre est ouverte
+const isRecruited = id => !!rec && Array.isArray(rec.recruited) && rec.recruited.includes(id);
+const markRecruited = id => { if (rec && !isRecruited(id)) (rec.recruited = rec.recruited || []).push(id); };
+const BEFRIEND_NEED = 3;      // nombre d'attentions pour amadouer une loutre sauvage
 
 const cv = $('cv');
 const R = makeRenderer(cv);
@@ -386,18 +391,26 @@ function denAvailable() {
   return s && !s.gameOver && !s.away && s.stage !== 'egg' && !mg;
 }
 function updatePlaceBtn() {
-  const b = $('b-place'); if (!b) return;
+  const inWorld = !!(s && s.place === 'monde');
   const overlayOpen = !!document.querySelector('.ovl:not(.hidden)');
-  const show = !!denAvailable() && !overlayOpen;
-  b.classList.toggle('hidden', !show);
-  const inDen = show && s.place === 'taniere';
-  b.textContent = inDen ? '🌊' : '🏠';
-  b.title = inDen ? 'Retourner à la rivière' : 'Aller à la tanière';
-  // Séparation des écrans (piloté en CSS via .in-den, robuste face à updateHUD
-  // qui touche aussi #actionbar chaque frame) :
-  //   • BERGE  = vie active → soins, quête, compteurs, mini-jeux, Cadeau, événement du jour
-  //   • TANIÈRE = repos & collection → menu (garde-robe/succès/réglages) + trésors
-  const app = $('app'); if (app) app.classList.toggle('in-den', inDen);
+  const b = $('b-place');
+  if (b) {
+    const show = !!denAvailable() && !overlayOpen && !inWorld;
+    b.classList.toggle('hidden', !show);
+    const inDen = show && s.place === 'taniere';
+    b.textContent = inDen ? '🌊' : '🏠';
+    b.title = inDen ? 'Retourner à la rivière' : 'Aller à la tanière';
+  }
+  // 🗺️ Explorer : seulement depuis la berge, quand la loutre est là.
+  const bw = $('b-world');
+  if (bw) bw.classList.toggle('hidden', !(denAvailable() && !overlayOpen && s.place === 'berge'));
+  // Séparation des écrans, pilotée en CSS (robuste face à updateHUD chaque frame) :
+  //   • BERGE  = vie active   • TANIÈRE = repos/collection   • MONDE = balade/rencontres
+  const app = $('app');
+  if (app) {
+    app.classList.toggle('in-den', !!(s && s.place === 'taniere') && !overlayOpen);
+    app.classList.toggle('in-world', inWorld);
+  }
 }
 function togglePlace() {
   if (!denAvailable()) return;
@@ -408,6 +421,95 @@ function togglePlace() {
   updatePlaceBtn();
   hintDone('den');
   persist();
+}
+
+/* ---------------- Le Monde : balade libre, rencontres, recrutement ---------------- */
+const clampN = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
+
+/** Entre dans la vallée : engendre les loutres sauvages du jour et place tout le monde. */
+function enterWorld() {
+  if (!denAvailable()) return;
+  const spots = [{ x: 34, y: 192 }, { x: 122, y: 214 }, { x: 74, y: 268 }];
+  const cands = recruitBoard(curLevel(), dayKey(), 3).filter(c => !isRecruited(c.id));
+  const otters = cands.map((c, i) => ({
+    ...c, x: spots[i].x, y: spots[i].y, wx: spots[i].x, phase: i * 60,
+    facing: spots[i].x > CANVAS_W / 2 ? -1 : 1, friend: 0, cooldown: 0
+  }));
+  world = { px: CANVAS_W / 2, py: CANVAS_H - 52, tx: CANVAS_W / 2, ty: CANVAS_H - 52, walking: false, facing: 1, otters };
+  s.place = 'monde';
+  sfx.press(); vibrate(8);
+  ui.log('🗺️ ' + (s.name || 'La loutre') + ' part explorer la vallée…');
+  updatePlaceBtn(); persist();
+}
+
+/** Quitte la vallée, retour à la berge. */
+function exitWorld() {
+  world = null; encounterOtter = null;
+  ui.hideOverlay('ovl-encounter');
+  s.place = 'berge';
+  sfx.press(); vibrate(8);
+  ui.log((s.name || 'La loutre') + ' rentre au bord de la rivière. 🌊');
+  updatePlaceBtn(); persist();
+}
+
+/** Un pas de simulation du Monde (déplacement de la loutre + rencontres), chaque frame. */
+function stepWorld() {
+  if (!world) return;
+  if (!encounterOtter) {
+    const dx = world.tx - world.px, dy = world.ty - world.py, d = Math.hypot(dx, dy);
+    if (d > 1.5) {
+      const step = Math.min(2.3, d);
+      world.px += dx / d * step; world.py += dy / d * step;
+      world.facing = dx < 0 ? -1 : 1; world.walking = true;
+    } else world.walking = false;
+  }
+  for (const o of world.otters) {
+    if (o.gone) continue;
+    o.wx = o.x + Math.sin((frame + o.phase) / 55) * 5;
+    if (encounterOtter) continue;
+    const pd = Math.hypot(o.wx - world.px, o.y - world.py);
+    if (pd < 20 && frame > (o.cooldown || 0)) openEncounter(o);
+  }
+}
+
+/** Ouvre la rencontre avec une loutre sauvage (la balade se met en pause). */
+function openEncounter(o) {
+  if (encounterOtter) return;
+  encounterOtter = o; world.walking = false;
+  sfx.chirp(); vibrate(10);
+  ui.renderEncounter(o, rec.gang, BEFRIEND_NEED, encHandlers);
+  ui.showOverlay('ovl-encounter');
+}
+
+/** Ferme la rencontre ; si on n'a pas amadoué, la loutre reste (petit répit). */
+function closeEncounter(befriended) {
+  const o = encounterOtter; encounterOtter = null;
+  ui.hideOverlay('ovl-encounter');
+  if (o && !befriended) o.cooldown = frame + 240;
+}
+
+const encHandlers = {
+  offer: () => {
+    const o = encounterOtter; if (!o) return;
+    o.friend = (o.friend || 0) + 1;
+    R.spawn && R.spawn('heart', s.stage); sfx.happy(); vibrate(8);
+    if (o.friend >= BEFRIEND_NEED) befriend(o);
+    else ui.renderEncounter(o, rec.gang, BEFRIEND_NEED, encHandlers);
+  },
+  close: () => closeEncounter(false)
+};
+
+/** Amadouée : la loutre sauvage rejoint l'escouade (créée au besoin). */
+function befriend(o) {
+  if (!rec.gang) rec.gang = makeGang('Mon escouade', '🦦', s);
+  if (rec.gang.members.length >= MAX_MEMBERS) {
+    ui.toast('Escouade complète (5) 🦦'); closeEncounter(false); return;
+  }
+  recruit(rec.gang, o); markRecruited(o.id); o.gone = true;
+  persistRec(); ui.renderProfile(s, rec);
+  ui.log('🤝 ' + o.name + ' rejoint « ' + rec.gang.name + ' » !');
+  ui.toast('🤝 ' + o.name + ' rejoint ton escouade !');
+  closeEncounter(true);
 }
 
 /* ---------------- Canvas (pêche, caresses, œuf) ---------------- */
@@ -423,6 +525,15 @@ function onCanvasPointer(e) {
   if (s && !s.gameOver) {
     if (s.stage === 'egg') { actWarm(); return; }
     if (s.away) return; // elle n'est pas là — le bouton du héron fait le travail
+
+    // dans le Monde : on guide la loutre au toucher (elle marche vers le point)
+    if (s.place === 'monde') {
+      if (world && !encounterOtter) {
+        world.tx = clampN(x, 14, CANVAS_W - 14);
+        world.ty = clampN(y, 164, CANVAS_H - 46);
+      }
+      return;
+    }
 
     // dans la tanière : taper un trésor l'identifie ; taper la loutre la caresse
     if (s.place === 'taniere') {
@@ -1052,12 +1163,14 @@ function loop() {
     const res = mg.mode === 'slide' ? tickSlide(mg, now()) : tickGame(mg, now());
     if (res) (mg.mode === 'slide' ? endSlide : endGame)(res);
   }
+  if (!frozen && s && s.place === 'monde') stepWorld();
   R.render(s, mg, frame, {
     wobble: s && now() < wobbleUntil,
     diving: diving(),
     foe: battle ? battle.foe : null,
     dragFood,
     owned: rec ? rec.items : null,
+    world: (s && s.place === 'monde') ? world : null,
     hint: (s && activeHint) ? hintTargetFor(activeHint) : null
   });
   if (R.consumeFetch()) onFetchDone(); // la loutre vient de rapporter la balle
@@ -1082,6 +1195,8 @@ function boot() {
   const prev = loadState(storage);
   if (prev) {
     s = prev;
+    // Le Monde est une excursion runtime (world non persisté) : on rentre à la berge au boot.
+    if (s.place === 'monde') s.place = 'berge';
     // migration : une loutre déjà nommée d'avant v3.10 reçoit un caractère (déterministe)
     if (s.name && s.stage !== 'egg' && !s.trait) s.trait = pickTrait(() => (s.born % 1000) / 1000);
     setMuted(s.mute);
@@ -1296,6 +1411,9 @@ function boot() {
   // Carte photo (accessible depuis Succès)
   $('b-photo').addEventListener('click', openPhoto);
   $('b-place').addEventListener('click', togglePlace);
+  $('b-world').addEventListener('click', enterWorld);
+  $('b-world-back').addEventListener('click', exitWorld);
+  $('enc-fish').addEventListener('click', () => encHandlers.offer());
 
   // Cadeau de saison : un lot (gemmes + poissons) à réclamer une fois par saison
   $('b-gift').addEventListener('click', () => {
@@ -1335,9 +1453,8 @@ function boot() {
   { const el = $('ps-ach'); if (el) el.addEventListener('click', openAch); } // slot Succès du profil
 
   // Escouade (gang) : création, recrutement (coûte de l'XP), combats de bande.
-  const recruitedIds = new Set();  // recrues déjà enrôlées cette session (bouton grisé)
   const gangBoard = () => recruitBoard(curLevel(), dayKey(), 3)
-    .map(c => ({ ...c, recruited: recruitedIds.has(c.id) }));
+    .map(c => ({ ...c, recruited: isRecruited(c.id) }));
   const refreshGang = () => ui.renderGang(rec, s, gangHandlers, gangBoard());
   const gangHandlers = {
     create: (name, emblem) => {
@@ -1349,7 +1466,7 @@ function boot() {
       if (!rec.gang || rec.gang.members.length >= MAX_MEMBERS) return;
       if ((rec.xp || 0) < c.cost) { ui.toast('Pas assez d\'XP 🐟'); return; }
       if (recruit(rec.gang, c)) {
-        rec.xp -= c.cost; recruitedIds.add(c.id);
+        rec.xp -= c.cost; markRecruited(c.id);
         persistRec(); sfx.happy(); vibrate(12);
         ui.renderProfile(s, rec); refreshGang();
       }
@@ -1472,6 +1589,7 @@ function boot() {
   const overlayClosers = {
     'ovl-menu': () => ui.hideOverlay('ovl-menu'),
     'ovl-gang': () => ui.hideOverlay('ovl-gang'),
+    'ovl-encounter': () => closeEncounter(false),
     'ovl-hats': () => ui.hideOverlay('ovl-hats'),
     'ovl-ach': () => ui.hideOverlay('ovl-ach'),
     'ovl-set': () => ui.hideOverlay('ovl-set'),
@@ -1503,6 +1621,8 @@ window.__loutre = {
   get state() { return s; },
   get records() { return rec; },
   get minigame() { return mg; },
+  get world() { return world; },
+  get enc() { return encounterOtter; },
   forceHatch() {
     if (s && s.stage === 'egg') {
       s.born = now() - 3 * MIN;

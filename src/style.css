@@ -157,6 +157,39 @@ button{font-family:inherit;}
 .g-result.lose{background:rgba(200,70,70,.15); color:#9e3a38;}
 .g-log{display:flex; flex-direction:column; gap:3px; padding:10px 12px; font-size:12px; color:var(--ink);
   background:var(--paper); border:2px solid var(--ink); border-radius:12px;}
+
+/* ── Le Monde (balade libre) ───────────────────────────────────────────── */
+#app.in-world #actionbar,
+#app.in-world #counters,
+#app.in-world #quest,
+#app.in-world #side-right,
+#app.in-world #b-gift{display:none !important;}
+#b-world-back{
+  display:none; position:fixed; top:10px; left:10px; z-index:15;
+  width:46px; height:46px; font-size:22px; cursor:pointer; font-family:inherit;
+  background:var(--paper); border:2.5px solid var(--ink); border-radius:14px; box-shadow:var(--shadow);
+}
+#app.in-world #b-world-back{display:flex; align-items:center; justify-content:center;}
+#world-hint{
+  display:none; position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:15;
+  max-width:90%; text-align:center; font-size:12px; font-weight:700; color:var(--ink);
+  background:rgba(243,233,200,.92); border:2px solid var(--ink); border-radius:999px; padding:7px 14px;
+}
+#app.in-world #world-hint{display:block;}
+
+#ovl-encounter{background:rgba(38,54,78,.5); padding:20px;}
+.enc-card{
+  position:relative; width:100%; max-width:290px; text-align:center;
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+  background:var(--washi); border:2.5px solid var(--ink); border-radius:18px;
+  box-shadow:0 12px 34px rgba(38,54,78,.42); padding:20px 16px 16px;
+}
+.enc-card .ovl-x{position:absolute; top:8px; right:10px; margin:0; align-self:auto;}
+.enc-face{font-size:56px; line-height:1;}
+.enc-meter{width:100%; height:14px; background:var(--track); border:2px solid var(--ink);
+  border-radius:999px; overflow:hidden;}
+.enc-fill{height:100%; width:0%; background:var(--teal); transition:width .25s ease;}
+.enc-card .act{width:100%;}
 #idcol{flex:1; min-width:0;}
 #hud-name{display:block; font-size:22px; font-weight:700; color:var(--ink);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:.3px;}

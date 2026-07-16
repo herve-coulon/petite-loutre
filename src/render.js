@@ -593,12 +593,76 @@ export function makeRenderer(cv) {
     ctx.restore();
   }
 
+  // ── MONDE : balade libre dans la vallée, on y croise d'autres loutres ──
+  // Dessine une loutre (joueuse ou sauvage) centrée en (px, bas=py).
+  function drawFigure(otterLike, px, py, frame, walking, flip) {
+    const spr = SPRITES[otterLike.stage] || SPRITES.adult;
+    const fur = furById(otterLike.fur).map;
+    const sc = 2, w = spr[0].length * sc, h = spr.length * sc;
+    const bob = Math.sin((frame + (px | 0)) / 6) * (walking ? 1.7 : 0.5);
+    const ox = Math.round(px - w / 2), oy = Math.round(py - h + bob);
+    // ombre au sol
+    ctx.fillStyle = 'rgba(0,0,0,.14)';
+    ctx.fillRect(ox + 4, py - 3, w - 8, 3);
+    drawSprite(spr, ox, oy, sc, fur, flip);
+    drawRim(spr, ox, oy, sc, 'rgba(255,255,255,.22)', 'rgba(0,0,0,.16)');
+    drawFace(otterLike, 'contente', ox, oy, frame, fur, false);
+    return oy;
+  }
+
+  function drawWorld(s, frame, fx) {
+    const w = fx.world;
+    // ciel + collines lointaines
+    ctx.fillStyle = '#bfe6ef'; ctx.fillRect(0, 0, CANVAS_W, 160);
+    ctx.fillStyle = '#a9d59a';
+    for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(18 + i * 44, 160, 42, Math.PI, 0); ctx.fill(); }
+    // prairie
+    ctx.fillStyle = '#8fce78'; ctx.fillRect(0, 152, CANVAS_W, CANVAS_H - 152);
+    ctx.fillStyle = 'rgba(0,0,0,.05)'; ctx.fillRect(0, 152, CANVAS_W, 3);
+    ctx.fillStyle = '#79bf62';
+    for (let gy = 172; gy < 300; gy += 22) for (let gx = 10; gx < CANVAS_W; gx += 26) {
+      const o = (gx * 7 + gy * 3) % 11;
+      ctx.fillRect(gx + o, gy, 2, 4); ctx.fillRect(gx + o + 3, gy - 1, 2, 5);
+    }
+    // rivière en bas
+    ctx.fillStyle = '#57a6cf'; ctx.fillRect(0, CANVAS_H - 42, CANVAS_W, 42);
+    ctx.fillStyle = 'rgba(255,255,255,.16)'; ctx.fillRect(0, CANVAS_H - 42, CANVAS_W, 2);
+    for (const rx of [20, 70, 120]) ctx.fillRect((rx + (frame % 60)) % CANVAS_W, CANVAS_H - 28, 10, 2);
+
+    if (!w) return;
+    if (w.walking) { // marqueur de destination
+      ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(w.tx, w.ty, 4 + (frame % 12) / 3, 0, 6.283); ctx.stroke();
+    }
+    const figs = [];
+    for (const o of w.otters) {
+      if (o.gone) continue;
+      const px = o.wx != null ? o.wx : o.x;
+      figs.push({ y: o.y, fn: () => {
+        drawFigure(o, px, o.y, frame, false, o.facing < 0);
+        const by = o.y - (SPRITES[o.stage] || SPRITES.adult).length * 2 - 10 + Math.sin(frame / 10) * 2;
+        ctx.font = '11px system-ui,sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('💬', px, by); ctx.textAlign = 'left';
+      } });
+    }
+    figs.push({ y: w.py, fn: () => drawFigure(s, w.px, w.py, frame, w.walking, w.facing < 0) });
+    figs.sort((a, b) => a.y - b.y).forEach(f => f.fn());
+  }
+
   function render(s, mg, frame, fx) {
     fx = fx || {};
     lastFrame = frame;
     const now = new Date();
     const season = seasonInfo(now);
     const c = applySeason(skyColors(now.getHours()), season);
+
+    // Le Monde : balade libre dans la vallée pour rencontrer d'autres loutres.
+    if (s && s.place === 'monde' && !mg && !s.gameOver) {
+      drawWorld(s, frame, fx);
+      drawParticles();
+      paintVignette();
+      return;
+    }
 
     // La tanière : second lieu, cosy, où l'on retrouve la loutre et sa collection.
     if (s && s.place === 'taniere' && !mg && s.stage !== 'egg' && !s.away && !s.gameOver) {

@@ -271,6 +271,25 @@ export function renderGangResult(res, rival, gang, h) {
   host.appendChild(back);
 }
 
+/** Rencontre d'une loutre sauvage : jauge d'amitié + offrande de poisson. */
+export function renderEncounter(o, gang, need, h) {
+  if (!o) return;
+  const fur = FURS.find(f => f.id === o.fur) || FURS[0];
+  setTxt('enc-face', fur.icon);
+  setTxt('enc-name', o.name + ' t\'observe…');
+  const stage = { baby: 'bébé', child: 'jeune', adult: 'adulte' }[o.stage] || '';
+  setTxt('enc-sub', '💪 ' + fmtNum(o.power) + (stage ? ' · ' + stage : ''));
+  const done = o.friend || 0;
+  const fill = $('enc-fill'); if (fill) fill.style.width = Math.min(100, Math.round(done / need * 100)) + '%';
+  const full = gang && Array.isArray(gang.members) && gang.members.length >= MAX_MEMBERS;
+  const btn = $('enc-fish'); if (btn) btn.disabled = !!full;
+  const left = Math.max(0, need - done);
+  setTxt('enc-hint', full
+    ? 'Ton escouade est déjà complète (5 loutres).'
+    : (left === 0 ? 'Elle te fait confiance ! 🤝'
+      : 'Offre-lui ' + left + ' poisson' + (left > 1 ? 's' : '') + ' pour gagner son amitié.'));
+}
+
 /** Bannière de quête : la première quête du jour non terminée + sa progression. */
 export function renderDailies(s, rec) {
   const el = $('quest');
