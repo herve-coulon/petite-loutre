@@ -93,7 +93,7 @@ export function seasonInfo(date = new Date()) {
 // Trésor de saison : un cadeau thématique à récolter une fois par jour
 // (châtaigne, bonhomme de neige, fleur, pastèque). Emplacement partagé entre
 // le rendu et la zone de toucher.
-export const TREAT_POS = { x: 118, y: 82, w: 16, h: 16 };
+export const TREAT_POS = { x: 118, y: 226, w: 16, h: 16 };
 
 /** Le trésor du jour est-il encore à récolter ? (déterministe, une fois/jour) */
 export function treatAvailable(s) {

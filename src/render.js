@@ -7,17 +7,23 @@ import { moodOf, pickIdle, canIdle, IDLE_FRAMES } from './mood.js';
 import { dailyEvent, butterflyPos } from './events.js';
 import { dayKey } from './quests.js';
 import { seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
+import { WATER_Y } from './minigame.js';
 import { itemById, RARITIES, ITEMS } from './items.js';
 import { LANE_X, SLIDE_OTTER_Y } from './toboggan.js';
 
-export const CANVAS_W = 160, CANVAS_H = 120;
+// Canvas PORTRAIT plein écran (ratio ~ écran mobile) : le ciel occupe le haut,
+// l'eau le bas, la berge au milieu. La scène de base est dessinée pour un sol à
+// y=96 puis DÉCALÉE de BERGE_SHIFT vers le bas ; le ciel/l'eau s'étendent pour
+// remplir. Ainsi tout l'environnement vit sur tout l'écran.
+export const CANVAS_W = 160, CANVAS_H = 346;
+export const BERGE_SHIFT = 144;
 export const OTTER_X = 64;
-export const GROUND_Y = 96;
+export const GROUND_Y = 96 + BERGE_SHIFT;   // 240
 // jeton de nourriture posé sur la berge : on l'attrape et on le glisse jusqu'à la loutre
-export const FOOD_POS = { x: 16, y: 86, w: 20, h: 10 };
+export const FOOD_POS = { x: 16, y: 86 + BERGE_SHIFT, w: 20, h: 10 };
 
 // balle de jeu : posée sur la berge, on l'attrape et on la lance ; la loutre la rapporte
-export const BALL_HOME = { x: 132, y: 92 };
+export const BALL_HOME = { x: 132, y: 92 + BERGE_SHIFT };
 
 // Tanière : emplacements des trésors sur les étagères (9 colonnes × 3 rangées).
 // Partagé par le rendu ET le hit-test (tape un trésor pour l'identifier).
@@ -235,7 +241,7 @@ export function makeRenderer(cv) {
     if (!night) {
       // libellule qui zigzague au-dessus de la berge
       const ax = 80 + Math.sin(frame / 37) * 55 + Math.sin(frame / 13) * 8;
-      const ay = 68 + Math.sin(frame / 23) * 7;
+      const ay = 68 + BERGE_SHIFT + Math.sin(frame / 23) * 7;
       ctx.fillStyle = '#3f9fb8';
       ctx.fillRect(ax, ay, 4, 1);
       ctx.fillStyle = 'rgba(255,255,255,.9)';
@@ -245,7 +251,7 @@ export function makeRenderer(cv) {
     } else {
       // luciole qui pulse doucement
       const ax = 46 + Math.sin(frame / 41) * 34;
-      const ay = 72 + Math.sin(frame / 17) * 6;
+      const ay = 72 + BERGE_SHIFT + Math.sin(frame / 17) * 6;
       ctx.fillStyle = (frame >> 3) % 2 ? '#ffd94a' : '#f2913d';
       ctx.fillRect(ax, ay, 2, 2);
     }
@@ -254,17 +260,17 @@ export function makeRenderer(cv) {
     if (mg) { jumpFish = null; return; }
     if (!jumpFish && frame >= nextJumpAt) {
       jumpFish = { x: 16 + Math.random() * 118, dir: Math.random() < 0.5 ? -1 : 1, start: frame };
-      splashAt(jumpFish.x, 108);
+      splashAt(jumpFish.x, 108 + BERGE_SHIFT);
     }
     if (jumpFish) {
       const p = (frame - jumpFish.start) / 46;
       if (p >= 1) {
-        splashAt(jumpFish.x + jumpFish.dir * 14, 108);
+        splashAt(jumpFish.x + jumpFish.dir * 14, 108 + BERGE_SHIFT);
         jumpFish = null;
         nextJumpAt = frame + 420 + Math.random() * 600;
       } else {
         const fx2 = jumpFish.x + jumpFish.dir * p * 14;
-        const fy2 = 108 - Math.sin(p * Math.PI) * 15;
+        const fy2 = 108 + BERGE_SHIFT - Math.sin(p * Math.PI) * 15;
         drawSprite(SPRITES.fish, fx2, fy2, 1, null, jumpFish.dir > 0);
       }
     }
@@ -413,7 +419,7 @@ export function makeRenderer(cv) {
       const sway = Math.sin((frame + i * 30) / 22) * (kind === 'feuilles' ? 6 : 3);
       const x = ((i * 27 + 13 + sway) % 160 + 160) % 160;
       const speed = kind === 'neige' ? 0.6 : 0.9;
-      const y = ((frame * speed + i * 37) % 116);
+      const y = ((frame * speed + i * 37) % (GROUND_Y + 8));   // tombe jusqu'à la berge
       if (kind === 'neige') {
         ctx.fillStyle = (i + (frame >> 5)) % 4 ? '#eef6ff' : '#cdddef';
         ctx.fillRect(x, y, 2, 2);
@@ -599,7 +605,7 @@ export function makeRenderer(cv) {
     const skyTop = c.night ? mix(c.sky, '#05060f', 0.4) : mix(c.sky, '#173766', 0.3);
     const skyBot = c.night ? mix(c.sky, '#161d33', 0.25) : mix(c.sky, '#eaf3ff', 0.24);
     try {
-      const g = ctx.createLinearGradient(0, 0, 0, 60);
+      const g = ctx.createLinearGradient(0, 0, 0, GROUND_Y - 44);
       g.addColorStop(0, skyTop); g.addColorStop(1, skyBot);
       ctx.fillStyle = g;
     } catch (e) { ctx.fillStyle = c.sky; }
@@ -633,6 +639,9 @@ export function makeRenderer(cv) {
       cloud((150 - (d * 0.16) % 200 + 200) % 200 - 20, 26, 15);
     }
 
+    // --- BERGE (collines, herbe, eau) : dessinée pour un sol à y=96 puis
+    //     décalée vers le bas ; l'eau s'étend jusqu'au bas de l'écran. ---
+    ctx.save(); ctx.translate(0, BERGE_SHIFT);
     // collines LOINTAINES : perspective atmosphérique (plus claires, brumeuses)
     const far = mix(c.hill2, c.sky, 0.5);
     ctx.fillStyle = far;
@@ -669,10 +678,11 @@ export function makeRenderer(cv) {
       ctx.fillStyle = mix(fcol, '#ffffff', 0.45); ctx.fillRect(fx2, fy2, 1, 1);
     }
 
-    // rivière animée
-    ctx.fillStyle = c.water; ctx.fillRect(0, 104, CANVAS_W, 16);
-    // écume de rive (liseré clair) + fond légèrement dégradé
-    ctx.fillStyle = mix(c.water, '#0a1830', 0.35); ctx.fillRect(0, 116, CANVAS_W, 4);
+    // rivière animée — étendue jusqu'au bas de l'écran, plus profonde vers le bas
+    const waterBot = CANVAS_H - BERGE_SHIFT;            // bas de l'eau (coords locales)
+    ctx.fillStyle = c.water; ctx.fillRect(0, 104, CANVAS_W, waterBot - 104);
+    ctx.fillStyle = mix(c.water, '#0a1830', 0.30); ctx.fillRect(0, waterBot - 46, CANVAS_W, 46);
+    ctx.fillStyle = mix(c.water, '#0a1830', 0.5); ctx.fillRect(0, waterBot - 18, CANVAS_W, 18);
     ctx.fillStyle = mix(c.water, '#ffffff', 0.4); ctx.fillRect(0, 104, CANVAS_W, 1);
     ctx.fillStyle = c.wave;
     const off = (frame >> 3) % 16;
@@ -694,11 +704,14 @@ export function makeRenderer(cv) {
         if (((y + (frame >> 2)) >> 1) % 2) ctx.fillRect(130 + ((y * 3) % 5), y, 3, 1);
       }
     }
+    ctx.restore(); // fin de la berge décalée
 
     if (!s) return;
 
-    // décor de berge choisi
-    if (s.decor && s.decor !== 'aucun') drawDecor(s.decor, c, frame);
+    // décor de berge choisi (dessiné en coords berge -> décalé comme la berge)
+    if (s.decor && s.decor !== 'aucun') {
+      ctx.save(); ctx.translate(0, BERGE_SHIFT); drawDecor(s.decor, c, frame); ctx.restore();
+    }
 
     if (s.gameOver) {
       if ((frame >> 4) % 2 === 0) drawSprite(SPRITES.heart, 74, 100, 1);
@@ -734,7 +747,9 @@ export function makeRenderer(cv) {
     }
 
     // événement du jour (surprise déterministe par date, jamais pendant la pêche)
-    if (!mg && s.stage !== 'egg') drawDailyEvent(s, frame, c.night);
+    if (!mg && s.stage !== 'egg') {
+      ctx.save(); ctx.translate(0, BERGE_SHIFT); drawDailyEvent(s, frame, c.night); ctx.restore();
+    }
 
     // adversaire de combat (dessiné à droite, en miroir)
     if (fx.foe) {
@@ -759,8 +774,8 @@ export function makeRenderer(cv) {
       return;
     }
 
-    // cacas
-    const slots = [[28, 90], [118, 92], [44, 98]];
+    // cacas (sur la berge -> décalés comme elle)
+    const slots = [[28, 90 + BERGE_SHIFT], [118, 92 + BERGE_SHIFT], [44, 98 + BERGE_SHIFT]];
     s.poops.forEach((slot, i) => {
       const p = slots[(slot + i) % 3];
       drawSprite(SPRITES.poop, p[0], p[1], 2);
@@ -977,10 +992,20 @@ export function makeRenderer(cv) {
     if (mg && mg.mode === 'slide') {
       drawSlide(mg, frame, s, fur);
     } else if (mg) {
-      ctx.fillStyle = 'rgba(20,30,60,.35)'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      // nuit de pêche : la scène s'assombrit, l'eau (en bas) reste le terrain de jeu
+      ctx.fillStyle = 'rgba(20,30,60,.42)'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      // éclaboussure à la surface (jaillissement / replongeon)
+      if (mg.splash && Date.now() - mg.splash.t < 380) {
+        const st = (Date.now() - mg.splash.t) / 380;
+        ctx.fillStyle = 'rgba(233,223,192,' + (0.8 * (1 - st)).toFixed(2) + ')';
+        const r = 3 + st * 9;
+        ctx.fillRect(mg.splash.x - r, WATER_Y - 1, r * 2, 2);
+        ctx.fillRect(mg.splash.x - r + 1, WATER_Y - 4, 2, 3);
+        ctx.fillRect(mg.splash.x + r - 3, WATER_Y - 4, 2, 3);
+      }
+      // le poisson qui bondit hors de l'eau (orienté selon son sens)
       if (mg.fish) {
-        const fy = mg.fish.y + ((frame >> 2) % 2);
-        drawSprite(SPRITES.fish, mg.fish.x, fy, 1);
+        drawSprite(SPRITES.fish, Math.round(mg.fish.x), Math.round(mg.fish.y), 1, null, mg.fish.dir > 0);
       }
       const left = Math.max(0, (mg.endsAt - Date.now()) / SEC);
       ctx.fillStyle = 'rgba(15,18,26,.8)'; ctx.fillRect(0, 0, CANVAS_W, 11);
