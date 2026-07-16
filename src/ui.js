@@ -10,6 +10,7 @@ import { dailyEvent } from './events.js';
 import { seasonInfo } from './seasons.js';
 import { ITEMS, RARITIES, MILESTONES, describeBonus } from './items.js';
 import { traitById, bondLevel } from './personality.js';
+import { gangPower } from './gang.js';
 
 const $ = id => document.getElementById(id);
 const setTxt = (id, v) => { const e = $(id); if (e) e.textContent = v; };
@@ -109,6 +110,56 @@ export function renderLevel(rec) {
     const n = rec && rec.achievements ? rec.achievements.length : 0;
     ab.textContent = n; ab.classList.toggle('hidden', n <= 0);
   }
+}
+
+/** Écran « Profil de la loutre » : portrait + slots, carte d'identité, onglets. */
+export function renderProfile(s, rec) {
+  s = s || {}; rec = rec || {};
+  const L = levelFromXp(rec.xp || 0);
+  const hat = HATS.find(h => h.id === s.hat);
+  const fur = FURS.find(f => f.id === s.fur) || FURS[0];
+  const decor = DECORS.find(d => d.id === s.decor) || DECORS[0];
+  const owned = Array.isArray(rec.items) ? rec.items.length : 0;
+  const achN = rec.achievements ? rec.achievements.length : 0;
+  const streak = rec.streakCount || 0;
+
+  // Portrait : loutre + chapeau équipé + titre de niveau
+  setTxt('prof-hat', hat ? hat.icon : '');
+  setTxt('prof-title', 'Niv ' + L.level + ' · ' + titleFor(L.level));
+
+  // Slots autour (cosmétiques à gauche, palmarès à droite)
+  setTxt('ps-hat-v', hat ? hat.name : 'Sans chapeau');
+  setTxt('ps-fur-v', fur.name);
+  setTxt('ps-decor-v', decor.name);
+  setTxt('ps-ach-v', achN + ' succès');
+  setTxt('ps-tres-v', owned + '/' + ITEMS.length);
+  setTxt('ps-streak-v', streak + ' j');
+
+  // Carte d'identité
+  setTxt('prof-name', s.name || 'Petite loutre');
+  const gang = s.gang;
+  const power = (gang && Array.isArray(gang.members) && gang.members.length)
+    ? gangPower(gang)
+    : Math.round(60 * Math.pow(L.level, 1.4) + (rec.fishTotal || 0) * 2 + owned * 300);
+  setTxt('prof-power', fmtNum(power));
+  setTxt('prof-lvl', L.level);
+  setTxt('prof-fish', fmtNum(rec.fishTotal));
+  setTxt('prof-shell', fmtNum(rec.treatsTotal));
+  setTxt('prof-gang', (gang && gang.name) ? ((gang.emblem || '🦦') + ' ' + gang.name) : 'Aucune');
+  setTxt('prof-streak', streak);
+}
+
+/** Panneau Escouade : résumé du gang, ou état vide en attendant le recrutement. */
+export function renderGang(s) {
+  const el = $('gang-body'); if (!el) return;
+  const g = s && s.gang;
+  if (!g || !Array.isArray(g.members) || !g.members.length) {
+    el.textContent = 'Tu n\'as pas encore d\'escouade. Bientôt : recrute des loutres et pars au combat ! 🦦⚔️';
+    return;
+  }
+  el.textContent = (g.emblem || '🦦') + ' ' + (g.name || 'Mon gang')
+    + ' — ' + g.members.length + ' membre' + (g.members.length > 1 ? 's' : '')
+    + ' · Puissance ' + fmtNum(gangPower(g));
 }
 
 /** Bannière de quête : la première quête du jour non terminée + sa progression. */

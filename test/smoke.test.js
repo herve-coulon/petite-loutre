@@ -254,7 +254,7 @@ test('succès : écran + records affichés', () => {
 });
 
 test('réglages : export non vide, import round-trip', () => {
-  $('b-gear').click();
+  $('lvl-badge').click(); $('m-gear').click();
   const code = $('exp-code').value;
   assert.ok(code.startsWith('LOUTRE1.'));
   $('imp-code').value = code;
@@ -364,7 +364,7 @@ test('remise à zéro depuis les réglages : la confirmation passe DEVANT (régr
   assert.ok(ids.indexOf('ovl-confirm') > ids.indexOf('ovl-set'),
     'ovl-confirm doit être après ovl-set dans le DOM (empilement)');
   // parcours réel du joueur : ⚙️ -> ↺ -> OUI
-  $('b-gear').click();
+  $('lvl-badge').click(); $('m-gear').click();
   assert.ok(!$('ovl-set').classList.contains('hidden'));
   $('b-reset').click();
   assert.ok(!$('ovl-confirm').classList.contains('hidden'), 'confirmation affichée');
@@ -390,7 +390,7 @@ test('réveil au bon moment : pas de bouderie', () => {
 /* ---------------- v3.0 : rappels push ---------------- */
 
 test('rappels 🔔 : bouton présent, indisponible en jsdom -> message propre, état intact', async () => {
-  $('b-gear').click();
+  $('lvl-badge').click(); $('m-gear').click();
   assert.match($('b-push').textContent, /NON/);
   $('b-push').click();
   await new Promise(r => setTimeout(r, 20)); // gestionnaire asynchrone
@@ -414,7 +414,7 @@ test('menus : ✕ collant présent partout, ferme sans scroller', () => {
     const x = $(id).querySelector('.ovl-x');
     assert.ok(x, id + ' a son ✕');
   }
-  $('b-gear').click();
+  $('lvl-badge').click(); $('m-gear').click();
   assert.ok(!$('ovl-set').classList.contains('hidden'));
   $('ovl-set').querySelector('.ovl-x').click();
   assert.ok($('ovl-set').classList.contains('hidden'), 'fermé par le ✕');
@@ -506,7 +506,7 @@ test('montée de niveau : toast étoilé, friandise rechargée, sauvegardé', ()
 /* ---------------- v2.5 : musique ---------------- */
 
 test('musique : le réglage 🎵 bascule et se sauvegarde', () => {
-  $('b-gear').click();
+  $('lvl-badge').click(); $('m-gear').click();
   assert.match($('b-music').textContent, /OUI/);
   $('b-music').click();
   assert.match($('b-music').textContent, /NON/);
@@ -521,7 +521,7 @@ test('musique : le réglage 🎵 bascule et se sauvegarde', () => {
 });
 
 test('accessibilité : gros texte et mouvement réduit basculent classes + préférence', () => {
-  $('b-gear').click();
+  $('lvl-badge').click(); $('m-gear').click();
   const root = document.documentElement;
   assert.ok(!root.classList.contains('big-text'));
   $('b-bigtext').click();

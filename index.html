@@ -33,9 +33,9 @@
 
   <!-- Rangée 1 : avatar + nom/XP · boutique · gemmes -->
   <div id="topbar">
-    <div id="avatar" role="img" aria-label="Ta loutre">
-      <span class="av-face">🦦</span>
-      <span id="lvl-badge">1</span>
+    <div id="avatar">
+      <span class="av-face" aria-hidden="true">🦦</span>
+      <button id="lvl-badge" type="button" aria-label="Ouvrir le menu">1</button>
     </div>
     <div id="idcol">
       <b id="hud-name">???</b>
@@ -73,13 +73,6 @@
         <button id="b-dive" class="roundbtn" aria-label="Plongée"><span class="ic">🤿</span></button>
         <button id="b-slide" class="roundbtn" aria-label="Toboggan"><span class="ic">🛝</span></button>
         <button id="b-battle" class="roundbtn" aria-label="Combat"><span class="ic">⚔️</span><span class="badge"></span></button>
-      </div>
-
-      <!-- Menu de la tanière : les utilitaires y vivent (dégage la berge) -->
-      <div id="den-menu" class="hidden">
-        <button id="b-hats" class="denbtn"><span class="ic">🎩</span><span class="dl">Garde-robe</span></button>
-        <button id="b-ach" class="denbtn"><span class="ic">🏆</span><span class="dl">Succès</span><span class="badge count" id="ach-badge"></span></button>
-        <button id="b-gear" class="denbtn"><span class="ic">⚙️</span><span class="dl">Réglages</span></button>
       </div>
     </div>
     <p id="log">…</p>
@@ -192,6 +185,63 @@
     <button class="act" id="btn-photo-share" style="width:100%">PARTAGER 🦦</button>
     <button class="act ghost" id="btn-photo-save" style="width:100%">ENREGISTRER L'IMAGE</button>
     <button class="act ghost" id="btn-photo-close">FERMER</button>
+  </div>
+
+  <!-- Écran « Profil de la loutre », ouvert depuis la pastille de niveau.
+       Disposition façon profil de chef : portrait central + slots autour,
+       carte d'identité, barre d'onglets vers les sections. -->
+  <div id="ovl-menu" class="ovl hidden">
+    <button class="ovl-x" aria-label="Fermer">✕</button>
+    <p class="big">Profil de la loutre</p>
+
+    <div class="prof-hero">
+      <div class="prof-slots">
+        <button class="prof-slot" id="ps-hat"><span class="ps-ic">🎩</span><span class="ps-lbl" id="ps-hat-v">—</span></button>
+        <button class="prof-slot" id="ps-fur"><span class="ps-ic">🎨</span><span class="ps-lbl" id="ps-fur-v">—</span></button>
+        <button class="prof-slot" id="ps-decor"><span class="ps-ic">🪴</span><span class="ps-lbl" id="ps-decor-v">—</span></button>
+      </div>
+      <div class="prof-otter">
+        <span class="prof-hat" id="prof-hat" aria-hidden="true"></span>
+        <span class="prof-face" aria-hidden="true">🦦</span>
+        <span class="prof-title" id="prof-title">Niv 1</span>
+      </div>
+      <div class="prof-slots">
+        <button class="prof-slot" id="ps-ach"><span class="ps-ic">🏆</span><span class="ps-lbl" id="ps-ach-v">—</span></button>
+        <button class="prof-slot" id="ps-tres"><span class="ps-ic">💎</span><span class="ps-lbl" id="ps-tres-v">0/0</span></button>
+        <button class="prof-slot" id="ps-streak"><span class="ps-ic">🔥</span><span class="ps-lbl" id="ps-streak-v">0</span></button>
+      </div>
+    </div>
+
+    <div class="prof-id">
+      <div class="prof-id-head">
+        <span class="av-face" aria-hidden="true">🦦</span>
+        <b id="prof-name">Petite loutre</b>
+      </div>
+      <div class="prof-stats">
+        <div><span>💪 Puissance</span><b id="prof-power">—</b></div>
+        <div><span>⭐ Niveau</span><b id="prof-lvl">1</b></div>
+        <div><span>🐟 Poissons</span><b id="prof-fish">0</b></div>
+        <div><span>🐚 Coquillages</span><b id="prof-shell">0</b></div>
+        <div><span>🦦 Escouade</span><b id="prof-gang">Aucune</b></div>
+        <div><span>🔥 Série</span><b id="prof-streak">0</b></div>
+      </div>
+    </div>
+
+    <div class="prof-tabs">
+      <button class="prof-tab" id="b-hats"><span class="pt-ic">🎩</span>Garde-robe</button>
+      <button class="prof-tab" id="b-ach"><span class="pt-ic">🏆</span>Succès<span class="badge count" id="ach-badge"></span></button>
+      <button class="prof-tab" id="pt-gang"><span class="pt-ic">🦦</span>Escouade</button>
+      <button class="prof-tab" id="m-gear"><span class="pt-ic">⚙️</span>Réglages</button>
+    </div>
+  </div>
+
+  <!-- Panneau Escouade (gang) — résumé + état vide en attendant le recrutement -->
+  <div id="ovl-gang" class="ovl hidden">
+    <div class="menu-card">
+      <button class="ovl-x" aria-label="Fermer">✕</button>
+      <p class="big">🦦 Escouade</p>
+      <p id="gang-body" class="small"></p>
+    </div>
   </div>
 
   <div id="ovl-set" class="ovl scroll hidden">

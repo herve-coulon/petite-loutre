@@ -64,11 +64,74 @@ button{font-family:inherit;}
 }
 #avatar .av-face{font-size:32px; line-height:1;}
 #lvl-badge{
-  position:absolute; bottom:-4px; left:-4px; min-width:22px; height:22px; padding:0 4px;
+  position:absolute; bottom:-4px; left:-4px; min-width:24px; height:24px; padding:0 5px;
   display:flex; align-items:center; justify-content:center;
   background:var(--orange); color:#fff2d8; border:2px solid var(--ink); border-radius:50%;
-  font-size:12px; font-weight:700;
+  font-size:12px; font-weight:700; font-family:inherit;
+  cursor:pointer; -webkit-appearance:none; box-shadow:var(--shadow);
 }
+#lvl-badge:active{transform:translateY(1px); box-shadow:0 1px 0 rgba(38,54,78,.34);}
+
+/* ══ Écran « Profil de la loutre » (ouvert depuis la pastille) ══════════════
+   Disposition façon profil de chef : portrait central + slots, carte
+   d'identité, barre d'onglets. Style parchemin. */
+#ovl-menu{justify-content:flex-start; gap:14px; padding:12px 12px 18px; overflow-y:auto;}
+#ovl-menu .big{margin-top:4px;}
+
+.prof-hero{
+  position:relative; width:100%; max-width:340px;
+  display:flex; align-items:center; justify-content:space-between; gap:6px;
+  padding:16px 8px 22px; border-radius:18px;
+  background:linear-gradient(#c3e7f2, #9fd9e8); border:2.5px solid var(--ink);
+  box-shadow:var(--shadow);
+}
+.prof-slots{display:flex; flex-direction:column; gap:12px; z-index:2;}
+.prof-slot{
+  position:relative; width:54px; padding:6px 2px 4px; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; gap:1px;
+  background:rgba(243,233,200,.96); border:2px solid var(--ink); border-radius:12px;
+  box-shadow:var(--shadow); color:var(--ink); font-family:inherit;
+}
+.prof-slot:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,54,78,.34);}
+.prof-slot .ps-ic{font-size:22px; line-height:1;}
+.prof-slot .ps-lbl{font-size:8px; font-weight:700; line-height:1.1; max-width:50px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.prof-otter{position:relative; flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:flex-end; gap:6px; min-width:0;}
+.prof-face{font-size:76px; line-height:1;}
+.prof-hat{position:absolute; top:-10px; font-size:36px; line-height:1;}
+.prof-title{background:var(--gold); color:#2a1e05; border:2px solid var(--ink);
+  border-radius:999px; padding:2px 12px; font-size:11px; font-weight:700; white-space:nowrap;}
+
+.prof-id{width:100%; max-width:340px; background:var(--paper);
+  border:2.5px solid var(--ink); border-radius:16px; box-shadow:var(--shadow); padding:12px 14px;}
+.prof-id-head{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+.prof-id-head .av-face{font-size:24px; line-height:1;}
+.prof-id-head b{font-size:18px; color:var(--ink);}
+.prof-stats{display:grid; grid-template-columns:1fr 1fr; gap:7px 14px;}
+.prof-stats > div{display:flex; justify-content:space-between; gap:6px; font-size:12px; color:var(--ink);}
+.prof-stats span{color:rgba(38,54,78,.6);}
+.prof-stats b{font-weight:700;}
+
+.prof-tabs{width:100%; max-width:340px; display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
+.prof-tab{position:relative; display:flex; flex-direction:column; align-items:center; gap:3px;
+  padding:9px 3px; cursor:pointer; font-family:inherit; font-weight:700; font-size:10px;
+  background:var(--bar); color:#f3e9c8; border:2.5px solid var(--ink); border-radius:14px;
+  box-shadow:var(--shadow);}
+.prof-tab:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,54,78,.34);}
+.prof-tab .pt-ic{font-size:22px; line-height:1;}
+
+/* Panneau Escouade : carte compacte sur fond assombri. */
+#ovl-gang{background:rgba(38,54,78,.5); padding:20px;}
+.menu-card{
+  position:relative; width:100%; max-width:280px;
+  display:flex; flex-direction:column; gap:10px; text-align:center;
+  background:var(--washi); border:2.5px solid var(--ink); border-radius:18px;
+  box-shadow:0 12px 34px rgba(38,54,78,.42); padding:16px;
+}
+.menu-card .ovl-x{position:absolute; top:8px; right:10px; margin:0; align-self:auto;}
+.menu-card .big{margin:2px 0 4px;}
+.menu-card .small{line-height:1.6;}
 #idcol{flex:1; min-width:0;}
 #hud-name{display:block; font-size:22px; font-weight:700; color:var(--ink);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:.3px;}
@@ -144,22 +207,16 @@ button{font-family:inherit;}
 .sidebtn:active, .roundbtn:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,54,78,.34);}
 .sidebtn.locked, .roundbtn.locked{opacity:.5;}
 
-/* Menu de la TANIÈRE : rangée de boutons utilitaires (garde-robe, succès, réglages),
-   visible seulement quand on est dans la tanière -> la berge reste dégagée. */
-#den-menu{
-  position:absolute; top:10px; left:50%; transform:translateX(-50%); z-index:5;
-  display:flex; gap:10px; pointer-events:auto;
-}
-#den-menu.hidden{display:none;}
-.denbtn{
-  position:relative; width:68px; padding:8px 4px 5px; cursor:pointer;
-  display:flex; flex-direction:column; align-items:center; gap:2px;
-  background:rgba(243,233,200,.96); border:2.5px solid var(--ink); border-radius:14px;
-  box-shadow:var(--shadow); color:var(--ink);
-}
-.denbtn .ic{font-size:26px; line-height:1;}
-.denbtn .dl{font-size:9px; font-weight:700; letter-spacing:.2px; white-space:nowrap;}
-.denbtn:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,54,78,.34);}
+/* ── Séparation des écrans ──────────────────────────────────────────────
+   Sur la BERGE : soins, quête, compteurs, mini-jeux, Cadeau (vie active).
+   Dans la TANIÈRE (.in-den) : on masque tout ça — il ne reste que la
+   collection de trésors (repos & collection). Les utilitaires (garde-robe,
+   succès, réglages) vivent dans le menu de la pastille, accessible partout. */
+#app.in-den #actionbar,
+#app.in-den #counters,
+#app.in-den #quest,
+#app.in-den #side-right,
+#app.in-den #b-gift{display:none !important;}
 
 /* Berge PLEIN ÉCRAN : la scène est rendue en PORTRAIT (ciel en haut, eau en bas)
    et remplit tout l'écran derrière le HUD. */

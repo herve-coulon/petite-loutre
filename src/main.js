@@ -392,11 +392,11 @@ function updatePlaceBtn() {
   const inDen = show && s.place === 'taniere';
   b.textContent = inDen ? '🌊' : '🏠';
   b.title = inDen ? 'Retourner à la rivière' : 'Aller à la tanière';
-  // Rangement : les utilitaires vivent dans la tanière ; la berge garde les
-  // mini-jeux + le Cadeau. On bascule selon le lieu.
-  const denMenu = $('den-menu'); if (denMenu) denMenu.classList.toggle('hidden', !inDen);
-  const sideRight = $('side-right'); if (sideRight) sideRight.classList.toggle('hidden', inDen);
-  const gift = $('b-gift'); if (gift) gift.classList.toggle('hidden', inDen);
+  // Séparation des écrans (piloté en CSS via .in-den, robuste face à updateHUD
+  // qui touche aussi #actionbar chaque frame) :
+  //   • BERGE  = vie active → soins, quête, compteurs, mini-jeux, Cadeau, événement du jour
+  //   • TANIÈRE = repos & collection → menu (garde-robe/succès/réglages) + trésors
+  const app = $('app'); if (app) app.classList.toggle('in-den', inDen);
 }
 function togglePlace() {
   if (!denAvailable()) return;
@@ -1279,10 +1279,16 @@ function boot() {
       ui.renderWardrobe(s, rec, wardrobeHandlers);
     }
   };
-  $('b-hats').addEventListener('click', () => {
+  const openWardrobe = () => {
     sfx.press();
+    ui.hideOverlay('ovl-menu');
     ui.renderWardrobe(s, rec, wardrobeHandlers);
     ui.showOverlay('ovl-hats');
+  };
+  $('b-hats').addEventListener('click', openWardrobe);
+  // Les slots cosmétiques du profil ouvrent aussi la garde-robe.
+  ['ps-hat', 'ps-fur', 'ps-decor'].forEach(id => {
+    const el = $(id); if (el) el.addEventListener('click', openWardrobe);
   });
   $('btn-hats-close').addEventListener('click', () => ui.hideOverlay('ovl-hats'));
 
@@ -1319,11 +1325,23 @@ function boot() {
   // Succès
   const openAch = () => {
     sfx.press();
+    ui.hideOverlay('ovl-menu');
     if (s && s.stage !== 'egg') ensureDaily(s, now());
     ui.renderAchievements(rec, s);
     ui.showOverlay('ovl-ach');
   };
   $('b-ach').addEventListener('click', openAch);
+  { const el = $('ps-ach'); if (el) el.addEventListener('click', openAch); } // slot Succès du profil
+
+  // Escouade (gang) : panneau résumé, ouvert depuis l'onglet du profil.
+  const openGang = () => {
+    sfx.press();
+    ui.hideOverlay('ovl-menu');
+    ui.renderGang(s);
+    ui.showOverlay('ovl-gang');
+  };
+  $('pt-gang').addEventListener('click', openGang);
+
   // la bannière de quête ouvre le détail (quêtes + succès)
   $('quest').addEventListener('click', openAch);
   $('quest').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') openAch(); });
@@ -1345,8 +1363,8 @@ function boot() {
     }
   });
 
-  // Réglages : export / import / reset
-  $('b-gear').addEventListener('click', () => {
+  // Réglages : export / import / reset. Ouvert depuis le menu de la pastille.
+  const openSettings = () => {
     sfx.press();
     $('exp-code').value = s ? exportSave(s, rec) : '';
     $('imp-code').value = '';
@@ -1355,7 +1373,11 @@ function boot() {
     updateA11yLabels();
     $('b-push').textContent = '🔔 RAPPELS : ' + (s && s.push ? 'OUI' : 'NON');
     ui.showOverlay('ovl-set');
-  });
+  };
+
+  // La pastille de niveau ouvre l'écran « Profil de la loutre ».
+  $('lvl-badge').addEventListener('click', () => { sfx.press(); ui.renderProfile(s, rec); ui.showOverlay('ovl-menu'); });
+  $('m-gear').addEventListener('click', () => { ui.hideOverlay('ovl-menu'); openSettings(); });
   $('btn-set-close').addEventListener('click', () => ui.hideOverlay('ovl-set'));
   $('btn-copy').addEventListener('click', async () => {
     const code = $('exp-code').value;
@@ -1405,6 +1427,8 @@ function boot() {
   // Fermer un menu sans scroller : ✕ collant en haut, ou toucher à côté du contenu.
   // (le combat en cours ne se ferme pas sur un toucher malheureux — ✕ seulement)
   const overlayClosers = {
+    'ovl-menu': () => ui.hideOverlay('ovl-menu'),
+    'ovl-gang': () => ui.hideOverlay('ovl-gang'),
     'ovl-hats': () => ui.hideOverlay('ovl-hats'),
     'ovl-ach': () => ui.hideOverlay('ovl-ach'),
     'ovl-set': () => ui.hideOverlay('ovl-set'),
