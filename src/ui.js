@@ -10,7 +10,8 @@ import { dailyEvent } from './events.js';
 import { seasonInfo } from './seasons.js';
 import { ITEMS, RARITIES, MILESTONES, describeBonus } from './items.js';
 import { traitById, bondLevel } from './personality.js';
-import { gangPower } from './gang.js';
+import { gangPower, fighterPower, MAX_MEMBERS } from './gang.js';
+import { makeFighter } from './battle.js';
 
 const $ = id => document.getElementById(id);
 const setTxt = (id, v) => { const e = $(id); if (e) e.textContent = v; };
@@ -137,10 +138,12 @@ export function renderProfile(s, rec) {
 
   // Carte d'identité
   setTxt('prof-name', s.name || 'Petite loutre');
-  const gang = s.gang;
+  const gang = rec.gang;
+  // Puissance : celle du gang (somme des combattants) ou, en solo, celle de la
+  // loutre seule — même échelle, donc une escouade fait *monter* la puissance.
   const power = (gang && Array.isArray(gang.members) && gang.members.length)
     ? gangPower(gang)
-    : Math.round(60 * Math.pow(L.level, 1.4) + (rec.fishTotal || 0) * 2 + owned * 300);
+    : fighterPower(makeFighter(s));
   setTxt('prof-power', fmtNum(power));
   setTxt('prof-lvl', L.level);
   setTxt('prof-fish', fmtNum(rec.fishTotal));
@@ -149,17 +152,123 @@ export function renderProfile(s, rec) {
   setTxt('prof-streak', streak);
 }
 
-/** Panneau Escouade : résumé du gang, ou état vide en attendant le recrutement. */
-export function renderGang(s) {
-  const el = $('gang-body'); if (!el) return;
-  const g = s && s.gang;
+/** Écran Escouade : création du gang, ou gestion (membres, recrues, combat).
+ *  h = { create(name,emblem), recruit(candidate), battle(), back() }. */
+export function renderGang(rec, s, h, board) {
+  rec = rec || {}; h = h || {};
+  const host = $('gang-body'); if (!host) return;
+  host.innerHTML = '';
+  const g = rec.gang;
+
+  // ── Vue création ─────────────────────────────────────────────
   if (!g || !Array.isArray(g.members) || !g.members.length) {
-    el.textContent = 'Tu n\'as pas encore d\'escouade. Bientôt : recrute des loutres et pars au combat ! 🦦⚔️';
+    const intro = document.createElement('p'); intro.className = 'small';
+    intro.textContent = 'Fonde ton escouade : un nom, un emblème. Ta loutre en devient le chef 👑.';
+    host.appendChild(intro);
+
+    const name = document.createElement('input');
+    name.className = 'gang-name-in'; name.maxLength = 18; name.placeholder = 'Nom de l\'escouade';
+    host.appendChild(name);
+
+    const emblems = ['🦦', '🌊', '⚔️', '🔱', '🐾', '🏴'];
+    let chosen = emblems[0];
+    const row = document.createElement('div'); row.className = 'g-emblems';
+    emblems.forEach(e => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'g-emblem'; b.textContent = e;
+      if (e === chosen) b.classList.add('on');
+      b.addEventListener('click', () => {
+        chosen = e;
+        for (const c of row.children) c.classList.remove('on');
+        b.classList.add('on');
+      });
+      row.appendChild(b);
+    });
+    host.appendChild(row);
+
+    const create = document.createElement('button'); create.className = 'act'; create.textContent = 'Fonder l\'escouade';
+    create.addEventListener('click', () => h.create && h.create((name.value || '').trim() || 'Mon escouade', chosen));
+    host.appendChild(create);
     return;
   }
-  el.textContent = (g.emblem || '🦦') + ' ' + (g.name || 'Mon gang')
-    + ' — ' + g.members.length + ' membre' + (g.members.length > 1 ? 's' : '')
-    + ' · Puissance ' + fmtNum(gangPower(g));
+
+  // ── Vue gestion ──────────────────────────────────────────────
+  const hdr = document.createElement('div'); hdr.className = 'gang-hdr';
+  const em = document.createElement('span'); em.className = 'gh-em'; em.textContent = g.emblem || '🦦';
+  const gi = document.createElement('div'); gi.className = 'gh-info';
+  const gn = document.createElement('b'); gn.textContent = g.name || 'Mon escouade';
+  const gs = document.createElement('span'); gs.className = 'gh-sub';
+  gs.textContent = '💪 ' + fmtNum(gangPower(g)) + ' · ⚔️ ' + (g.wins || 0) + 'V · ' + (g.losses || 0) + 'D';
+  gi.appendChild(gn); gi.appendChild(gs);
+  hdr.appendChild(em); hdr.appendChild(gi);
+  host.appendChild(hdr);
+
+  const mT = document.createElement('p'); mT.className = 'g-section';
+  mT.textContent = 'Membres (' + g.members.length + '/' + MAX_MEMBERS + ')';
+  host.appendChild(mT);
+  const grid = document.createElement('div'); grid.className = 'gang-members';
+  for (let i = 0; i < MAX_MEMBERS; i++) {
+    const cell = document.createElement('div'); cell.className = 'gang-slot';
+    const m = g.members[i];
+    if (m) {
+      const fur = FURS.find(f => f.id === m.fur) || FURS[0];
+      const ic = document.createElement('span'); ic.className = 'gm-ic'; ic.textContent = fur.icon;
+      const nm = document.createElement('span'); nm.className = 'gm-nm'; nm.textContent = (i === 0 ? '👑 ' : '') + m.name;
+      const pw = document.createElement('span'); pw.className = 'gm-pw'; pw.textContent = '💪 ' + fmtNum(fighterPower(makeFighter(m)));
+      cell.appendChild(ic); cell.appendChild(nm); cell.appendChild(pw);
+    } else {
+      cell.classList.add('empty'); cell.textContent = '＋';
+    }
+    grid.appendChild(cell);
+  }
+  host.appendChild(grid);
+
+  const full = g.members.length >= MAX_MEMBERS;
+  const rT = document.createElement('p'); rT.className = 'g-section'; rT.textContent = 'Recrues du jour';
+  host.appendChild(rT);
+  const recWrap = document.createElement('div'); recWrap.className = 'gang-recruit';
+  (board || []).forEach(c => {
+    const card = document.createElement('div'); card.className = 'rec-card';
+    const fur = FURS.find(f => f.id === c.fur) || FURS[0];
+    const ic = document.createElement('span'); ic.className = 'rc-ic'; ic.textContent = fur.icon;
+    const col = document.createElement('div'); col.className = 'rc-col';
+    const nm = document.createElement('span'); nm.className = 'rc-nm'; nm.textContent = c.name;
+    const pw = document.createElement('span'); pw.className = 'rc-pw'; pw.textContent = '💪 ' + fmtNum(c.power);
+    col.appendChild(nm); col.appendChild(pw);
+    const btn = document.createElement('button'); btn.className = 'act';
+    if (c.recruited) { btn.textContent = 'Recrutée ✓'; btn.disabled = true; }
+    else if (full) { btn.textContent = 'Complet'; btn.disabled = true; }
+    else { btn.textContent = c.cost + ' XP'; btn.disabled = (rec.xp || 0) < c.cost; }
+    btn.addEventListener('click', () => h.recruit && h.recruit(c));
+    card.appendChild(ic); card.appendChild(col); card.appendChild(btn);
+    recWrap.appendChild(card);
+  });
+  host.appendChild(recWrap);
+
+  const actions = document.createElement('div'); actions.className = 'gang-actions';
+  const fight = document.createElement('button'); fight.className = 'act'; fight.textContent = '⚔️ Chercher un rival';
+  fight.addEventListener('click', () => h.battle && h.battle());
+  actions.appendChild(fight);
+  host.appendChild(actions);
+}
+
+/** Résultat d'un combat de bande : bannière, récompense, journal du relais. */
+export function renderGangResult(res, rival, gang, h) {
+  const host = $('gang-body'); if (!host) return;
+  host.innerHTML = '';
+  const win = res.winner === 'a';
+  const banner = document.createElement('p'); banner.className = 'g-result ' + (win ? 'win' : 'lose');
+  banner.textContent = win ? ('🏆 Victoire contre ' + rival.name + ' !') : ('💥 Défaite contre ' + rival.name + '…');
+  host.appendChild(banner);
+
+  if (res.reward) { const r = document.createElement('p'); r.className = 'small'; r.textContent = 'Récompense : ' + res.reward; host.appendChild(r); }
+
+  const logBox = document.createElement('div'); logBox.className = 'g-log';
+  (res.log || []).forEach(line => { const p = document.createElement('div'); p.textContent = line; logBox.appendChild(p); });
+  host.appendChild(logBox);
+
+  const back = document.createElement('button'); back.className = 'act'; back.textContent = 'Retour à l\'escouade';
+  back.addEventListener('click', () => h.back && h.back());
+  host.appendChild(back);
 }
 
 /** Bannière de quête : la première quête du jour non terminée + sa progression. */

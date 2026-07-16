@@ -30,6 +30,7 @@ import { unlockedHats, hatById } from './accessories.js';
 import { unlockedFurs, unlockedDecors } from './skins.js';
 import { newAchievements } from './achievements.js';
 import { encodeCard, decodeCard, newBattle, playTurn } from './battle.js';
+import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
 import { makeCard, CARD_URL } from './photocard.js';
 import { nextBeat, markSeen, coachStep } from './story.js';
 import { seasonFor, seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
@@ -1333,11 +1334,53 @@ function boot() {
   $('b-ach').addEventListener('click', openAch);
   { const el = $('ps-ach'); if (el) el.addEventListener('click', openAch); } // slot Succès du profil
 
-  // Escouade (gang) : panneau résumé, ouvert depuis l'onglet du profil.
+  // Escouade (gang) : création, recrutement (coûte de l'XP), combats de bande.
+  const recruitedIds = new Set();  // recrues déjà enrôlées cette session (bouton grisé)
+  const gangBoard = () => recruitBoard(curLevel(), dayKey(), 3)
+    .map(c => ({ ...c, recruited: recruitedIds.has(c.id) }));
+  const refreshGang = () => ui.renderGang(rec, s, gangHandlers, gangBoard());
+  const gangHandlers = {
+    create: (name, emblem) => {
+      rec.gang = makeGang(name, emblem, s);
+      persistRec(); sfx.happy(); vibrate(12);
+      ui.renderProfile(s, rec); refreshGang();
+    },
+    recruit: (c) => {
+      if (!rec.gang || rec.gang.members.length >= MAX_MEMBERS) return;
+      if ((rec.xp || 0) < c.cost) { ui.toast('Pas assez d\'XP 🐟'); return; }
+      if (recruit(rec.gang, c)) {
+        rec.xp -= c.cost; recruitedIds.add(c.id);
+        persistRec(); sfx.happy(); vibrate(12);
+        ui.renderProfile(s, rec); refreshGang();
+      }
+    },
+    battle: () => {
+      if (!rec.gang || !rec.gang.members.length) return;
+      const seed = 'gb|' + dayKey() + '|' + ((rec.gang.wins || 0) + (rec.gang.losses || 0));
+      const rival = generateRival(gangPower(rec.gang), curLevel(), 'rv|' + seed);
+      const res = resolveGangBattle(rec.gang, rival, seed);
+      applyGangResult(rec.gang, rival, res.winner);
+      rec.battles = (rec.battles || 0) + 1;
+      if (res.winner === 'a') {
+        rec.wins = (rec.wins || 0) + 1;
+        rec.gems = (rec.gems || 0) + 2;
+        res.reward = '+20 XP · +2 💎';
+        gainXp(20);
+      } else {
+        res.reward = '+5 XP';
+        gainXp(5);
+      }
+      persistRec();
+      if (res.winner === 'a') { sfx.happy(); vibrate([15, 30, 15]); } else { sfx.press(); vibrate(20); }
+      ui.renderProfile(s, rec);
+      ui.renderGangResult(res, rival, rec.gang, gangHandlers);
+    },
+    back: () => refreshGang()
+  };
   const openGang = () => {
     sfx.press();
     ui.hideOverlay('ovl-menu');
-    ui.renderGang(s);
+    refreshGang();
     ui.showOverlay('ovl-gang');
   };
   $('pt-gang').addEventListener('click', openGang);

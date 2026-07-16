@@ -121,17 +121,42 @@ button{font-family:inherit;}
 .prof-tab:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,54,78,.34);}
 .prof-tab .pt-ic{font-size:22px; line-height:1;}
 
-/* Panneau Escouade : carte compacte sur fond assombri. */
-#ovl-gang{background:rgba(38,54,78,.5); padding:20px;}
-.menu-card{
-  position:relative; width:100%; max-width:280px;
-  display:flex; flex-direction:column; gap:10px; text-align:center;
-  background:var(--washi); border:2.5px solid var(--ink); border-radius:18px;
-  box-shadow:0 12px 34px rgba(38,54,78,.42); padding:16px;
-}
-.menu-card .ovl-x{position:absolute; top:8px; right:10px; margin:0; align-self:auto;}
-.menu-card .big{margin:2px 0 4px;}
-.menu-card .small{line-height:1.6;}
+/* ── Écran Escouade (gang) ─────────────────────────────────────────────── */
+#gang-body{width:100%; max-width:340px; margin:0 auto; display:flex; flex-direction:column; gap:12px;}
+.gang-name-in{width:100%; background:#fff8e6; border:2.5px solid var(--ink); color:var(--ink);
+  border-radius:12px; padding:10px 12px; font-size:15px; font-family:inherit;}
+.g-emblems{display:flex; gap:8px; justify-content:center; flex-wrap:wrap;}
+.g-emblem{width:44px; height:44px; font-size:22px; cursor:pointer; font-family:inherit;
+  background:var(--paper); border:2.5px solid var(--ink); border-radius:12px;}
+.g-emblem.on{background:var(--gold);}
+.gang-hdr{display:flex; align-items:center; gap:12px; padding:10px 14px;
+  background:var(--paper); border:2.5px solid var(--ink); border-radius:14px;}
+.gang-hdr .gh-em{font-size:34px; line-height:1;}
+.gh-info{display:flex; flex-direction:column; min-width:0; text-align:left;}
+.gh-info b{font-size:17px; color:var(--ink);}
+.gh-sub{font-size:12px; color:rgba(38,54,78,.7);}
+.g-section{align-self:flex-start; margin:2px 0 -4px; font-size:13px; font-weight:700; color:var(--ink);}
+.gang-members{display:grid; grid-template-columns:repeat(5,1fr); gap:6px;}
+.gang-slot{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+  min-height:60px; padding:6px 2px; background:var(--paper); border:2px solid var(--ink); border-radius:10px;}
+.gang-slot.empty{color:rgba(38,54,78,.35); font-size:22px; font-weight:700;}
+.gang-slot .gm-ic{font-size:22px; line-height:1;}
+.gang-slot .gm-nm{font-size:8px; font-weight:700; max-width:54px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.gang-slot .gm-pw{font-size:8px; color:rgba(38,54,78,.7);}
+.gang-recruit{display:flex; flex-direction:column; gap:8px;}
+.rec-card{display:flex; align-items:center; gap:10px; padding:8px 10px;
+  background:var(--paper); border:2px solid var(--ink); border-radius:12px;}
+.rec-card .rc-ic{font-size:26px; line-height:1;}
+.rec-card .rc-col{display:flex; flex-direction:column; text-align:left; min-width:0;}
+.rec-card .rc-nm{font-weight:700; color:var(--ink); font-size:13px;}
+.rec-card .rc-pw{font-size:11px; color:rgba(38,54,78,.7);}
+.rec-card .act{margin-left:auto; padding:8px 12px; font-size:12px; white-space:nowrap;}
+.gang-actions{display:flex; flex-direction:column; gap:8px; margin-top:2px;}
+.g-result{text-align:center; padding:9px; border-radius:12px; font-size:16px; font-weight:700;}
+.g-result.win{background:rgba(45,140,90,.18); color:#1f6e46;}
+.g-result.lose{background:rgba(200,70,70,.15); color:#9e3a38;}
+.g-log{display:flex; flex-direction:column; gap:3px; padding:10px 12px; font-size:12px; color:var(--ink);
+  background:var(--paper); border:2px solid var(--ink); border-radius:12px;}
 #idcol{flex:1; min-width:0;}
 #hud-name{display:block; font-size:22px; font-weight:700; color:var(--ink);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:.3px;}
