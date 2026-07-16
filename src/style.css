@@ -78,13 +78,7 @@ button{font-family:inherit;}
 }
 .xpbar .fill{height:100%; width:35%; background:var(--teal);
   transition:width .5s cubic-bezier(.3,.9,.4,1);}
-#b-shop{margin-left:auto;}
-#gems{padding-right:5px;}
-#gems #b-gems-plus{
-  width:26px; height:26px; margin-left:2px; padding:0; flex:none;
-  background:var(--green); color:#fff; border:2px solid var(--ink); border-radius:8px;
-  font-size:17px; font-weight:700; line-height:1; cursor:pointer;
-}
+#gems{margin-left:auto;}
 
 /* ---------------- Rangée 2 : compteurs ---------------- */
 #counters{display:flex; align-items:center; gap:8px; flex:none;}

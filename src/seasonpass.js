@@ -6,11 +6,14 @@
 import { seasonFor } from './seasons.js';
 
 /** Le cadeau exclusif de chaque saison (id abstrait -> mappé par l'orchestrateur). */
+// Chaque saison offre un « cadeau » à réclamer une fois : un lot de gemmes 💎 +
+// poissons 🐟 (source concrète de gemmes). id/emoji/name conservés (feature +
+// tests) ; gems/fish = la récompense octroyée par l'orchestrateur.
 export const SEASON_GIFTS = {
-  printemps: { id: 'couronne_petales', emoji: '🌸', name: 'Couronne de pétales', kind: 'hat' },
-  ete:       { id: 'lunettes_ete',     emoji: '🕶️', name: "Lunettes d'été",       kind: 'hat' },
-  automne:   { id: 'echarpe_automne',  emoji: '🧣', name: "Écharpe d'automne",    kind: 'hat' },
-  hiver:     { id: 'bonnet_hiver',     emoji: '🧶', name: "Bonnet d'hiver",       kind: 'hat' }
+  printemps: { id: 'cadeau_printemps', emoji: '🌸', name: 'Cadeau du printemps', gems: 15, fish: 60 },
+  ete:       { id: 'cadeau_ete',       emoji: '🌞', name: "Cadeau d'été",         gems: 15, fish: 60 },
+  automne:   { id: 'cadeau_automne',   emoji: '🍂', name: "Cadeau d'automne",     gems: 15, fish: 60 },
+  hiver:     { id: 'cadeau_hiver',     emoji: '❄️', name: "Cadeau d'hiver",       gems: 15, fish: 60 }
 };
 
 /** Combien de trésors de saison récoltés prouvent qu'on a joué cette saison. */

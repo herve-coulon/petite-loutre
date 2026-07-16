@@ -101,7 +101,7 @@ export function renderLevel(rec) {
   // Compteurs (poissons réels ; coquillages/gemmes mappés sur des stats existantes)
   setTxt('fish-num', fmtNum(rec && rec.fishTotal));
   setTxt('shell-num', fmtNum(rec && rec.treatsTotal));
-  setTxt('gem-num', fmtNum(rec && rec.treasures));
+  setTxt('gem-num', fmtNum(rec && rec.gems));
 
   // Badge Succès : nombre de succès débloqués (caché si 0)
   const ab = $('ach-badge');

@@ -13,6 +13,7 @@ import * as music from './music.js';
 import * as ambient from './ambient.js';
 import { XP, levelFromXp, titleFor } from './level.js';
 import { bumpQuest, completedQuests, ensureDaily, dayKey } from './quests.js';
+import { giftClaimable, giftClaimed, claimSeasonGift } from './seasonpass.js';
 
 import {
   newState, saveState, loadState, clearSave,
@@ -462,6 +463,7 @@ function onCanvasPointer(e) {
         if (g.fun) s.fun = clamp(s.fun + g.fun, 0, 100);
         if (g.energy) s.energy = clamp(s.energy + g.energy, 0, 100);
         rec.treatsTotal = (rec.treatsTotal || 0) + 1;
+        refreshGift(); // 1er trésor de saison -> le cadeau devient réclamable
         R.spawn('heart', s.stage); R.burst('sparkle', 8, s.stage);
         sfx.happy(); vibrate(12);
         gainXp(XP.event);
@@ -600,8 +602,15 @@ function updateVolumeLabel() {
 /* ---------------- Persistance ---------------- */
 function persist() { saveState(s, storage, now()); }
 function persistRec() { saveRecords(rec, storage); }
+
+// Badge « ! » du Cadeau : visible seulement quand un cadeau de saison est réclamable.
+function refreshGift() {
+  const b = $('b-gift'); if (!b) return;
+  const badge = b.querySelector('.badge');
+  if (badge) badge.classList.toggle('hidden', !giftClaimable(rec));
+}
 /** Après chaque action joueur : sauvegarde + HUD à jour immédiatement. */
-function afterAct() { persist(); ui.updateHUD(s, mg, rec); updateCoach(); }
+function afterAct() { persist(); ui.updateHUD(s, mg, rec); updateCoach(); refreshGift(); }
 
 /**
  * Le LIEN grandit à chaque geste attentionné. Si c'est l'activité préférée de
@@ -1062,6 +1071,7 @@ function boot() {
   rec = loadRecords(storage);
   prevHats = new Set(unlockedHats(rec));
   ui.renderLevel(rec);
+  refreshGift();
 
   const prev = loadState(storage);
   if (prev) {
@@ -1274,6 +1284,28 @@ function boot() {
   // Carte photo (accessible depuis Succès)
   $('b-photo').addEventListener('click', openPhoto);
   $('b-place').addEventListener('click', togglePlace);
+
+  // Cadeau de saison : un lot (gemmes + poissons) à réclamer une fois par saison
+  $('b-gift').addEventListener('click', () => {
+    sfx.press();
+    if (!giftClaimable(rec)) {
+      ui.log(giftClaimed(rec)
+        ? '🎁 Cadeau de saison déjà reçu — rendez-vous la saison prochaine !'
+        : '🎁 Récolte le trésor de saison sur la berge pour débloquer ton cadeau !');
+      ui.toast(giftClaimed(rec) ? '🎁 Déjà réclamé cette saison' : '🎁 Récolte un trésor de saison d\'abord');
+      return;
+    }
+    const g = claimSeasonGift(rec);
+    if (!g) return;
+    rec.gems = (rec.gems || 0) + g.gems;
+    rec.fishTotal = (rec.fishTotal || 0) + g.fish;
+    persistRec();
+    ui.renderLevel(rec);
+    refreshGift();
+    vibrate([15, 30, 15]); sfx.happy();
+    ui.celebrate({ kicker: 'Cadeau de saison', big: g.emoji, title: g.name,
+      reward: '+' + g.gems + ' 💎    +' + g.fish + ' 🐟', rewardColor: 'var(--teal)' });
+  });
   $('ovl-cheer').addEventListener('click', ui.closeCheer); // fermer la célébration au toucher
   $('btn-photo-share').addEventListener('click', sharePhoto);
   $('btn-photo-save').addEventListener('click', savePhoto);

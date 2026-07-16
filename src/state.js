@@ -122,6 +122,7 @@ export function newRecords() {
     sleepsTotal: 0,
     treasures: 0,
     treatsTotal: 0,     // trésors de saison récoltés
+    gems: 0,            // gemmes 💎 — monnaie gagnée (cadeaux de saison…)
     items: [],          // trésors rares possédés (ids) — global, survit aux loutres
     wins: 0,
     battles: 0,
