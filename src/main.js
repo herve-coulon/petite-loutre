@@ -392,6 +392,11 @@ function updatePlaceBtn() {
   const inDen = show && s.place === 'taniere';
   b.textContent = inDen ? '🌊' : '🏠';
   b.title = inDen ? 'Retourner à la rivière' : 'Aller à la tanière';
+  // Rangement : les utilitaires vivent dans la tanière ; la berge garde les
+  // mini-jeux + le Cadeau. On bascule selon le lieu.
+  const denMenu = $('den-menu'); if (denMenu) denMenu.classList.toggle('hidden', !inDen);
+  const sideRight = $('side-right'); if (sideRight) sideRight.classList.toggle('hidden', inDen);
+  const gift = $('b-gift'); if (gift) gift.classList.toggle('hidden', inDen);
 }
 function togglePlace() {
   if (!denAvailable()) return;

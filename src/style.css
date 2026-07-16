@@ -144,6 +144,23 @@ button{font-family:inherit;}
 .sidebtn:active, .roundbtn:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,54,78,.34);}
 .sidebtn.locked, .roundbtn.locked{opacity:.5;}
 
+/* Menu de la TANIÈRE : rangée de boutons utilitaires (garde-robe, succès, réglages),
+   visible seulement quand on est dans la tanière -> la berge reste dégagée. */
+#den-menu{
+  position:absolute; top:10px; left:50%; transform:translateX(-50%); z-index:5;
+  display:flex; gap:10px; pointer-events:auto;
+}
+#den-menu.hidden{display:none;}
+.denbtn{
+  position:relative; width:68px; padding:8px 4px 5px; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  background:rgba(243,233,200,.96); border:2.5px solid var(--ink); border-radius:14px;
+  box-shadow:var(--shadow); color:var(--ink);
+}
+.denbtn .ic{font-size:26px; line-height:1;}
+.denbtn .dl{font-size:9px; font-weight:700; letter-spacing:.2px; white-space:nowrap;}
+.denbtn:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,54,78,.34);}
+
 /* Berge PLEIN ÉCRAN : la scène est rendue en PORTRAIT (ciel en haut, eau en bas)
    et remplit tout l'écran derrière le HUD. */
 #screenwrap{

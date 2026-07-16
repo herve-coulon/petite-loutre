@@ -36,7 +36,8 @@ export const DEN_SLOTS = (() => {
 export function denItemAt(px, py) {
   for (let i = 0; i < DEN_SLOTS.length; i++) {
     const p = DEN_SLOTS[i];
-    if (px >= p.x - 2 && px <= p.x + 10 && py >= p.y - 2 && py <= p.y + 10) return i;
+    const sy = p.y + BERGE_SHIFT;   // la scène tanière est décalée comme la berge
+    if (px >= p.x - 2 && px <= p.x + 10 && py >= sy - 2 && py <= sy + 10) return i;
   }
   return -1;
 }
@@ -543,10 +544,15 @@ export function makeRenderer(cv) {
   // La tanière : mur de terre, plancher, tapis, lanterne, étagères de trésors, nid.
   function drawDen(s, frame, fx, c) {
     const owned = fx.owned || [];
+    const S = BERGE_SHIFT;   // même règle plein écran que la berge
+    // Fond plein écran : mur de terre qui monte jusqu'en haut, plancher qui
+    // descend jusqu'en bas — la scène (autrefois 120px) est décalée de S.
     ctx.fillStyle = '#33231a'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-    for (let y = 4; y < 88; y += 6) for (let x = 6; x < CANVAS_W; x += 11) { // texture de terre
+    ctx.fillStyle = '#4a3221'; ctx.fillRect(0, 90 + S, CANVAS_W, CANVAS_H - (90 + S));
+    ctx.save(); ctx.translate(0, S);
+    for (let y = 4 - S; y < 88; y += 6) for (let x = 6; x < CANVAS_W; x += 11) { // texture de terre (jusqu'en haut)
       ctx.fillStyle = ((x + y) % 2) ? 'rgba(255,220,170,.045)' : 'rgba(0,0,0,.06)';
-      ctx.fillRect(x + ((y >> 1) % 3), y, 2, 2);
+      ctx.fillRect(x + (((y % 6 + 6) >> 1) % 3), y, 2, 2);
     }
     // plancher + lattes
     ctx.fillStyle = '#4a3221'; ctx.fillRect(0, 90, CANVAS_W, 30);
@@ -584,6 +590,7 @@ export function makeRenderer(cv) {
     ctx.fillStyle = '#9a7a2e'; ctx.fillRect(56, 92, 52, 3);
     // la loutre au repos
     drawDenOtter(s, frame);
+    ctx.restore();
   }
 
   function render(s, mg, frame, fx) {
@@ -1040,7 +1047,9 @@ export function makeRenderer(cv) {
     if (!mg && fx.hint) drawHint(fx.hint, frame);
 
     // roseaux de premier plan : silhouettes qui encadrent la scène (parallaxe/profondeur)
+    // -> au bord de l'eau, décalés comme la berge (sinon ils flottent dans le ciel)
     if (!mg) {
+      ctx.save(); ctx.translate(0, BERGE_SHIFT);
       const reed = (bx, baseY, h, phase, lean) => {
         const sway = reduced ? 0 : Math.sin(frame / 38 + phase);
         ctx.fillStyle = '#152a17';
@@ -1054,6 +1063,7 @@ export function makeRenderer(cv) {
       };
       reed(6, 118, 20, 0, 1); reed(12, 120, 26, 1.4, -1); reed(2, 116, 15, 2.1, 2);
       reed(150, 120, 24, 0.7, -1); reed(156, 117, 18, 2.6, 1);
+      ctx.restore();
     }
 
     drawParticles();
