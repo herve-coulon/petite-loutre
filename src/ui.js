@@ -12,8 +12,10 @@ import { ITEMS, RARITIES, MILESTONES, describeBonus } from './items.js';
 import { traitById, bondLevel } from './personality.js';
 
 const $ = id => document.getElementById(id);
+const setTxt = (id, v) => { const e = $(id); if (e) e.textContent = v; };
+const fmtNum = n => (n || 0).toLocaleString('fr-FR');   // « 2 340 » (espace fine)
 
-export function log(msg) { $('log').textContent = msg; }
+export function log(msg) { const e = $('log'); if (e) e.textContent = msg; }
 
 export function toast(msg) {
   const t = $('toast');
@@ -84,32 +86,45 @@ function setCooldown(id, frac, icon, totalMs) {
   }
 }
 
-/** Bandeau de niveau : NIV, titre honorifique, progression vers le suivant. */
+/** Barre du haut : niveau (badge + XP), série, compteurs, badges. */
 export function renderLevel(rec) {
   const L = levelFromXp((rec && rec.xp) || 0);
-  $('lvl-label').textContent = 'NIV ' + L.level + ' · ' + titleFor(L.level);
-  $('lvl-fill').style.width = Math.round(L.cur / L.next * 100) + '%';
-  $('lvl-num').textContent = L.cur + '/' + L.next + ' XP';
+  setTxt('lvl-badge', L.level);
+  const f = $('lvl-fill'); if (f) f.style.width = Math.round(L.cur / L.next * 100) + '%';
+  setTxt('lvl-label', 'NIV ' + L.level + ' · ' + titleFor(L.level)); // (si présent)
+  setTxt('lvl-num', L.cur + '/' + L.next + ' XP');
+
   const st = (rec && rec.streakCount) || 0;
-  $('streak').textContent = st >= 2 ? '🔥' + st : '';
+  setTxt('streak-num', st);
+  const streakEl = $('streak'); if (streakEl) streakEl.classList.toggle('hidden', st < 2); // flamme dès 2 jours
+
+  // Compteurs (poissons réels ; coquillages/gemmes mappés sur des stats existantes)
+  setTxt('fish-num', fmtNum(rec && rec.fishTotal));
+  setTxt('shell-num', fmtNum(rec && rec.treatsTotal));
+  setTxt('gem-num', fmtNum(rec && rec.treasures));
+
+  // Badge Succès : nombre de succès débloqués (caché si 0)
+  const ab = $('ach-badge');
+  if (ab) {
+    const n = rec && rec.achievements ? rec.achievements.length : 0;
+    ab.textContent = n; ab.classList.toggle('hidden', n <= 0);
+  }
 }
 
-/** Bandeau « objectifs du jour » : les 3 quêtes en un coup d'œil + la série. */
+/** Bannière de quête : la première quête du jour non terminée + sa progression. */
 export function renderDailies(s, rec) {
-  const el = $('dailies');
+  const el = $('quest');
   if (!el) return;
   if (!s || s.stage === 'egg' || s.gameOver || !s.qDaily) { el.classList.add('hidden'); return; }
   el.classList.remove('hidden');
-  let html = '';
-  for (const q of dailyQuests(s.qDaily.date)) {
-    const done = s.qDaily.done.includes(q.id);
-    const prog = Math.min(s.qDaily.progress[q.key] || 0, q.target);
-    html += '<span class="daily' + (done ? ' done' : '') + '">' + q.icon + ' ' +
-      (done ? '✓' : prog + '/' + q.target) + '</span>';
-  }
-  const st = Math.max((rec && rec.streakCount) || 0, 1);
-  html += '<span class="daily flame">🔥' + st + '</span>';
-  el.innerHTML = html;
+  const qs = dailyQuests(s.qDaily.date);
+  const q = qs.find(q => !s.qDaily.done.includes(q.id)) || qs[qs.length - 1];
+  const done = s.qDaily.done.includes(q.id);
+  const prog = Math.min(s.qDaily.progress[q.key] || 0, q.target);
+  setTxt('quest-text', q.icon + ' ' + (q.label || q.name || ''));
+  const f = $('quest-fill'); if (f) f.style.width = Math.round(prog / q.target * 100) + '%';
+  setTxt('quest-prog', done ? '✓' : prog + '/' + q.target);
+  el.classList.toggle('done', done);
 }
 
 let reducedMotion = false;
@@ -132,19 +147,19 @@ export function updateHUD(s, mg, rec) {
   if (!s) return;
   const level = levelFromXp((rec && rec.xp) || 0).level;
   const tr = traitById(s.trait);
-  $('hud-name').textContent = (s.name ? s.name.toUpperCase() : '???') + (tr && s.stage !== 'egg' ? ' ' + tr.emoji : '');
+  setTxt('hud-name', (s.name ? s.name.toUpperCase() : '???') + (tr && s.stage !== 'egg' ? ' ' + tr.emoji : ''));
   const grumpy = !s.sick && !s.sleeping && (s.grumpyUntil || 0) > Date.now();
-  $('hud-stage').textContent = s.away
+  // stage/âge : plus affichés dans la barre du haut (maquette) mais gardés si présents
+  setTxt('hud-stage', s.away
     ? 'CHEZ LE HÉRON 🪶'
-    : STAGES[s.stage] + (s.sick ? ' 🤒' : '') + (s.sleeping ? ' 💤' : '') + (grumpy ? ' 😾' : '');
-  $('hud-age').textContent = fmtAge(s);
+    : STAGES[s.stage] + (s.sick ? ' 🤒' : '') + (s.sleeping ? ' 💤' : '') + (grumpy ? ' 😾' : ''));
+  setTxt('hud-age', fmtAge(s));
 
   const isEgg = s.stage === 'egg';
   const isAway = !!s.away && !s.gameOver;
   const playing = !isEgg && !s.gameOver && !isAway;
-  $('act-left').classList.toggle('hidden', !playing);
-  $('act-right').classList.toggle('hidden', !playing);
-  $('bars-ov').classList.toggle('hidden', !playing);
+  $('actionbar').classList.toggle('hidden', !playing);
+  $('gauges').classList.toggle('hidden', !playing);
   $('btnrow-egg').classList.toggle('hidden', !isEgg || s.gameOver);
   $('btnrow-away').classList.toggle('hidden', !isAway);
   if (isAway) {

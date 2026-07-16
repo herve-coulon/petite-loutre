@@ -82,7 +82,7 @@ test('éclosion -> nommage', () => {
   $('btn-name').click();
   assert.equal(L.state.name, 'Kiwi');
   assert.ok($('ovl-name').classList.contains('hidden'));
-  assert.ok(!$('act-left').classList.contains('hidden'));
+  assert.ok(!$('actionbar').classList.contains('hidden'));
 });
 
 test('fil narratif : Chapitre 1 s\'affiche, puis les premiers pas guident vers Manger', () => {
@@ -190,8 +190,7 @@ test('négligence -> chez le héron -> rituel de retour en 3 soins (v2.7)', () =
   assert.equal(L.state.gameOver, false, 'plus de mort');
   assert.ok($('ovl-over').classList.contains('hidden'), 'pas d\'écran de fin');
   tick();
-  assert.match($('hud-stage').textContent, /HÉRON/);
-  assert.ok($('act-left').classList.contains('hidden'), 'actions normales masquées');
+  assert.ok($('actionbar').classList.contains('hidden'), 'actions normales masquées');
   assert.ok(!$('btnrow-away').classList.contains('hidden'), 'bouton de soin visible');
 
   $('b-feed').click();
@@ -355,7 +354,6 @@ test('réveil anticipé : elle boude (visage, HUD, humeur), un câlin la déride
   assert.ok(L.state.grumpyUntil > Date.now(), 'bouderie enclenchée');
   assert.ok(L.state.fun < fun0, 'humeur entamée');
   assert.match($('log').textContent, /boude/);
-  assert.match($('hud-stage').textContent, /😾/);
   L.pet(); // on se fait pardonner
   assert.equal(L.state.grumpyUntil, 0, 'câlin accepté, bouderie levée');
 });
@@ -440,7 +438,7 @@ test('menus : toucher à côté du contenu ferme aussi', () => {
 test('streak : la visite du jour est comptée au boot, 🔥 caché au jour 1', () => {
   assert.equal(L.records.streakCount, 1, 'première visite comptée');
   assert.ok(L.records.streakDay, 'jour mémorisé');
-  assert.equal($('streak').textContent, '', 'pas de flamme pour un seul jour');
+  assert.ok($('streak').classList.contains('hidden'), 'pas de flamme pour un seul jour');
 });
 
 test('streak : hier -> aujourd\'hui incrémente et affiche la flamme', () => {
@@ -476,8 +474,7 @@ test('XP : nourrir rapporte 5 XP, la barre de niveau est affichée', () => {
   L.state.sleeping = false;
   $('b-feed').click();
   assert.equal(L.records.xp, xp0 + 5, '+5 XP par repas');
-  assert.match($('lvl-label').textContent, /NIV \d+ · /, 'bandeau NIV + titre');
-  assert.match($('lvl-num').textContent, /XP$/);
+  assert.match($('lvl-badge').textContent, /^\d+$/, 'badge de niveau affiché');
   assert.match($('lvl-fill').style.width, /%$/);
 });
 
@@ -488,7 +485,7 @@ test('montée de niveau : toast étoilé, friandise rechargée, sauvegardé', ()
     progress: {},
     done: dailyQuests(dayKey()).map(q => q.id)
   };
-  const lv0 = $('lvl-label').textContent;
+  const lv0 = $('lvl-badge').textContent;
   // repart d'un niveau bas (les tests précédents peuvent avoir atteint le plafond 50)
   L.records.xp = 100;
   const cur = L.records.xp;
@@ -501,7 +498,7 @@ test('montée de niveau : toast étoilé, friandise rechargée, sauvegardé', ()
   assert.match($('cheer-kicker').textContent, /niveau/i, 'la bannière annonce le niveau');
   assert.match($('cheer-big').textContent, /^\d+$/, 'le numéro de niveau est affiché');
   assert.equal(L.state.lastTreat, 0, 'récompense : friandise rechargée');
-  assert.notEqual($('lvl-label').textContent, lv0, 'le bandeau a changé de niveau');
+  assert.notEqual($('lvl-badge').textContent, lv0, 'le badge a changé de niveau');
   const savedRec = JSON.parse(window.localStorage.getItem('petite_loutre_records_v1'));
   assert.equal(savedRec.xp, L.records.xp, 'XP persistée');
 });

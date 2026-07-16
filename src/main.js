@@ -1259,16 +1259,6 @@ function boot() {
   });
   $('btn-hats-close').addEventListener('click', () => ui.hideOverlay('ovl-hats'));
 
-  // Menu « Plus » : activités secondaires (plongée, toboggan, combat, soin)
-  $('b-more').addEventListener('click', () => {
-    if (busy() && !mg) { /* œuf/absente : le menu s'ouvre quand même pour info */ }
-    sfx.press(); ui.showOverlay('ovl-more');
-  });
-  const closeMore = () => ui.hideOverlay('ovl-more');
-  $('btn-more-close').addEventListener('click', closeMore);
-  // fermer le menu après avoir lancé une activité
-  ['b-dive', 'b-slide', 'b-battle', 'b-heal'].forEach(id => $(id).addEventListener('click', closeMore));
-
   // Carte photo (accessible depuis Succès)
   $('b-photo').addEventListener('click', openPhoto);
   $('b-place').addEventListener('click', togglePlace);
@@ -1285,9 +1275,9 @@ function boot() {
     ui.showOverlay('ovl-ach');
   };
   $('b-ach').addEventListener('click', openAch);
-  // le bandeau « objectifs du jour » ouvre le détail (quêtes + succès)
-  $('dailies').addEventListener('click', openAch);
-  $('dailies').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') openAch(); });
+  // la bannière de quête ouvre le détail (quêtes + succès)
+  $('quest').addEventListener('click', openAch);
+  $('quest').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') openAch(); });
   $('btn-ach-close').addEventListener('click', () => ui.hideOverlay('ovl-ach'));
   $('btn-day-share').addEventListener('click', async () => {
     if (!s) return;
@@ -1369,12 +1359,12 @@ function boot() {
     'ovl-hats': () => ui.hideOverlay('ovl-hats'),
     'ovl-ach': () => ui.hideOverlay('ovl-ach'),
     'ovl-set': () => ui.hideOverlay('ovl-set'),
-    'ovl-more': () => ui.hideOverlay('ovl-more'),
     'ovl-photo': () => { cardCv = null; ui.hideOverlay('ovl-photo'); },
     'ovl-battle': () => { battle = null; ui.hideOverlay('ovl-battle'); }
   };
   for (const [id, close] of Object.entries(overlayClosers)) {
     const el = $(id);
+    if (!el) continue;
     el.addEventListener('click', (e) => {
       if (e.target !== el) return; // un vrai toucher "à côté", pas sur un bouton
       if (id === 'ovl-battle' && battle && !battle.over) return;
