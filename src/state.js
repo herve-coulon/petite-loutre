@@ -132,6 +132,7 @@ export function newRecords() {
     streakDay: null,
     streakBest: 0,
     achievements: [],
+    achSeen: 0,          // nb de succès déjà consultés (badge de notif = non-vus)
     gang: null,          // le gang du joueur (survit aux loutres) — cf. gang.js
     recruited: [],       // ids des recrues déjà enrôlées (anti-doublon monde/escouade)
     seasonGifts: {}      // cadeaux de saison réclamés, par clé (cf. seasonpass.js)

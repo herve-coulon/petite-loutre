@@ -1447,6 +1447,8 @@ function boot() {
     ui.hideOverlay('ovl-menu');
     if (s && s.stage !== 'egg') ensureDaily(s, now());
     ui.renderAchievements(rec, s);
+    // Succès consultés : on éteint le badge de notif jusqu'aux prochains débloqués.
+    if (rec) { rec.achSeen = (rec.achievements || []).length; persistRec(); ui.renderLevel(rec); }
     ui.showOverlay('ovl-ach');
   };
   $('b-ach').addEventListener('click', openAch);

@@ -106,10 +106,12 @@ export function renderLevel(rec) {
   setTxt('gem-num', fmtNum(rec && rec.gems));
 
   // Badge Succès : nombre de succès débloqués (caché si 0)
+  // Badge de notif Succès : uniquement les succès NON encore consultés.
   const ab = $('ach-badge');
   if (ab) {
-    const n = rec && rec.achievements ? rec.achievements.length : 0;
-    ab.textContent = n; ab.classList.toggle('hidden', n <= 0);
+    const total = rec && rec.achievements ? rec.achievements.length : 0;
+    const unseen = Math.max(0, total - ((rec && rec.achSeen) || 0));
+    ab.textContent = unseen; ab.classList.toggle('hidden', unseen <= 0);
   }
 }
 

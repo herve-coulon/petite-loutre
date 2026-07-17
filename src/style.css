@@ -94,8 +94,9 @@ button{font-family:inherit;}
 }
 .prof-slot:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,54,78,.34);}
 .prof-slot .ps-ic{font-size:22px; line-height:1;}
-.prof-slot .ps-lbl{font-size:8px; font-weight:700; line-height:1.1; max-width:50px;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.prof-slot .ps-lbl{font-size:7.5px; font-weight:700; line-height:1.05; width:100%; text-align:center;
+  overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  overflow-wrap:anywhere;}
 .prof-otter{position:relative; flex:1; display:flex; flex-direction:column;
   align-items:center; justify-content:flex-end; gap:6px; min-width:0;}
 .prof-face{font-size:76px; line-height:1;}
@@ -115,11 +116,13 @@ button{font-family:inherit;}
 
 .prof-tabs{width:100%; max-width:340px; display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
 .prof-tab{position:relative; display:flex; flex-direction:column; align-items:center; gap:3px;
-  padding:9px 3px; cursor:pointer; font-family:inherit; font-weight:700; font-size:10px;
+  padding:9px 2px; cursor:pointer; font-family:inherit; font-weight:700; font-size:9.5px; line-height:1.05;
+  text-align:center; overflow-wrap:anywhere;
   background:var(--bar); color:#f3e9c8; border:2.5px solid var(--ink); border-radius:14px;
   box-shadow:var(--shadow);}
 .prof-tab:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,54,78,.34);}
 .prof-tab .pt-ic{font-size:22px; line-height:1;}
+.prof-tab .badge{top:3px; right:5px;}   /* le badge de notif reste dans le cadre */
 
 /* ── Écran Escouade (gang) ─────────────────────────────────────────────── */
 #gang-body{width:100%; max-width:340px; margin:0 auto; display:flex; flex-direction:column; gap:12px;}

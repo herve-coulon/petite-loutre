@@ -498,17 +498,24 @@ export function makeRenderer(cv) {
     }
   }
 
-  // Balle de jeu (ball-fetch) : rouge à bande blanche, avec son ombre au sol.
+  // Balle de jeu (ball-fetch) : petite balle ronde bicolore (corail + crème),
+  // reflet en haut, liseré foncé en bas, avec son ombre projetée au sol.
   function drawBall(b) {
     const bx = Math.round(b.x), by = Math.round(b.y);
-    const groundY = (b.state === 'flying') ? 100 : by + 7;
-    const shW = (b.state === 'flying') ? 4 : 7;
-    ctx.fillStyle = 'rgba(16,26,16,.2)'; ctx.fillRect(bx - (shW >> 1), groundY, shW, 2);
-    ctx.fillStyle = '#e5484d';
-    ctx.fillRect(bx - 3, by - 4, 6, 8); ctx.fillRect(bx - 4, by - 3, 8, 6);
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(bx - 3, by - 1, 6, 2);
-    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(bx - 2, by - 3, 2, 1);
-    if (b.state === 'idle' && (lastFrame >> 4) % 3 === 0) { ctx.fillStyle = '#fff6cd'; ctx.fillRect(bx + 5, by - 5, 1, 1); }
+    // ombre : sous la balle au repos, projetée sur la berge pendant le vol
+    const groundY = (b.state === 'flying') ? GROUND_Y + 2 : by + 6;
+    const shW = (b.state === 'flying') ? 5 : 8;
+    ctx.fillStyle = 'rgba(16,26,16,.18)'; ctx.fillRect(bx - (shW >> 1), groundY, shW, 2);
+    // corps rond (rayon 4) : bande crème verticale, reste corail
+    const R = 4;
+    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+      if (dx * dx + dy * dy > R * R + 1) continue;
+      ctx.fillStyle = (dx >= -1 && dx <= 0) ? '#f4ead0' : '#e8804a';
+      ctx.fillRect(bx + dx, by + dy, 1, 1);
+    }
+    ctx.fillStyle = 'rgba(38,54,78,.22)'; ctx.fillRect(bx - 2, by + R, 4, 1);      // volume (bas)
+    ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fillRect(bx - 2, by - 3, 2, 1);    // reflet
+    ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.fillRect(bx - 3, by - 2, 1, 1);
   }
 
   // La loutre au repos dans sa tanière (calme : respiration, clignement, visage paisible).
@@ -1263,7 +1270,7 @@ export function makeRenderer(cv) {
     if (ball.state !== 'held') return;
     ball.sx = ball.x; ball.sy = ball.y;              // départ de l'arc
     ball.tx = Math.max(14, Math.min(150, px));       // atterrissage clampé à la berge
-    ball.ty = Math.max(78, Math.min(100, py));
+    ball.ty = Math.max(GROUND_Y - 18, Math.min(GROUND_Y + 4, py)); // sur le sol (post-décalage), pas dans le ciel
     ball.t = 0; ball.state = 'flying';
   }
   /** Vrai une seule fois quand la loutre vient de rapporter la balle (récompense). */
