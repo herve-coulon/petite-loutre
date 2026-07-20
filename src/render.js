@@ -792,13 +792,16 @@ export function makeRenderer(cv) {
     }
 
     if (s.gameOver) {
+      ctx.save(); ctx.translate(0, BERGE_SHIFT);   // scène calée sur la berge décalée
       if ((frame >> 4) % 2 === 0) drawSprite(SPRITES.heart, 74, 100, 1);
+      ctx.restore();
       drawParticles();
       return;
     }
 
     // partie bouder chez le héron : la berge est calme, le grand oiseau veille
     if (s.away) {
+      ctx.save(); ctx.translate(0, BERGE_SHIFT);   // sinon le héron flotte dans le ciel
       drawSprite(SPRITES.heron, 66, 68, 2);
       if ((frame >> 4) % 2 === 0) { // il pense à elle…
         ctx.fillStyle = '#ffffff';
@@ -807,6 +810,7 @@ export function makeRenderer(cv) {
       ctx.fillStyle = 'rgba(15,18,26,.65)'; ctx.fillRect(26, 16, 108, 12);
       ctx.fillStyle = '#ffe9a8'; ctx.font = '8px monospace';
       ctx.fillText('chez le héron… soins ' + (s.awayCare || 0) + '/3', 32, 25);
+      ctx.restore();
       drawParticles();
       return;
     }

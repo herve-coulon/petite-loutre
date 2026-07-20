@@ -1612,7 +1612,18 @@ function boot() {
   }
 
   checkStreak(); // la visite du jour compte pour la série 🔥
-  if (s && s.push) push.syncReminders(s); // rafraîchit les rappels dès l'ouverture
+  // Rappels : on répare un abonnement perdu (iOS le lâche parfois) plutôt que
+  // d'échouer en silence. Si c'est irrécupérable, l'état devient honnête (NON)
+  // pour que le joueur puisse les réactiver depuis ⚙️ Réglages.
+  if (s && s.push) {
+    push.ensureSubscribed(s).then((r) => {
+      if (r !== 'ok' && s) {
+        s.push = false; persist();
+        const b = $('b-push'); if (b) b.textContent = '🔔 RAPPELS : NON';
+        ui.log('🔔 Les rappels s\'étaient désactivés — réactive-les dans ⚙️ Réglages.');
+      }
+    });
+  }
 
   setInterval(tick, 1000);
   requestAnimationFrame(loop);

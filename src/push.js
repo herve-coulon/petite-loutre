@@ -111,6 +111,30 @@ export async function enablePush() {
   } catch (e) { return 'indisponible'; }
 }
 
+/**
+ * Remet les rappels d'aplomb : si la permission est toujours accordée mais que
+ * le navigateur a perdu l'abonnement (fréquent sur iOS après une mise à jour ou
+ * une longue inactivité), on se ré-abonne, puis on redépose les rendez-vous.
+ * Sans ça l'échec est silencieux : les réglages affichent « OUI » et rien n'arrive.
+ * @returns 'ok' | 'refuse' | 'indisponible'
+ */
+export async function ensureSubscribed(s, now = Date.now()) {
+  if (!pushSupported()) return 'indisponible';
+  try {
+    if (Notification.permission !== 'granted') return 'refuse';
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: b64ToU8(VAPID_PUBLIC)
+      });
+    }
+    await api({ action: 'subscribe', sub: sub.toJSON(), reminders: nextReminders(s, now) });
+    return 'ok';
+  } catch (e) { return 'indisponible'; }
+}
+
 /** Dépose les prochains rappels sur le serveur (no-op sans abonnement). */
 export async function syncReminders(s, now = Date.now()) {
   if (!pushSupported()) return false;
