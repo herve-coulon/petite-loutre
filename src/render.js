@@ -752,13 +752,14 @@ export function makeRenderer(cv) {
     const c0 = Math.floor(camX / TILE), c1 = Math.ceil((camX + CANVAS_W) / TILE);
     const r0 = Math.floor(camY / TILE), r1 = Math.ceil((camY + CANVAS_H) / TILE);
 
+    const zone = w.zone || 'clairiere';
     for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
-      blit(groundTile(cx, cy), cx * TILE - camX, cy * TILE - camY);
+      blit(groundTile(zone, cx, cy), cx * TILE - camX, cy * TILE - camY);
     }
     // décor + loutres, triés par profondeur (y) pour que ça passe devant/derrière
     const figs = [];
     for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
-      const d = decorTile(cx, cy);
+      const d = decorTile(zone, cx, cy);
       if (d) figs.push({ y: cy * TILE + TILE, fn: () => blit(d, cx * TILE - camX, cy * TILE - camY) });
     }
     for (const o of w.otters) {

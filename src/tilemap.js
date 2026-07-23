@@ -1,6 +1,6 @@
-// La vallée en tuiles : atlas Kenney (CC0, cf. assets/CREDITS.txt), carte du
-// monde, auto-tuilage des berges et collisions. Module PUR (aucun DOM, aucun
-// canvas) : la carte et les règles de déplacement sont testables.
+// Le monde en tuiles : atlas Kenney (CC0, cf. assets/CREDITS.txt), cartes des
+// ZONES reliées entre elles, auto-tuilage des berges et collisions.
+// Module PUR (aucun DOM, aucun canvas) : cartes et déplacements sont testables.
 
 export const TILE = 16;        // taille d'une tuile dans la feuille
 export const SHEET_M = 1;      // marge entre les tuiles de la feuille
@@ -28,13 +28,14 @@ export const TD = {
   picture: [23, 8], mirror: [24, 8]  // de quoi habiller le mur
 };
 
-/**
- * La carte de la vallée. Une rivière descend du nord (un lac) vers le sud, un
- * sentier de terre serpente sur la rive ouest, des bosquets ferment l'horizon.
- * Légende : '.'/',' herbe · 'd' terre · '~' eau · 'T' arbre · 'p' sapin
- *           'b' buisson · 'f' fleurs · 's' pousse
- */
-export const MAP_ROWS = [
+/* ---------------- Les cartes ----------------
+   Légende : '.'/',' herbe · 'd' terre · '~' eau · 'T' arbre · 'p' sapin
+             'b' buisson · 'f' fleurs · 's' pousse
+   Les bords ouverts (cases praticables en lisière) mènent à la zone voisine. */
+
+// LA CLAIRIÈRE : le cœur de la vallée. Rivière au centre, sentier à l'ouest.
+// Ouvertures : au nord vers la forêt, à l'est vers le lac.
+const CLAIRIERE = [
   'TTTTTTTTTT....TTTTTTTT........',
   'TT..........,....TTTT.........',
   'T....ffff....~~~~....pp.......',
@@ -64,35 +65,127 @@ export const MAP_ROWS = [
   '..TTTT.......~~~~.............',
   '.............~~~~.............',
   '......ss.....~~~~......ss.....',
-  '.............~~~~.............'
+  'TTTTTTTTTTTTT~~~~TTTTTTTTTTTTT'
 ];
 
-export const MAP_W = MAP_ROWS[0].length;
-export const MAP_H = MAP_ROWS.length;
-/** Dimensions du monde en pixels. */
+// LA FORÊT : dense, des trouées, un étang. Ouverture au sud vers la clairière.
+const FORET = [
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TT..TTTT......TTTT......TTTTTT',
+  'T....TT...TT.....TT...TT....TT',
+  'T.TT......TT..T...TT.......T.T',
+  'T.TT..ff...........TT..bb..T.T',
+  'T......TT...~~~~....TT.....T.T',
+  'TT.TT..TT..~~~~~~...TT..TT...T',
+  'T...T......~~~~~~.......TT...T',
+  'T...T..bb...~~~~....ff.......T',
+  'T.TTT........~~..........TT..T',
+  'T.TT....TT.......TT......TT..T',
+  'T.......TT.......TT..........T',
+  'TT..ss...........TT...ss....TT',
+  'T........TT.........TT.......T',
+  'T..TT....TT.........TT..TT...T',
+  'T..TT.......ff..........TT...T',
+  'T.......TT..............TT...T',
+  'T..bb...TT.....TT........bb..T',
+  'T.......TT.....TT............T',
+  'T..TT..........TT.....TT.....T',
+  'T..TT.................TT.....T',
+  'T.........TT.......TT........T',
+  'T..ff.....TT.......TT....ff..T',
+  'T.................TT.........T',
+  'T..TT.............TT.....TT..T',
+  'T..TT....................TT..T',
+  'T........TT.........TT.......T',
+  'T........TT.........TT.......T',
+  'TT.....................ss...TT',
+  'TTTTTTTTTTTT......TTTTTTTTTTTT'
+];
+
+// LE GRAND LAC : une vaste étendue d'eau bordée de rives.
+// Ouverture à l'ouest vers la clairière.
+const LAC = [
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'T..........................TTT',
+  'T...ff........................',
+  'T..........~~~~~~~~~~.........',
+  'T.......~~~~~~~~~~~~~~~~......',
+  'T.....~~~~~~~~~~~~~~~~~~~~....',
+  'T....~~~~~~~~~~~~~~~~~~~~~~...',
+  'T...~~~~~~~~~~~~~~~~~~~~~~~~..',
+  '....~~~~~~~~~~~~~~~~~~~~~~~~..',
+  '...~~~~~~~~~~~~~~~~~~~~~~~~~~.',
+  '...~~~~~~~~~~~~~~~~~~~~~~~~~~.',
+  '..~~~~~~~~~~~~~~~~~~~~~~~~~~~.',
+  '..~~~~~~~~~~~~~~~~~~~~~~~~~~~.',
+  '..~~~~~~~~~~~~~~~~~~~~~~~~~~~.',
+  '..~~~~~~~~~~~~~~~~~~~~~~~~~~~.',
+  '..~~~~~~~~~~~~~~~~~~~~~~~~~~~.',
+  '...~~~~~~~~~~~~~~~~~~~~~~~~~~.',
+  '...~~~~~~~~~~~~~~~~~~~~~~~~~..',
+  '....~~~~~~~~~~~~~~~~~~~~~~~...',
+  '.....~~~~~~~~~~~~~~~~~~~~~....',
+  'T.....~~~~~~~~~~~~~~~~~~~.....',
+  'T.......~~~~~~~~~~~~~~~.......',
+  'T..bb......~~~~~~~~~..........',
+  'T.............................',
+  'T....ss................ff.....',
+  'T.............................',
+  'T..TT....................TT...',
+  'T..TT....................TT...',
+  'T........bb..........ss.......',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'
+];
+
+/**
+ * Les zones du monde et leurs liaisons. `links` donne la zone atteinte en
+ * sortant par ce bord ; un bord sans liaison est infranchissable.
+ * `start` = case d'arrivée par défaut (en coords de tuiles).
+ */
+export const ZONES = {
+  clairiere: { id: 'clairiere', name: 'La clairière', rows: CLAIRIERE, start: [8, 22], links: { north: 'foret', east: 'lac' } },
+  foret: { id: 'foret', name: 'La forêt', rows: FORET, start: [14, 27], links: { south: 'clairiere' } },
+  lac: { id: 'lac', name: 'Le grand lac', rows: LAC, start: [2, 24], links: { west: 'clairiere' } }
+};
+
+export const START_ZONE = 'clairiere';
+/** La zone (objet) depuis son id, un objet zone, ou n'importe quoi -> repli. */
+export const zoneById = (z) => (z && z.rows) ? z : (ZONES[z] || ZONES[START_ZONE]);
+
+export const MAP_W = CLAIRIERE[0].length;
+export const MAP_H = CLAIRIERE.length;
 export const WORLD_W = MAP_W * TILE;
 export const WORLD_H = MAP_H * TILE;
 
 /** Le caractère de la carte en (cx, cy) ; hors carte -> arbre (mur naturel). */
-export function charAt(cx, cy) {
+export function charAt(zone, cx, cy) {
   if (cx < 0 || cy < 0 || cx >= MAP_W || cy >= MAP_H) return 'T';
-  return MAP_ROWS[cy][cx];
+  return zoneById(zone).rows[cy][cx];
 }
 
-export const isWater = (cx, cy) => charAt(cx, cy) === '~';
-/** Ce qui bloque le passage : l'eau, les arbres/sapins et le hors-carte. */
-export function isSolid(cx, cy) {
-  const c = charAt(cx, cy);
+export const isWater = (zone, cx, cy) => charAt(zone, cx, cy) === '~';
+
+/**
+ * Ce qui bloque : l'eau, les arbres/sapins. Hors carte, on bloque SAUF si la
+ * zone a une liaison de ce côté — c'est ainsi qu'on passe d'une zone à l'autre.
+ */
+export function isSolid(zone, cx, cy) {
+  const z = zoneById(zone);
+  if (cx < 0) return !z.links.west;
+  if (cx >= MAP_W) return !z.links.east;
+  if (cy < 0) return !z.links.north;
+  if (cy >= MAP_H) return !z.links.south;
+  const c = z.rows[cy][cx];
   return c === '~' || c === 'T' || c === 'p';
 }
 
 /**
  * Auto-tuilage d'une case d'eau : on choisit dans le bloc 3x3 des berges selon
- * les voisins, pour que la rive s'ourle proprement autour de la rivière.
+ * les voisins, pour que la rive s'ourle proprement autour de l'eau.
  */
-export function waterTile(cx, cy) {
-  const up = isWater(cx, cy - 1), down = isWater(cx, cy + 1);
-  const left = isWater(cx - 1, cy), right = isWater(cx + 1, cy);
+export function waterTile(zone, cx, cy) {
+  const up = isWater(zone, cx, cy - 1), down = isWater(zone, cx, cy + 1);
+  const left = isWater(zone, cx - 1, cy), right = isWater(zone, cx + 1, cy);
   if (up && down && left && right) return T.water;      // plein bain
   const row = !up ? 0 : (!down ? 2 : 1);
   const col = !left ? 0 : (!right ? 2 : 1);
@@ -102,16 +195,16 @@ export function waterTile(cx, cy) {
 }
 
 /** La tuile de SOL d'une case (l'eau est auto-tuilée, le reste est de l'herbe). */
-export function groundTile(cx, cy) {
-  const c = charAt(cx, cy);
-  if (c === '~') return waterTile(cx, cy);
+export function groundTile(zone, cx, cy) {
+  const c = charAt(zone, cx, cy);
+  if (c === '~') return waterTile(zone, cx, cy);
   if (c === 'd') return T.dirt;
   return ((cx + cy) % 7 === 0) ? T.grass2 : T.grass;   // herbe légèrement variée
 }
 
 /** La tuile de DÉCOR posée sur le sol, ou null. */
-export function decorTile(cx, cy) {
-  const c = charAt(cx, cy);
+export function decorTile(zone, cx, cy) {
+  const c = charAt(zone, cx, cy);
   if (c === 'T') return T.tree;
   if (c === 'p') return T.pine;
   if (c === 'b') return T.bush;
@@ -125,14 +218,13 @@ export function decorTile(cx, cy) {
  * qui permet de glisser le long d'un obstacle au lieu de s'y coller.
  * (px, py) = pieds de la loutre, en pixels monde. r = demi-largeur du corps.
  */
-export function moveWithCollision(px, py, dx, dy, r = 5) {
+export function moveWithCollision(zone, px, py, dx, dy, r = 5) {
   let nx = px, ny = py;
   const free = (x, y) => {
-    // on teste les quatre coins de la boîte des pieds
     const x0 = Math.floor((x - r) / TILE), x1 = Math.floor((x + r) / TILE);
     const y0 = Math.floor((y - 3) / TILE), y1 = Math.floor((y + 1) / TILE);
     for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
-      if (isSolid(cx, cy)) return false;
+      if (isSolid(zone, cx, cy)) return false;
     }
     return true;
   };
@@ -141,18 +233,42 @@ export function moveWithCollision(px, py, dx, dy, r = 5) {
   return { x: nx, y: ny };
 }
 
-/** Clairière de départ : au milieu de la vallée, la rivière à quelques pas à l'est. */
-export const START = [8, 22];
+/**
+ * A-t-on franchi un bord vers une zone voisine ? Retourne la zone d'arrivée et
+ * la position d'entrée (on ressort du côté opposé), ou null.
+ */
+export function zoneExit(zone, px, py) {
+  const z = zoneById(zone);
+  const M = TILE;                       // on entre d'une tuile dans la zone
+  if (px < 0 && z.links.west) return { to: z.links.west, x: WORLD_W - M, y: py };
+  if (px > WORLD_W && z.links.east) return { to: z.links.east, x: M, y: py };
+  if (py < 0 && z.links.north) return { to: z.links.north, x: px, y: WORLD_H - M };
+  if (py > WORLD_H && z.links.south) return { to: z.links.south, x: px, y: M };
+  return null;
+}
 
-/** Une position de départ sûre : la clairière, ou la première case libre proche. */
-export function spawnPoint() {
-  const toPx = (cx, cy) => ({ x: cx * TILE + TILE / 2, y: cy * TILE + TILE - 2 });
-  if (!isSolid(START[0], START[1])) return toPx(START[0], START[1]);
-  for (let r = 1; r < 10; r++) {
+/** La case praticable la plus proche de (cx, cy), en pixels monde. */
+export function nearestFree(zone, cx, cy) {
+  const toPx = (x, y) => ({ x: x * TILE + TILE / 2, y: y * TILE + TILE - 2 });
+  for (let r = 0; r < Math.max(MAP_W, MAP_H); r++) {
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
-      const cx = START[0] + dx, cy = START[1] + dy;
-      if (!isSolid(cx, cy)) return toPx(cx, cy);
+      const x = cx + dx, y = cy + dy;
+      if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) continue;
+      if (!isSolid(zone, x, y)) return toPx(x, y);
     }
   }
-  return toPx(2, 2);
+  return toPx(1, 1);
+}
+
+/** Position d'arrivée sûre dans une zone, au plus près du point visé. */
+export function safeEntry(zone, px, py) {
+  const cx = Math.max(0, Math.min(MAP_W - 1, Math.floor(px / TILE)));
+  const cy = Math.max(0, Math.min(MAP_H - 1, Math.floor(py / TILE)));
+  return nearestFree(zone, cx, cy);
+}
+
+/** Le point de départ d'une zone (sa clairière d'entrée). */
+export function spawnPoint(zone) {
+  const z = zoneById(zone);
+  return nearestFree(z, z.start[0], z.start[1]);
 }

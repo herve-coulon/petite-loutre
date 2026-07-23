@@ -31,7 +31,10 @@ import { unlockedFurs, unlockedDecors } from './skins.js';
 import { newAchievements } from './achievements.js';
 import { encodeCard, decodeCard, newBattle, playTurn, wildFoe, makeFighter } from './battle.js';
 import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
-import { TILE, WORLD_W, WORLD_H, moveWithCollision, spawnPoint, isSolid } from './tilemap.js';
+import {
+  TILE, WORLD_W, WORLD_H, START_ZONE, zoneById,
+  moveWithCollision, spawnPoint, zoneExit, safeEntry, nearestFree
+} from './tilemap.js';
 import { makeCard, CARD_URL } from './photocard.js';
 import { nextBeat, markSeen, coachStep } from './story.js';
 import { seasonFor, seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
@@ -427,28 +430,39 @@ function togglePlace() {
 /* ---------------- Le Monde : balade libre, rencontres, recrutement ---------------- */
 const clampN = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
 
-/** Une case libre proche de l'ancre donnée (en coords de tuiles) -> pixels monde. */
-function freeSpotNear(cx, cy) {
-  for (let r = 0; r < 8; r++) {
-    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
-      const tx = cx + dx, ty = cy + dy;
-      if (!isSolid(tx, ty)) return { x: tx * TILE + TILE / 2, y: ty * TILE + TILE - 2 };
-    }
-  }
-  return spawnPoint();
+/** Les loutres sauvages d'une zone : les mêmes tout au long du jour, par zone. */
+function wildOttersFor(zoneId) {
+  const anchors = { clairiere: [[5, 22], [20, 15], [4, 8]], foret: [[5, 12], [24, 20], [14, 4]], lac: [[3, 24], [26, 3], [2, 12]] };
+  const spots = anchors[zoneId] || anchors.clairiere;
+  return recruitBoard(curLevel(), dayKey() + '|' + zoneId, 3)
+    .filter(c => !isRecruited(c.id))
+    .map((c, i) => {
+      const p = nearestFree(zoneId, spots[i % spots.length][0], spots[i % spots.length][1]);
+      return { ...c, x: p.x, y: p.y, wx: p.x, phase: i * 60, facing: 1, friend: 0, cooldown: 0 };
+    });
+}
+
+/** Change de zone : nouvelle carte, nouvelles loutres, on entre par le bon bord. */
+function goToZone(zoneId, px, py) {
+  const p = safeEntry(zoneId, px, py);
+  world.zone = zoneId;
+  world.px = p.x; world.py = p.y; world.tx = p.x; world.ty = p.y;
+  world.walking = false;
+  world.otters = wildOttersFor(zoneId);
+  ui.log('🗺️ ' + zoneById(zoneId).name);
+  ui.toast('🗺️ ' + zoneById(zoneId).name);
+  sfx.press(); vibrate(8);
 }
 
 /** Entre dans la vallée : engendre les loutres sauvages du jour et place tout le monde. */
 function enterWorld() {
   if (!denAvailable()) return;
-  const anchors = [[5, 22], [20, 15], [4, 8]];   // dispersées sur la carte
-  const cands = recruitBoard(curLevel(), dayKey(), 3).filter(c => !isRecruited(c.id));
-  const otters = cands.map((c, i) => {
-    const p = freeSpotNear(anchors[i % anchors.length][0], anchors[i % anchors.length][1]);
-    return { ...c, x: p.x, y: p.y, wx: p.x, phase: i * 60, facing: 1, friend: 0, cooldown: 0 };
-  });
-  const sp = spawnPoint();
-  world = { px: sp.x, py: sp.y, tx: sp.x, ty: sp.y, walking: false, facing: 1, otters };
+  const zone = START_ZONE;
+  const sp = spawnPoint(zone);
+  world = {
+    zone, px: sp.x, py: sp.y, tx: sp.x, ty: sp.y,
+    walking: false, facing: 1, otters: wildOttersFor(zone)
+  };
   s.place = 'monde';
   sfx.press(); vibrate(8);
   ui.log('🗺️ ' + (s.name || 'La loutre') + ' part explorer la vallée…');
@@ -472,13 +486,16 @@ function stepWorld() {
     const dx = world.tx - world.px, dy = world.ty - world.py, d = Math.hypot(dx, dy);
     if (d > 1.5) {
       const step = Math.min(1.4, d);   // ~11 frames par tuile : marche posée
-      const res = moveWithCollision(world.px, world.py, dx / d * step, dy / d * step);
+      const res = moveWithCollision(world.zone, world.px, world.py, dx / d * step, dy / d * step);
       if (res.x === world.px && res.y === world.py) {
         world.tx = world.px; world.ty = world.py; world.walking = false;  // bloquée : on renonce
       } else {
         world.px = res.x; world.py = res.y;
         world.facing = dx < 0 ? -1 : 1; world.walking = true;
       }
+      // franchi un bord ouvert ? on bascule sur la zone voisine
+      const out = zoneExit(world.zone, world.px, world.py);
+      if (out) { goToZone(out.to, out.x, out.y); return; }
     } else world.walking = false;
   }
   for (const o of world.otters) {
@@ -565,8 +582,9 @@ function onCanvasPointer(e) {
     if (s.place === 'monde') {
       if (world && !encounterOtter) {
         const cam = worldCam();
-        world.tx = clampN(x + cam.x, 4, WORLD_W - 4);
-        world.ty = clampN(y + cam.y, 4, WORLD_H - 4);
+        // on peut viser un peu au-delà du bord : c'est ainsi qu'on quitte la zone
+        world.tx = clampN(x + cam.x, -TILE, WORLD_W + TILE);
+        world.ty = clampN(y + cam.y, -TILE, WORLD_H + TILE);
       }
       return;
     }
