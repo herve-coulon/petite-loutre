@@ -36,7 +36,23 @@ jobs:
       - name: Préparer le site statique
         run: |
           mkdir -p _site
-          cp -r index.html manifest.webmanifest sw.js src icons _site/
+          cp -r index.html manifest.webmanifest sw.js src icons assets _site/
+      - name: Vérifier que tout ce que le service worker précache est bien là
+        run: |
+          # Un fichier oublié ici passe inaperçu : les tests verdissent, le
+          # déploiement réussit, mais le jeu se dégrade en silence côté joueur.
+          node -e '
+            const fs = require("fs");
+            const sw = fs.readFileSync("sw.js", "utf8");
+            const bloc = sw.slice(sw.indexOf("const PRECACHE"), sw.indexOf("];", sw.indexOf("const PRECACHE")));
+            const fichiers = [...bloc.matchAll(/["\x27]\.\/([^"\x27]+)["\x27]/g)].map(m => m[1]).filter(Boolean);
+            const manquants = fichiers.filter(f => !fs.existsSync("_site/" + f));
+            if (manquants.length) {
+              console.error("Absents du site déployé :\n  " + manquants.join("\n  "));
+              process.exit(1);
+            }
+            console.log(fichiers.length + " fichiers précachés, tous présents.");
+          '
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

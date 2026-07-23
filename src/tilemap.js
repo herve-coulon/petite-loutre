@@ -291,6 +291,33 @@ export const FIND_ICON = {
   coquillage: '🐚', tresor: '🎁', fleur: '🌼'
 };
 
+const DELTA = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
+
+/**
+ * La disposition de la vallée, DÉDUITE des liaisons (parcours en largeur depuis
+ * la zone de départ) plutôt que codée à la main : impossible qu'elle mente sur
+ * la géographie réelle. Retourne { id: {col, row} }, origine ramenée à (0,0).
+ */
+export function zoneLayout() {
+  const pos = { [START_ZONE]: { col: 0, row: 0 } };
+  const file = [START_ZONE];
+  while (file.length) {
+    const id = file.shift();
+    const here = pos[id];
+    for (const [dir, to] of Object.entries(zoneById(id).links)) {
+      if (pos[to]) continue;
+      const d = DELTA[dir];
+      pos[to] = { col: here.col + d[0], row: here.row + d[1] };
+      file.push(to);
+    }
+  }
+  const cols = Object.values(pos).map(p => p.col), rows = Object.values(pos).map(p => p.row);
+  const minC = Math.min(...cols), minR = Math.min(...rows);
+  const out = {};
+  for (const [id, p] of Object.entries(pos)) out[id] = { col: p.col - minC, row: p.row - minR };
+  return out;
+}
+
 /** Petit générateur seedé, pour que les trouvailles du jour soient les mêmes. */
 function rngFrom(str) {
   let h = 2166136261 >>> 0;
