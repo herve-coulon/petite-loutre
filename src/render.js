@@ -59,6 +59,37 @@ export function otterY(stage) {
   return GROUND_Y - spr.length * 2 + (stage === 'egg' ? 4 : 0);
 }
 
+/**
+ * Peint une loutre (pelage + chapeau) dans un canvas quelconque : sert aux
+ * portraits de l'arène de combat. Autonome — n'utilise pas le renderer du jeu.
+ */
+export function paintOtter(cv, o, sc = 3, flip = false) {
+  if (!cv || !cv.getContext || !o) return;
+  const ctx = cv.getContext('2d');
+  if (!ctx) return;
+  const spr = SPRITES[o.stage] || SPRITES.adult;
+  const fur = (furById(o.fur) || {}).map;
+  const hat = o.hat ? hatById(o.hat) : null;
+  const top = hat ? hat.rows.length : 0;                 // place pour le chapeau
+  cv.width = spr[0].length * sc;
+  cv.height = (spr.length + top) * sc;
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  const paint = (rows, ox, oy, pal) => {
+    for (let j = 0; j < rows.length; j++) {
+      const row = rows[j];
+      for (let i = 0; i < row.length; i++) {
+        const ch = row[flip ? row.length - 1 - i : i];
+        const col = (pal && pal[ch]) || PAL[ch];
+        if (!col || ch === '.') continue;
+        ctx.fillStyle = col;
+        ctx.fillRect(ox + i * sc, oy + j * sc, sc, sc);
+      }
+    }
+  };
+  paint(spr, 0, top * sc, fur);
+  if (hat) paint(hat.rows, 0, 0, null);
+}
+
 /* ---------------- Game feel : squash & stretch (fonction pure, testée) ---------------- */
 export const SQUASH_MS = 320;
 /** Enveloppe d'écrasement : t=0 écrasée, rebond étiré amorti, t>=1 repos exact. */

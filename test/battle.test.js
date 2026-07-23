@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { makeRng, hashSeed, makeFighter, encodeCard, decodeCard, newBattle, playTurn, MOVES } from '../src/battle.js';
+import { makeRng, hashSeed, makeFighter, encodeCard, decodeCard, newBattle, playTurn, MOVES, wildFoe } from '../src/battle.js';
 import { FURS, DECORS, unlockedFurs, unlockedDecors, furById } from '../src/skins.js';
 import { HATS } from '../src/accessories.js';
 import { newState, newRecords, loadState } from '../src/state.js';
@@ -96,4 +96,58 @@ test('migration : sauvegarde v2.1 (sans fur/decor/plongée) complétée', () => 
   assert.equal(back.fur, 'roux');
   assert.equal(back.decor, 'aucun');
   assert.equal(back.divingUntil, 0);
+});
+
+/* ---------------- Adversaires solo (v3.40) ---------------- */
+
+test('loutre sauvage : engendrée sans code d\'ami, et utilisable telle quelle', () => {
+  const foe = wildFoe(8, 'graine');
+  for (const k of ['name', 'stage', 'fur', 'health', 'fun', 'energy']) {
+    assert.ok(foe[k] !== undefined, 'champ manquant : ' + k);
+  }
+  assert.ok(['baby', 'child', 'adult'].includes(foe.stage));
+  // elle doit pouvoir entrer directement dans l'arène
+  const b = newBattle(newState(T0), foe, 'duel');
+  assert.ok(b.foe.maxHp > 0 && b.foe.atk > 0);
+  assert.equal(b.foe.name, foe.name);
+});
+
+test('loutre sauvage : seedée (même graine -> même adversaire)', () => {
+  assert.deepEqual(wildFoe(10, 'x'), wildFoe(10, 'x'));
+  assert.notDeepEqual(wildFoe(10, 'x'), wildFoe(10, 'y'));
+});
+
+test('loutre sauvage : plus coriace à haut niveau', () => {
+  const avg = (lv) => {
+    let hp = 0;
+    for (let i = 0; i < 40; i++) hp += makeFighter(wildFoe(lv, 'g' + i)).maxHp;
+    return hp / 40;
+  };
+  assert.ok(avg(25) > avg(1), 'les adversaires doivent monter en puissance');
+});
+
+test('combat solo : se termine toujours, avec un vainqueur', () => {
+  const b = newBattle(newState(T0), wildFoe(5, 'fin'), 'seed-fin');
+  for (let i = 0; i < 200 && !b.over; i++) playTurn(b, 'splash');
+  assert.ok(b.over, 'le combat doit se conclure');
+  assert.ok(b.winner === 'me' || b.winner === 'foe');
+  assert.ok(b.me.hp === 0 || b.foe.hp === 0);
+});
+
+test('adversaire calé sur la loutre : le duel reste serré (pas de massacre)', () => {
+  const s = newState(T0);
+  s.stage = 'adult'; s.health = 90; s.fun = 70; s.energy = 60;
+  const me = makeFighter(s);
+  let mine = 0;
+  for (let i = 0; i < 60; i++) {
+    const foe = makeFighter(wildFoe(20, 'duel' + i, me));
+    // les PV de l'adversaire doivent rester dans une fourchette raisonnable
+    assert.ok(foe.maxHp > me.maxHp * 0.6 && foe.maxHp < me.maxHp * 1.4,
+      'PV hors fourchette : ' + foe.maxHp + ' vs ' + me.maxHp);
+    const b = newBattle(s, wildFoe(20, 'duel' + i, me), 'seed' + i);
+    for (let t = 0; t < 200 && !b.over; t++) playTurn(b, t % 3 === 0 ? 'roulade' : 'splash');
+    if (b.winner === 'me') mine++;
+  }
+  // ni imbattable, ni impossible : on veut un vrai match
+  assert.ok(mine > 10 && mine < 50, 'taux de victoire déséquilibré : ' + mine + '/60');
 });

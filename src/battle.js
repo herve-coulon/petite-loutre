@@ -49,6 +49,52 @@ export function makeFighter(o) {
   };
 }
 
+// Adversaires solo : on n'a plus besoin du code d'un ami pour se battre.
+const WILD_NAMES = ['Bandit', 'Vasco', 'Ondine', 'Ricky', 'Perle', 'Iris', 'Zibo', 'Kaya', 'Tao', 'Nyx', 'Brume', 'Silex'];
+const WILD_FURS = ['roux', 'choco', 'doree', 'neige', 'nuit', 'bonbon', 'braise'];
+
+/**
+ * Une loutre sauvage à défier, engendrée de façon SEEDÉE et dosée au niveau :
+ * douce au début, coriace ensuite. Retourne une « carte » (même forme que
+ * decodeCard), donc utilisable telle quelle par newBattle.
+ */
+export function wildFoe(level = 1, seedStr = 'wild', me = null) {
+  const rng = makeRng(hashSeed(seedStr + '|' + level));
+  const pick = (arr) => arr[Math.floor(rng() * arr.length)];
+  const lv = Math.max(1, level | 0);
+  const grade = Math.min(1, lv / 30);
+
+  // Si on connaît la loutre du joueur (son combattant), on se cale sur SA forme
+  // réelle : le duel reste serré même si le niveau et le stade divergent.
+  // Sinon, repli sur une progression liée au niveau.
+  if (me && me.maxHp) {
+    const stage = me.stage || 'baby';
+    const f = 0.85 + rng() * 0.3;                      // entre -15% et +15%
+    const inv = (target, base, k) => Math.max(0, Math.round((target - base) / k));
+    return {
+      name: pick(WILD_NAMES),
+      stage,
+      fur: pick(WILD_FURS),
+      hat: null,
+      // on inverse makeFighter pour viser des stats proches de celles du joueur
+      health: Math.min(100, inv(me.maxHp * f, 40 + STAGE_BONUS[stage], 0.3)),
+      fun: Math.min(100, inv(me.atk * f, 8 + STAGE_ATK[stage], 0.08)),
+      energy: Math.min(100, Math.round(me.spd * (0.85 + rng() * 0.3)))
+    };
+  }
+
+  const stage = lv >= 12 ? 'adult' : lv >= 5 ? 'child' : 'baby';
+  return {
+    name: pick(WILD_NAMES),
+    stage,
+    fur: pick(WILD_FURS),
+    hat: null,
+    health: Math.round(55 + grade * 40 + rng() * 20),
+    fun: Math.round(40 + grade * 45 + rng() * 20),
+    energy: Math.round(35 + grade * 40 + rng() * 25)
+  };
+}
+
 export function encodeCard(s) {
   return CARD_PREFIX + toB64(JSON.stringify({
     name: s.name, stage: s.stage, health: Math.round(s.health),

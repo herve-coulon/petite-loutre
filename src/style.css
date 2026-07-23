@@ -161,6 +161,23 @@ button{font-family:inherit;}
 .g-log{display:flex; flex-direction:column; gap:3px; padding:10px 12px; font-size:12px; color:var(--ink);
   background:var(--paper); border:2px solid var(--ink); border-radius:12px;}
 
+/* ── Arène de combat ───────────────────────────────────────────────────── */
+.bt-foecard{display:flex; align-items:center; gap:12px; margin:2px 0 10px; padding:10px 12px;
+  background:var(--paper); border:2.5px solid var(--ink); border-radius:14px;}
+.bt-foemeta{display:flex; flex-direction:column; text-align:left; min-width:0;}
+.bt-foemeta b{font-size:17px; color:var(--ink);}
+.bt-pic{image-rendering:pixelated; height:56px; width:auto; flex:none;}
+.bt-stage{display:flex; align-items:flex-end; justify-content:space-between; gap:8px; margin-bottom:8px;}
+.bt-side{flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px;}
+.bt-side .track{position:relative; width:100%; height:12px; overflow:hidden;
+  background:var(--track); border:2px solid var(--ink); border-radius:999px;}
+.bt-side .fill{position:absolute; inset:0; width:100%; transition:width .35s ease;}
+.bt-tag{font-size:11px; font-weight:700; color:var(--ink); white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; max-width:100%;}
+.bt-vs{font-size:20px; padding-bottom:22px;}
+.bt-friend{margin-top:12px; text-align:left;}
+.bt-friend summary{cursor:pointer; font-size:12px; font-weight:700; color:var(--ink); padding:6px 0;}
+
 /* ── Le Monde (balade libre) ───────────────────────────────────────────── */
 #app.in-world #actionbar,
 #app.in-world #counters,

@@ -161,24 +161,46 @@
     <button class="ovl-x" aria-label="Fermer">✕</button>
     <p class="big">⚔️ Combat de loutres</p>
     <div id="bt-setup" style="width:100%">
-      <p class="small">Ton code de combat — envoie-le à ton adversaire :</p>
-      <textarea id="bt-mycode" readonly rows="2"></textarea>
-      <button class="act" id="bt-copy" style="width:100%">COPIER MON CODE</button>
-      <p class="small">Colle ici le code de ton adversaire :</p>
-      <textarea id="bt-foecode" rows="2" placeholder="LBATTLE1…"></textarea>
-      <button class="act" id="bt-start" style="width:100%">COMBATTRE !</button>
+      <div class="bt-foecard">
+        <canvas id="bt-wildpic" class="bt-pic" aria-hidden="true"></canvas>
+        <div class="bt-foemeta">
+          <b id="bt-wildname">Loutre sauvage</b>
+          <span class="small" id="bt-wildinfo"></span>
+        </div>
+      </div>
+      <button class="act" id="bt-wild" style="width:100%">⚔️ Affronter cette loutre</button>
+      <button class="act ghost" id="bt-reroll" style="width:100%">🔄 En chercher une autre</button>
+      <details class="bt-friend">
+        <summary>Défier un ami par code</summary>
+        <p class="small">Ton code — envoie-le à ton adversaire :</p>
+        <textarea id="bt-mycode" readonly rows="2"></textarea>
+        <button class="act ghost" id="bt-copy" style="width:100%">COPIER MON CODE</button>
+        <p class="small">Colle ici le code de ton adversaire :</p>
+        <textarea id="bt-foecode" rows="2" placeholder="LBATTLE1…"></textarea>
+        <button class="act ghost" id="bt-start" style="width:100%">COMBATTRE !</button>
+      </details>
     </div>
     <div id="bt-arena" class="hidden" style="width:100%">
-      <div class="bar"><label id="bt-mename" style="width:auto;min-width:70px">Moi</label>
-        <div class="track"><div class="fill" id="bt-mehp" style="background-color:#4F8B76"></div></div></div>
-      <div class="bar"><label id="bt-foename" style="width:auto;min-width:70px">Adv.</label>
-        <div class="track"><div class="fill" id="bt-foehp" style="background-color:#B34A36"></div></div></div>
+      <div class="bt-stage">
+        <div class="bt-side">
+          <canvas id="bt-mepic" class="bt-pic" aria-hidden="true"></canvas>
+          <span class="bt-tag" id="bt-mename">Moi</span>
+          <div class="track"><div class="fill" id="bt-mehp" style="background-color:#4F8B76"></div></div>
+        </div>
+        <span class="bt-vs">⚔️</span>
+        <div class="bt-side">
+          <canvas id="bt-foepic" class="bt-pic" aria-hidden="true"></canvas>
+          <span class="bt-tag" id="bt-foename">Adv.</span>
+          <div class="track"><div class="fill" id="bt-foehp" style="background-color:#B34A36"></div></div>
+        </div>
+      </div>
       <p id="bt-log" class="small" style="min-height:56px"></p>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
         <button class="act" id="bt-splash">💦 Splash</button>
         <button class="act" id="bt-roulade">🌀 Roulade</button>
         <button class="act" id="bt-calin">💛 Câlin</button>
       </div>
+      <button class="act hidden" id="bt-again" style="width:100%">↻ Rejouer</button>
     </div>
     <button class="act ghost" id="bt-close">FERMER</button>
   </div>
@@ -256,6 +278,7 @@
       <p class="small" id="enc-sub"></p>
       <div class="enc-meter"><div class="enc-fill" id="enc-fill"></div></div>
       <button class="act" id="enc-fish"><span class="ic">🐟</span> Offrir un poisson</button>
+      <button class="act ghost" id="enc-fight"><span class="ic">⚔️</span> La défier</button>
       <p class="small" id="enc-hint"></p>
     </div>
   </div>

@@ -29,7 +29,7 @@ import { registerSW, setupInstall, requestPersistentStorage, isIOS, isStandalone
 import { unlockedHats, hatById } from './accessories.js';
 import { unlockedFurs, unlockedDecors } from './skins.js';
 import { newAchievements } from './achievements.js';
-import { encodeCard, decodeCard, newBattle, playTurn } from './battle.js';
+import { encodeCard, decodeCard, newBattle, playTurn, wildFoe, makeFighter } from './battle.js';
 import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
 import { TILE, WORLD_W, WORLD_H, moveWithCollision, spawnPoint, isSolid } from './tilemap.js';
 import { makeCard, CARD_URL } from './photocard.js';
@@ -514,6 +514,8 @@ function closeEncounter(befriended) {
   if (o && !befriended) o.cooldown = frame + 240;
 }
 
+let battleStarter = null;   // pont vers le lanceur de combat (défini au boot)
+
 const encHandlers = {
   offer: () => {
     const o = encounterOtter; if (!o) return;
@@ -521,6 +523,13 @@ const encHandlers = {
     R.spawn && R.spawn('heart', s.stage); sfx.happy(); vibrate(8);
     if (o.friend >= BEFRIEND_NEED) befriend(o);
     else ui.renderEncounter(o, rec.gang, BEFRIEND_NEED, encHandlers);
+  },
+  // la défier : on quitte la rencontre pour l'arène, contre CETTE loutre-là
+  fight: () => {
+    const o = encounterOtter; if (!o || !battleStarter) return;
+    closeEncounter(false);
+    ui.showOverlay('ovl-battle');
+    battleStarter(o, 'rencontre|' + (o.id || o.name));
   },
   close: () => closeEncounter(false)
 };
@@ -1279,15 +1288,39 @@ function boot() {
   $('b-slide').addEventListener('click', actSlide);
   $('b-care').addEventListener('click', actCare);
 
-  // Combat de loutres (par code de défi)
-  $('b-battle').addEventListener('click', () => {
-    if (busy() || s.sleeping) return;
+  // Combat de loutres : une sauvage à défier tout de suite (ou le code d'un ami)
+  let wildRoll = 0;                       // change d'adversaire sans quitter l'écran
+  // l'adversaire se cale sur la forme réelle de la loutre -> duels serrés
+  const rollWildFoe = () => wildFoe(curLevel(), 'wild|' + dayKey() + '|' + wildRoll, makeFighter(s));
+  /** Lance un combat contre la carte donnée. */
+  const startBattle = (card, seed) => {
+    if (!card) return;
+    battle = newBattle(s, card, seed);
+    battle.log.push('Le combat commence ! ' + battle.me.name + ' vs ' + battle.foe.name);
+    rec.battles++;
+    persistRec();
+    ui.shake();
+    sfx.evolve(); vibrate([20, 40, 20]);
+    ui.updateBattleUI(battle);
+    gainXp(XP.battle);
+    quest('battles');
+  };
+  /** Ouvre l'arène sur l'écran de préparation (adversaire sauvage proposé). */
+  const openBattle = () => {
     if (!unlocked('battle')) { ui.log('⚔️ Les combats s\'ouvrent au niveau ' + UNLOCK_LEVEL.battle + ' ! ⭐'); return; }
     sfx.press();
     battle = null;
-    ui.resetBattleUI(encodeCard(s));
+    ui.renderBattleSetup(rollWildFoe(), s);
     ui.showOverlay('ovl-battle');
+  };
+  $('b-battle').addEventListener('click', () => {
+    if (busy() || s.sleeping) return;
+    openBattle();
   });
+  battleStarter = startBattle;   // les rencontres du monde peuvent lancer un combat
+  $('bt-wild').addEventListener('click', () => startBattle(rollWildFoe(), 'wild|' + dayKey() + '|' + wildRoll));
+  $('bt-reroll').addEventListener('click', () => { wildRoll++; sfx.press(); ui.renderBattleSetup(rollWildFoe(), s); });
+  $('bt-again').addEventListener('click', () => { wildRoll++; ui.renderBattleSetup(rollWildFoe(), s); });
   $('bt-close').addEventListener('click', () => { battle = null; ui.hideOverlay('ovl-battle'); });
   $('bt-copy').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText($('bt-mycode').value); ui.toast('📋 Code copié !'); }
@@ -1296,15 +1329,7 @@ function boot() {
   $('bt-start').addEventListener('click', () => {
     const card = decodeCard($('bt-foecode').value);
     if (!card) { ui.toast('❌ Code de combat invalide'); return; }
-    battle = newBattle(s, card, encodeCard(s) + $('bt-foecode').value.trim());
-    battle.log.push('Le combat commence ! ' + battle.me.name + ' vs ' + battle.foe.name);
-    rec.battles++;
-    persistRec();
-    ui.shake(); // l'arène tremble !
-    sfx.evolve(); vibrate([20, 40, 20]);
-    ui.updateBattleUI(battle);
-    gainXp(XP.battle);
-    quest('battles');
+    startBattle(card, encodeCard(s) + $('bt-foecode').value.trim());
   });
   const doMove = (id) => {
     if (!battle || battle.over) return;
@@ -1441,6 +1466,7 @@ function boot() {
   $('b-world').addEventListener('click', enterWorld);
   $('b-world-back').addEventListener('click', exitWorld);
   $('enc-fish').addEventListener('click', () => encHandlers.offer());
+  $('enc-fight').addEventListener('click', () => encHandlers.fight());
 
   // Cadeau de saison : un lot (gemmes + poissons) à réclamer une fois par saison
   $('b-gift').addEventListener('click', () => {

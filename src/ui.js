@@ -11,7 +11,8 @@ import { seasonInfo } from './seasons.js';
 import { ITEMS, RARITIES, MILESTONES, describeBonus } from './items.js';
 import { traitById, bondLevel } from './personality.js';
 import { gangPower, fighterPower, MAX_MEMBERS } from './gang.js';
-import { makeFighter } from './battle.js';
+import { makeFighter, encodeCard } from './battle.js';
+import { paintOtter } from './render.js';
 
 const $ = id => document.getElementById(id);
 const setTxt = (id, v) => { const e = $(id); if (e) e.textContent = v; };
@@ -518,22 +519,33 @@ export function renderWardrobe(s, rec, h) {
 }
 
 /* ---------------- Combat ---------------- */
-export function resetBattleUI(myCode) {
+/** Écran de préparation : la loutre sauvage proposée du moment. */
+export function renderBattleSetup(foe, s) {
   $('bt-setup').classList.remove('hidden');
   $('bt-arena').classList.add('hidden');
-  $('bt-mycode').value = myCode;
-  $('bt-foecode').value = '';
+  const fc = $('bt-foecode'); if (fc) fc.value = '';
+  if (!foe) return;
+  setTxt('bt-wildname', foe.name);
+  const stage = { baby: 'jeune pousse', child: 'jeune', adult: 'adulte' }[foe.stage] || '';
+  const f = makeFighter(foe);
+  setTxt('bt-wildinfo', stage + ' · ' + f.maxHp + ' PV · force ' + f.atk);
+  paintOtter($('bt-wildpic'), foe, 3, true);
+  const code = $('bt-mycode');
+  if (code && s) code.value = encodeCard(s);
 }
 
 export function updateBattleUI(b) {
   $('bt-setup').classList.add('hidden');
   $('bt-arena').classList.remove('hidden');
-  $('bt-mename').textContent = b.me.name + ' ' + b.me.hp + '/' + b.me.maxHp;
-  $('bt-foename').textContent = b.foe.name + ' ' + b.foe.hp + '/' + b.foe.maxHp;
+  setTxt('bt-mename', b.me.name + ' ' + b.me.hp + '/' + b.me.maxHp);
+  setTxt('bt-foename', b.foe.name + ' ' + b.foe.hp + '/' + b.foe.maxHp);
   $('bt-mehp').style.width = (b.me.hp / b.me.maxHp * 100) + '%';
   $('bt-foehp').style.width = (b.foe.hp / b.foe.maxHp * 100) + '%';
   $('bt-log').innerHTML = b.log.slice(-4).join('<br>');
   ['bt-splash', 'bt-roulade', 'bt-calin'].forEach(id => { $(id).disabled = b.over; });
+  const again = $('bt-again'); if (again) again.classList.toggle('hidden', !b.over);
+  paintOtter($('bt-mepic'), b.me, 3, false);
+  paintOtter($('bt-foepic'), b.foe, 3, true);
 }
 
 /* ---------------- Succès & records ---------------- */
