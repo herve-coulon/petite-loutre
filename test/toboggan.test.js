@@ -1,15 +1,25 @@
-// Tests v3.3 : toboggan de rivière (2e mini-jeu). Logique pure, horloge + hasard injectés.
+// Toboggan de rivière (2e mini-jeu). Logique pure, horloge + hasard injectés.
+// On vérifie surtout ce qui fait le jeu : motifs franchissables, accélération,
+// combo, et absence de double comptage.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  newSlide, setSlideLane, laneAt, tickSlide,
-  SLIDE_DURATION, LANES, LANE_X, SLIDE_OTTER_Y
+  newSlide, setSlideLane, laneAt, tickSlide, spawnPattern,
+  slideProgress, slideSpeed,
+  SLIDE_DURATION, LANES, LANE_X, SLIDE_OTTER_Y, SLIDE_BOTTOM,
+  SPEED_START, SPEED_END, COMBO_STEP, GOLD_POINTS
 } from '../src/toboggan.js';
 
 const T0 = 1_750_000_000_000;
 // hasard scénarisé : consomme une liste de valeurs, puis 0.
 const seq = (vals) => { let i = 0; return () => (i < vals.length ? vals[i++] : 0); };
+// fait descendre les items jusqu'à la loutre, sans plus rien faire apparaître
+const settle = (mg, from) => {
+  let g = 0;
+  while (mg.items.length && g++ < 900) tickSlide(mg, from + g * 16, () => 0.99);
+  return g;
+};
 
 test('newSlide : état initial cohérent, couloir central', () => {
   const mg = newSlide(T0);
@@ -17,6 +27,7 @@ test('newSlide : état initial cohérent, couloir central', () => {
   assert.equal(mg.lane, 1);
   assert.equal(mg.score, 0);
   assert.equal(mg.bumps, 0);
+  assert.equal(mg.combo, 0);
   assert.deepEqual(mg.items, []);
   assert.equal(mg.endsAt, T0 + SLIDE_DURATION);
 });
@@ -36,64 +47,110 @@ test('laneAt : chaque abscisse tombe dans le bon couloir', () => {
   assert.equal(laneAt(159), 2);
 });
 
-test('un poisson gobé dans le bon couloir monte le score une seule fois', () => {
+test('la descente accélère du début à la fin', () => {
   const mg = newSlide(T0);
-  // force l'apparition d'un poisson (rnd: kind<ROCK_P?rock : sinon fish ; lane)
-  // 0.9 -> fish (>=0.42), 0.0 -> lane 0
-  tickSlide(mg, T0 + 500, seq([0.9, 0.0]));
-  assert.equal(mg.items.length, 1);
-  assert.equal(mg.items[0].kind, 'fish');
-  assert.equal(mg.items[0].lane, 0);
+  assert.equal(slideProgress(mg, T0), 0);
+  assert.equal(slideProgress(mg, T0 + SLIDE_DURATION), 1);
+  assert.ok(slideProgress(mg, T0 + 2 * SLIDE_DURATION) <= 1, 'progression bornée');
+  assert.equal(slideSpeed(mg, T0), SPEED_START);
+  assert.equal(slideSpeed(mg, T0 + SLIDE_DURATION), SPEED_END);
+  assert.ok(slideSpeed(mg, T0 + SLIDE_DURATION / 2) > SPEED_START, 'ça s\'emballe');
+  assert.ok(SPEED_END > SPEED_START);
+});
 
-  setSlideLane(mg, 0); // on se met dans son couloir
-  // on avance le temps jusqu'à ce que le poisson franchisse la loutre
-  let guard = 0;
-  while (mg.score === 0 && guard++ < 500) tickSlide(mg, T0 + 500 + guard * 16, seq([0.99]));
+test('motif « mur de rochers » : il reste TOUJOURS une trouée', () => {
+  for (let g = 0; g < LANES; g++) {
+    const mg = newSlide(T0);
+    // 0.1 -> mur ; puis la valeur qui choisit la trouée
+    spawnPattern(mg, seq([0.1, g / LANES + 0.01]));
+    const rocks = mg.items.filter(it => it.kind === 'rock').map(it => it.lane);
+    assert.equal(rocks.length, LANES - 1, 'un mur laisse un passage');
+    const free = [0, 1, 2].filter(l => !rocks.includes(l));
+    assert.equal(free.length, 1, 'exactement une trouée');
+  }
+});
+
+test('motif « chapelet » : plusieurs poissons alignés dans le même couloir', () => {
+  const mg = newSlide(T0);
+  spawnPattern(mg, seq([0.3, 0.0]));            // 0.3 -> chapelet, couloir 0
+  const fish = mg.items.filter(it => it.kind === 'fish');
+  assert.ok(fish.length >= 3, 'un chapelet, pas un poisson isolé');
+  assert.ok(fish.every(f => f.lane === fish[0].lane), 'tous dans le même couloir');
+  const ys = fish.map(f => f.y);
+  assert.equal(new Set(ys).size, ys.length, 'échelonnés, pas superposés');
+});
+
+test('un poisson gobé monte le score une seule fois', () => {
+  const mg = newSlide(T0);
+  spawnPattern(mg, seq([0.8, 0.0]));            // poisson isolé, couloir 0
+  assert.equal(mg.items.length, 1);
+  setSlideLane(mg, 0);
+  settle(mg, T0);
   assert.equal(mg.score, 1, 'poisson compté');
-  // il ne doit pas recompter aux frames suivantes
   const before = mg.score;
-  for (let k = 0; k < 5; k++) tickSlide(mg, T0 + 9000 + k * 16, seq([0.99]));
+  for (let k = 0; k < 5; k++) tickSlide(mg, T0 + 30000 + k * 16, () => 0.99);
   assert.equal(mg.score, before, 'pas de double comptage');
 });
 
-test('un rocher dans le mauvais couloir est esquivé (pas de bump)', () => {
-  const mg = newSlide(T0);
-  tickSlide(mg, T0 + 500, seq([0.1, 0.0])); // 0.1 -> rock, lane 0
-  assert.equal(mg.items[0].kind, 'rock');
-  setSlideLane(mg, 2); // on esquive en changeant de couloir
-  let guard = 0;
-  while (mg.items.length && guard++ < 500) tickSlide(mg, T0 + 500 + guard * 16, seq([0.99, 0.5]));
-  assert.equal(mg.bumps, 0, 'rocher esquivé -> aucun choc');
+test('un rocher esquivé ne coûte rien ; pris, il choque et brise le combo', () => {
+  const dodge = newSlide(T0);
+  spawnPattern(dodge, seq([0.6, 0.0]));         // rocher isolé, couloir 0
+  setSlideLane(dodge, 2);
+  settle(dodge, T0);
+  assert.equal(dodge.bumps, 0, 'rocher esquivé');
+
+  const hit = newSlide(T0);
+  hit.combo = 4;                                 // un bel élan…
+  spawnPattern(hit, seq([0.6, 0.0]));
+  setSlideLane(hit, 0);
+  settle(hit, T0);
+  assert.equal(hit.bumps, 1, 'choc enregistré');
+  assert.ok(hit.bumpAt > 0, 'horodatage du choc (pour le flash)');
+  assert.equal(hit.combo, 0, '…brisé par le rocher');
 });
 
-test('un rocher dans le bon couloir provoque un choc', () => {
+test('combo : enchaîner rapporte plus que la même quantité en pointillé', () => {
   const mg = newSlide(T0);
-  tickSlide(mg, T0 + 500, seq([0.1, 0.0])); // rock, lane 0
-  setSlideLane(mg, 0); // on reste dessus
-  let guard = 0;
-  while (mg.bumps === 0 && guard++ < 500) tickSlide(mg, T0 + 500 + guard * 16, seq([0.99]));
-  assert.equal(mg.bumps, 1, 'choc enregistré');
-  assert.ok(mg.bumpAt > 0, 'horodatage du choc posé (pour le flash)');
+  setSlideLane(mg, 0);
+  // 6 poissons d'affilée dans le couloir 0
+  for (let k = 0; k < 6; k++) spawnPattern(mg, seq([0.8, 0.0]));
+  settle(mg, T0);
+  assert.equal(mg.combo, 6);
+  assert.equal(mg.bestCombo, 6);
+  assert.ok(mg.score > 6, 'le bonus d\'élan doit s\'ajouter : ' + mg.score);
+  // le bonus démarre au palier
+  assert.equal(mg.score, 6 + [1, 2, 3, 4, 5, 6].reduce((a, c) => a + Math.floor(c / COMBO_STEP), 0));
 });
 
-test('la partie se termine à endsAt et renvoie score + bumps', () => {
+test('poisson doré : gros bonus et horodatage pour l\'éclat', () => {
   const mg = newSlide(T0);
-  mg.score = 3; mg.bumps = 1;
-  const res = tickSlide(mg, T0 + SLIDE_DURATION, seq([0.99]));
-  assert.deepEqual(res, { type: 'end', score: 3, bumps: 1 });
+  spawnPattern(mg, seq([0.99, 0.0]));           // 0.99 -> doré, couloir 0
+  assert.equal(mg.items[0].kind, 'gold');
+  setSlideLane(mg, 0);
+  settle(mg, T0);
+  assert.equal(mg.score, GOLD_POINTS);
+  assert.ok(mg.goldAt > 0);
+});
+
+test('la partie se termine à endsAt et renvoie score, bumps et meilleur combo', () => {
+  const mg = newSlide(T0);
+  mg.score = 3; mg.bumps = 1; mg.bestCombo = 4;
+  const res = tickSlide(mg, T0 + SLIDE_DURATION, () => 0.99);
+  assert.deepEqual(res, { type: 'end', score: 3, bumps: 1, bestCombo: 4 });
 });
 
 test('déterminisme : même graine -> même déroulé', () => {
   const run = () => {
     const mg = newSlide(T0);
-    const r = seq([0.1, 0.2, 0.9, 0.5, 0.3, 0.8, 0.1, 0.7]);
+    const r = seq([0.1, 0.2, 0.9, 0.5, 0.3, 0.8, 0.1, 0.7, 0.4, 0.6]);
     for (let k = 1; k <= 40; k++) tickSlide(mg, T0 + k * 120, r);
     return mg.items.map(it => it.kind + it.lane).join(',') + '|' + mg.score;
   };
   assert.equal(run(), run());
 });
 
-test('la ligne de la loutre est bien dans le canvas', () => {
-  assert.ok(SLIDE_OTTER_Y > 0 && SLIDE_OTTER_Y < 120);
+test('la piste occupe bien le plein écran (et non l\'ancien format court)', () => {
+  assert.ok(SLIDE_OTTER_Y > 200, 'la loutre est en bas de l\'écran plein format');
+  assert.ok(SLIDE_BOTTOM > SLIDE_OTTER_Y, 'les items sortent sous la loutre');
   for (const x of LANE_X) assert.ok(x > 16 && x < 144, 'couloir dans les bords');
 });

@@ -9,7 +9,7 @@ import { dayKey } from './quests.js';
 import { seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 import { WATER_Y } from './minigame.js';
 import { itemById, RARITIES, ITEMS } from './items.js';
-import { LANE_X, SLIDE_OTTER_Y } from './toboggan.js';
+import { LANE_X, SLIDE_OTTER_Y, COMBO_STEP, slideProgress } from './toboggan.js';
 import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, groundTile, decorTile } from './tilemap.js';
 
 // Canvas PORTRAIT plein écran (ratio ~ écran mobile) : le ciel occupe le haut,
@@ -1282,43 +1282,82 @@ export function makeRenderer(cv) {
 
   // Toboggan de rivière : rapides défilants, 3 couloirs, obstacles, la loutre glisse.
   function drawSlide(mg, frame, s, fur) {
-    ctx.fillStyle = '#2f6db0'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-    // courant qui file vers le bas (sensation de vitesse)
-    ctx.fillStyle = 'rgba(255,255,255,.16)';
-    const off = (frame * 4) % 24;
-    for (let y = -24 + off; y < CANVAS_H; y += 24) {
-      for (const lx of LANE_X) ctx.fillRect(lx - 1, y, 2, 12);
+    const now = Date.now();
+    const speedP = slideProgress(mg, now);          // 0 -> 1 : la descente s'emballe
+    // Le torrent, en tuiles : rives boisées de part et d'autre, eau au milieu.
+    if (tilesReady) {
+      for (let y = -16; y < CANVAS_H; y += 16) {
+        for (let x = 0; x < CANVAS_W; x += 16) {
+          const edge = (x < 16 || x >= CANVAS_W - 16);
+          blit(edge ? T.grass : T.water, x, y);
+        }
+      }
+      for (let y = -16; y < CANVAS_H; y += 16) {     // la rive s'ourle sur l'eau
+        blit(T.bankW, 16, y); blit(T.bankE, CANVAS_W - 32, y);
+      }
+      for (let y = ((frame * 2) % 48) - 48; y < CANVAS_H; y += 48) {
+        blit(T.tree, 0, y); blit(T.tree, CANVAS_W - 16, y);   // arbres qui défilent
+      }
+    } else {
+      ctx.fillStyle = '#2f6db0'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
     }
-    // écume qui sépare les couloirs
-    ctx.fillStyle = 'rgba(200,230,255,.22)';
-    for (const bx of [60, 100]) ctx.fillRect(bx, 0, 1, CANVAS_H);
+    // courant : traits qui filent, d'autant plus vite qu'on accélère
+    ctx.fillStyle = 'rgba(255,255,255,.30)';
+    const step = 26, off = (frame * (3 + speedP * 5)) % step;
+    for (let y = -step + off; y < CANVAS_H; y += step) {
+      for (const lx of LANE_X) ctx.fillRect(lx - 1, y, 2, 10 + speedP * 10);
+    }
+
     // obstacles et poissons
     for (const it of mg.items) {
       const ix = LANE_X[it.lane];
-      if (it.kind === 'fish') {
-        drawSprite(SPRITES.fish, ix - 5, it.y - 2, 1);
-      } else {
+      if (it.kind === 'rock') {
+        ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(ix - 7, it.y + 5, 14, 3);
         ctx.fillStyle = '#6b6f78'; ctx.fillRect(ix - 6, it.y - 4, 12, 9);
         ctx.fillStyle = '#8a909b'; ctx.fillRect(ix - 4, it.y - 4, 6, 3);
         ctx.fillStyle = '#4c5058'; ctx.fillRect(ix - 6, it.y + 3, 12, 2);
+        ctx.fillStyle = 'rgba(255,255,255,.45)';     // gerbe autour du rocher
+        ctx.fillRect(ix - 9, it.y + 2, 3, 2); ctx.fillRect(ix + 6, it.y, 3, 2);
+      } else if (it.kind === 'gold') {
+        const tw = (frame >> 2) % 2 ? 1 : 0;
+        ctx.fillStyle = 'rgba(255,226,120,.35)'; ctx.fillRect(ix - 8, it.y - 5, 16, 12);
+        drawSprite(SPRITES.fish, ix - 5, it.y - 2, 1, { B: '#ffd94a', D: '#c9922a', W: '#fff6cd' });
+        if (tw) { ctx.fillStyle = '#fff6cd'; ctx.fillRect(ix + 5, it.y - 4, 2, 2); }
+      } else {
+        drawSprite(SPRITES.fish, ix - 5, it.y - 2, 1);
       }
     }
-    // la loutre dans son couloir, avec un peu de ballotement + gerbe d'eau
+
+    // la loutre dans son couloir, ballottée, avec sa gerbe d'eau
     const ox = LANE_X[mg.lane] - 16;
     const oy = SLIDE_OTTER_Y - 22 + ((frame >> 2) % 2);
     const spr = SPRITES[s.stage] || SPRITES.child;
-    ctx.fillStyle = 'rgba(255,255,255,.5)';
-    ctx.fillRect(ox + 6, oy + 26, 4, 3); ctx.fillRect(ox + 20, oy + 25, 4, 3);
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.fillRect(ox + 4, oy + 26, 5, 3); ctx.fillRect(ox + 21, oy + 25, 5, 3);
+    ctx.fillRect(ox - 2, oy + 20, 3, 2); ctx.fillRect(ox + 31, oy + 18, 3, 2);
     drawSprite(spr, ox, oy, 2, fur);
-    // flash rouge bref sur un choc
-    if (mg.bumpAt && Date.now() - mg.bumpAt < 260) {
+
+    // flashs : rouge au choc, doré sur un poisson d'or
+    if (mg.bumpAt && now - mg.bumpAt < 260) {
       ctx.fillStyle = 'rgba(229,72,77,.28)'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
     }
-    // bandeau : temps + score
-    const left = Math.max(0, (mg.endsAt - Date.now()) / SEC);
-    ctx.fillStyle = 'rgba(15,18,26,.8)'; ctx.fillRect(0, 0, CANVAS_W, 11);
+    if (mg.goldAt && now - mg.goldAt < 320) {
+      ctx.fillStyle = 'rgba(255,214,90,.22)'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    }
+
+    // bandeau : temps restant, score, et l'élan en cours
+    const left = Math.max(0, (mg.endsAt - now) / SEC);
+    ctx.fillStyle = 'rgba(15,18,26,.8)'; ctx.fillRect(0, 0, CANVAS_W, 13);
     ctx.fillStyle = '#ffe9a8'; ctx.font = '8px monospace';
-    ctx.fillText('TOBOGGAN  ' + left.toFixed(0) + 's   score:' + mg.score, 6, 9);
+    ctx.fillText(left.toFixed(0) + 's', 6, 10);
+    ctx.fillText('score ' + mg.score, 34, 10);
+    if (mg.combo >= 2) {
+      ctx.fillStyle = mg.combo >= COMBO_STEP ? '#ffd94a' : '#cfe8ff';
+      ctx.fillText('x' + mg.combo, CANVAS_W - 28, 10);
+    }
+    // jauge de temps : elle se vide, on sent l'arrivée
+    ctx.fillStyle = 'rgba(255,233,168,.75)';
+    ctx.fillRect(0, 13, Math.round(CANVAS_W * (1 - speedP)), 2);
   }
 
   function drawParticles() {

@@ -360,7 +360,7 @@ function actSlide() {
 }
 
 function endSlide(res) {
-  const sc = res.score, bumps = res.bumps;
+  const sc = res.score, bumps = res.bumps, best = res.bestCombo || 0;
   s.fun = clamp(s.fun + 8 + sc * 4, 0, 100);
   s.energy = clamp(s.energy - 10, 0, 100);
   s.hunger = clamp(s.hunger - 5, 0, 100);
@@ -373,11 +373,12 @@ function endSlide(res) {
   mg = null;
   if (clean) R.burst('confetti', 24, s.stage);
   else if (sc > 0) R.burst('sparkle', 8, s.stage);
-  if (clean) { sfx.happy(); ui.log('Descente parfaite : ' + sc + ' poissons sans un rocher ! 🛝🎉'); }
+  const combo = best >= 3 ? ' Plus bel enchaînement : x' + best + ' !' : '';
+  if (clean) { sfx.happy(); ui.log('Descente parfaite : ' + sc + ' points sans un rocher ! 🛝🎉' + combo); }
   else if (sc > 0) {
     sfx.eat();
-    ui.log(sc + ' poisson' + (sc > 1 ? 's' : '') + ' ramassé' + (sc > 1 ? 's' : '') +
-      (bumps ? ' — aïe, ' + bumps + ' rocher' + (bumps > 1 ? 's' : '') + ' !' : ' !'));
+    ui.log(sc + ' point' + (sc > 1 ? 's' : '') + ' ramassé' + (sc > 1 ? 's' : '') +
+      (bumps ? ' — aïe, ' + bumps + ' rocher' + (bumps > 1 ? 's' : '') + ' !' : ' !') + combo);
   } else { sfx.sad(); ui.log('Quelle descente mouvementée ! Les rochers ont gagné. 🪨'); }
   gainXp(XP.game + sc * XP.fish);
   checkUnlocks();
@@ -414,6 +415,8 @@ function updatePlaceBtn() {
   if (app) {
     app.classList.toggle('in-den', !!(s && s.place === 'taniere') && !overlayOpen);
     app.classList.toggle('in-world', inWorld);
+    // un mini-jeu prend tout l'écran : le HUD de la berge s'efface
+    app.classList.toggle('in-game', !!mg);
   }
 }
 function togglePlace() {
