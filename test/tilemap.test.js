@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import {
   TILE, ZONES, START_ZONE, zoneById, MAP_W, MAP_H, WORLD_W, WORLD_H, T,
   charAt, isWater, isSolid, waterTile, groundTile, decorTile,
-  moveWithCollision, zoneExit, nearestFree, safeEntry, spawnPoint
+  moveWithCollision, zoneExit, nearestFree, safeEntry, spawnPoint,
+  zoneFinds, FIND_ICON
 } from '../src/tilemap.js';
 
 const ids = Object.keys(ZONES);
@@ -176,4 +177,55 @@ test('départ : chaque zone a un point d\'entrée praticable', () => {
   // zoneById est tolérant : une entrée inconnue retombe sur la zone de départ
   assert.equal(zoneById('n_importe_quoi').id, START_ZONE);
   assert.equal(zoneById(ZONES.foret).id, 'foret');
+});
+
+/* ---------------- L'intérêt propre de chaque zone ---------------- */
+
+test('chaque zone a sa récompense et son niveau de danger', () => {
+  const kinds = new Set();
+  for (const id of ids) {
+    const z = ZONES[id];
+    assert.ok(z.find && z.find.kind && z.find.count > 0, id + ' : rien à y trouver');
+    assert.ok(FIND_ICON[z.find.kind], id + ' : trouvaille sans icône');
+    assert.equal(typeof z.boost, 'number', id + ' : pas de niveau de danger');
+    kinds.add(z.find.kind);
+  }
+  assert.equal(kinds.size, ids.length, 'chaque zone doit offrir quelque chose de DIFFÉRENT');
+  // le foyer est le plus doux, la cascade la plus rude
+  assert.equal(ZONES[START_ZONE].boost, 0, 'le foyer ne doit pas être dangereux');
+  const maxBoost = Math.max(...ids.map(i => ZONES[i].boost));
+  assert.ok(maxBoost >= 3, 's\'éloigner doit se mériter');
+});
+
+test('trouvailles : posées sur des cases praticables, jamais dans l\'eau ni dans un arbre', () => {
+  for (const id of ids) {
+    const finds = zoneFinds(id, '2026-07-24');
+    assert.equal(finds.length, ZONES[id].find.count, id + ' : compte inattendu');
+    for (const f of finds) {
+      assert.equal(isSolid(id, f.cx, f.cy), false, id + ' : trouvaille inaccessible');
+      assert.equal(f.kind, ZONES[id].find.kind);
+      assert.ok(f.x > 0 && f.x < WORLD_W && f.y > 0 && f.y < WORLD_H);
+    }
+    // pas deux trouvailles sur la même case
+    const cases = finds.map(f => f.cx + ',' + f.cy);
+    assert.equal(new Set(cases).size, cases.length, id + ' : trouvailles superposées');
+  }
+});
+
+test('trouvailles : stables dans la journée, renouvelées le lendemain', () => {
+  const a = zoneFinds('foret', '2026-07-24');
+  const b = zoneFinds('foret', '2026-07-24');
+  assert.deepEqual(a, b, 'même jour -> mêmes trouvailles');
+  const c = zoneFinds('foret', '2026-07-25');
+  assert.notDeepEqual(a.map(f => f.id), c.map(f => f.id), 'nouveau jour -> nouvelles trouvailles');
+});
+
+test('trouvailles : les identifiants sont uniques d\'une zone à l\'autre', () => {
+  const vus = new Set();
+  for (const id of ids) {
+    for (const f of zoneFinds(id, '2026-07-24')) {
+      assert.equal(vus.has(f.id), false, 'identifiant en double : ' + f.id);
+      vus.add(f.id);
+    }
+  }
 });

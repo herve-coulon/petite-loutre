@@ -247,32 +247,81 @@ const LAC = [
  * sortant par ce bord ; un bord sans liaison est infranchissable.
  * `start` = case d'arrivée par défaut (en coords de tuiles).
  */
+/**
+ * Chaque zone a son INTÉRÊT propre, pour que s'éloigner du foyer paie :
+ *  - `find`  : ce qu'on y ramasse au sol (nature + quantité) ;
+ *  - `boost` : les loutres sauvages y sont d'autant plus fortes qu'on va loin.
+ */
 export const ZONES = {
   clairiere: {
     id: 'clairiere', name: 'La clairière', rows: CLAIRIERE, start: [8, 22],
-    links: { north: 'foret', east: 'lac', west: 'roseaux', south: 'vallon' }
+    links: { north: 'foret', east: 'lac', west: 'roseaux', south: 'vallon' },
+    find: { kind: 'poisson', count: 3 }, boost: 0
   },
   foret: {
     id: 'foret', name: 'La forêt', rows: FORET, start: [14, 27],
-    links: { south: 'clairiere', west: 'cascade' }
+    links: { south: 'clairiere', west: 'cascade' },
+    find: { kind: 'champignon', count: 3 }, boost: 2
   },
   cascade: {
     id: 'cascade', name: 'La cascade', rows: CASCADE, start: [20, 5],
-    links: { east: 'foret', south: 'roseaux' }
+    links: { east: 'foret', south: 'roseaux' },
+    find: { kind: 'gemme', count: 2 }, boost: 4
   },
   roseaux: {
     id: 'roseaux', name: 'Les roseaux', rows: ROSEAUX, start: [15, 1],
-    links: { north: 'cascade', east: 'clairiere' }
+    links: { north: 'cascade', east: 'clairiere' },
+    find: { kind: 'coquillage', count: 3 }, boost: 1
   },
   lac: {
     id: 'lac', name: 'Le grand lac', rows: LAC, start: [2, 24],
-    links: { west: 'clairiere' }
+    links: { west: 'clairiere' },
+    find: { kind: 'tresor', count: 2 }, boost: 3
   },
   vallon: {
     id: 'vallon', name: 'Le vallon', rows: VALLON, start: [8, 2],
-    links: { north: 'clairiere' }
+    links: { north: 'clairiere' },
+    find: { kind: 'fleur', count: 3 }, boost: 1
   }
 };
+
+/** Ce que chaque trouvaille montre à l'écran. */
+export const FIND_ICON = {
+  poisson: '🐟', champignon: '🍄', gemme: '💎',
+  coquillage: '🐚', tresor: '🎁', fleur: '🌼'
+};
+
+/** Petit générateur seedé, pour que les trouvailles du jour soient les mêmes. */
+function rngFrom(str) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return () => {
+    h ^= h << 13; h >>>= 0; h ^= h >> 17; h ^= h << 5; h >>>= 0;
+    return h / 4294967296;
+  };
+}
+
+/**
+ * Les trouvailles du jour dans une zone : posées sur des cases praticables,
+ * identiques toute la journée (graine = zone + jour). PUR.
+ */
+export function zoneFinds(zone, dayKey) {
+  const z = zoneById(zone);
+  if (!z.find) return [];
+  const rnd = rngFrom('find|' + z.id + '|' + dayKey);
+  const out = [];
+  for (let guard = 0; out.length < z.find.count && guard < 600; guard++) {
+    const cx = Math.floor(rnd() * MAP_W), cy = Math.floor(rnd() * MAP_H);
+    if (isSolid(z, cx, cy)) continue;
+    if (out.some(f => f.cx === cx && f.cy === cy)) continue;
+    out.push({
+      id: z.id + '|' + dayKey + '|' + out.length,
+      kind: z.find.kind, cx, cy,
+      x: cx * TILE + TILE / 2, y: cy * TILE + TILE - 2
+    });
+  }
+  return out;
+}
 
 export const START_ZONE = 'clairiere';
 /** La zone (objet) depuis son id, un objet zone, ou n'importe quoi -> repli. */

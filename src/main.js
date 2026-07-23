@@ -32,7 +32,7 @@ import { newAchievements } from './achievements.js';
 import { encodeCard, decodeCard, newBattle, playTurn, wildFoe, makeFighter } from './battle.js';
 import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
 import {
-  TILE, WORLD_W, WORLD_H, START_ZONE, zoneById,
+  TILE, WORLD_W, WORLD_H, START_ZONE, zoneById, zoneFinds,
   moveWithCollision, spawnPoint, zoneExit, safeEntry, nearestFree
 } from './tilemap.js';
 import { makeCard, CARD_URL } from './photocard.js';
@@ -436,16 +436,60 @@ function togglePlace() {
 /* ---------------- Le Monde : balade libre, rencontres, recrutement ---------------- */
 const clampN = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
 
-/** Les loutres sauvages d'une zone : les mêmes tout au long du jour, par zone. */
+const isFound = id => !!rec && Array.isArray(rec.found) && rec.found.includes(id);
+
+/** Les loutres sauvages d'une zone. Plus on s'éloigne du foyer, plus elles sont fortes. */
 function wildOttersFor(zoneId) {
-  const anchors = { clairiere: [[5, 22], [20, 15], [4, 8]], foret: [[5, 12], [24, 20], [14, 4]], lac: [[3, 24], [26, 3], [2, 12]] };
+  const anchors = {
+    clairiere: [[5, 22], [20, 15], [4, 8]], foret: [[5, 12], [24, 20], [14, 4]],
+    cascade: [[20, 12], [25, 20], [16, 26]], roseaux: [[6, 6], [22, 16], [10, 24]],
+    lac: [[3, 24], [26, 3], [2, 12]], vallon: [[6, 10], [24, 18], [8, 25]]
+  };
   const spots = anchors[zoneId] || anchors.clairiere;
-  return recruitBoard(curLevel(), dayKey() + '|' + zoneId, 3)
+  const z = zoneById(zoneId);
+  return recruitBoard(curLevel() + (z.boost || 0), dayKey() + '|' + zoneId, 3)
     .filter(c => !isRecruited(c.id))
     .map((c, i) => {
       const p = nearestFree(zoneId, spots[i % spots.length][0], spots[i % spots.length][1]);
       return { ...c, x: p.x, y: p.y, wx: p.x, phase: i * 60, facing: 1, friend: 0, cooldown: 0 };
     });
+}
+
+/** Les trouvailles encore au sol dans la zone (celles du jour non ramassées). */
+function findsFor(zoneId) {
+  return zoneFinds(zoneId, dayKey()).filter(f => !isFound(f.id));
+}
+
+/** Ramasser une trouvaille : chaque zone récompense à sa manière. */
+function collectFind(f) {
+  if (!rec) return;
+  (rec.found = rec.found || []).push(f.id);
+  const name = s.name || 'La loutre';
+  if (f.kind === 'poisson') {
+    rec.fishTotal = (rec.fishTotal || 0) + 1;
+    quest('fish', 1);
+    ui.log('🐟 ' + name + ' déniche un poisson frais !');
+  } else if (f.kind === 'champignon') {
+    gainXp(10);
+    ui.log('🍄 Un champignon rare sous les fougères ! +10 XP');
+  } else if (f.kind === 'gemme') {
+    rec.gems = (rec.gems || 0) + 1;
+    ui.log('💎 Une gemme scintille dans l\'écume de la cascade !');
+  } else if (f.kind === 'coquillage') {
+    rec.treatsTotal = (rec.treatsTotal || 0) + 1;
+    ui.log('🐚 Un beau coquillage dans la vase des roseaux !');
+  } else if (f.kind === 'tresor') {
+    ui.log('🎁 ' + name + ' plonge et remonte quelque chose du lac…');
+    tryDrop(2.5);                       // le lac est le meilleur endroit pour les trésors
+  } else if (f.kind === 'fleur') {
+    s.fun = clamp(s.fun + 10, 0, 100);
+    ui.log('🌼 Une fleur du vallon — ' + name + ' est ravie !');
+  }
+  R.spawn && R.spawn('sparkle', s.stage);
+  sfx.eat(); vibrate(10);
+  persist(); persistRec();
+  ui.renderLevel(rec);
+  ui.updateHUD(s, mg, rec);
 }
 
 /** Change de zone : nouvelle carte, nouvelles loutres, on entre par le bon bord. */
@@ -455,6 +499,7 @@ function goToZone(zoneId, px, py) {
   world.px = p.x; world.py = p.y; world.tx = p.x; world.ty = p.y;
   world.walking = false;
   world.otters = wildOttersFor(zoneId);
+  world.finds = findsFor(zoneId);
   ui.log('🗺️ ' + zoneById(zoneId).name);
   ui.toast('🗺️ ' + zoneById(zoneId).name);
   sfx.press(); vibrate(8);
@@ -467,7 +512,7 @@ function enterWorld() {
   const sp = spawnPoint(zone);
   world = {
     zone, px: sp.x, py: sp.y, tx: sp.x, ty: sp.y,
-    walking: false, facing: 1, otters: wildOttersFor(zone)
+    walking: false, facing: 1, otters: wildOttersFor(zone), finds: findsFor(zone)
   };
   s.place = 'monde';
   sfx.press(); vibrate(8);
@@ -510,6 +555,16 @@ function stepWorld() {
     if (encounterOtter) continue;
     const pd = Math.hypot(o.wx - world.px, o.y - world.py);
     if (pd < 16 && frame > (o.cooldown || 0)) openEncounter(o);
+  }
+  // ramassage : marcher sur une trouvaille suffit
+  if (!encounterOtter && world.finds && world.finds.length) {
+    for (let i = world.finds.length - 1; i >= 0; i--) {
+      const f = world.finds[i];
+      if (Math.hypot(f.x - world.px, f.y - world.py) < 11) {
+        world.finds.splice(i, 1);
+        collectFind(f);
+      }
+    }
   }
 }
 

@@ -135,6 +135,7 @@ export function newRecords() {
     achSeen: 0,          // nb de succès déjà consultés (badge de notif = non-vus)
     gang: null,          // le gang du joueur (survit aux loutres) — cf. gang.js
     recruited: [],       // ids des recrues déjà enrôlées (anti-doublon monde/escouade)
+    found: [],           // trouvailles déjà ramassées (une seule fois par jour et par zone)
     seasonGifts: {}      // cadeaux de saison réclamés, par clé (cf. seasonpass.js)
   };
 }
@@ -148,6 +149,7 @@ function normalizeRecords(o) {
   if (!Array.isArray(o.achievements)) o.achievements = [];
   if (!Array.isArray(o.items)) o.items = [];
   if (!Array.isArray(o.recruited)) o.recruited = [];
+  if (!Array.isArray(o.found)) o.found = [];
   if (!o.seasonGifts || typeof o.seasonGifts !== 'object') o.seasonGifts = {};
   if (o.gang !== null && (typeof o.gang !== 'object')) o.gang = null;
   return o;

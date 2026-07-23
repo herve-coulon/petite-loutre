@@ -10,7 +10,7 @@ import { seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 import { WATER_Y, TELL_MS, COMBO_STEP as FISH_COMBO_STEP, fishProgress } from './minigame.js';
 import { itemById, RARITIES, ITEMS } from './items.js';
 import { LANE_X, SLIDE_OTTER_Y, COMBO_STEP, slideProgress } from './toboggan.js';
-import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, groundTile, decorTile } from './tilemap.js';
+import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, FIND_ICON, groundTile, decorTile } from './tilemap.js';
 
 // Canvas PORTRAIT plein écran (ratio ~ écran mobile) : le ciel occupe le haut,
 // l'eau le bas, la berge au milieu. La scène de base est dessinée pour un sol à
@@ -761,6 +761,18 @@ export function makeRenderer(cv) {
     for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
       const d = decorTile(zone, cx, cy);
       if (d) figs.push({ y: cy * TILE + TILE, fn: () => blit(d, cx * TILE - camX, cy * TILE - camY) });
+    }
+    // trouvailles au sol : elles flottent doucement pour attirer l'œil
+    for (const f of (w.finds || [])) {
+      figs.push({ y: f.y, fn: () => {
+        const bob = Math.sin((frame + f.cx * 9) / 14) * 1.5;
+        const sx = f.x - camX, sy = f.y - camY + bob;
+        ctx.fillStyle = 'rgba(0,0,0,.16)';
+        ctx.fillRect(Math.round(sx - 4), Math.round(f.y - camY), 8, 2);
+        ctx.font = '12px system-ui,sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(FIND_ICON[f.kind] || '✨', Math.round(sx), Math.round(sy));
+        ctx.textAlign = 'left';
+      } });
     }
     for (const o of w.otters) {
       if (o.gone) continue;
