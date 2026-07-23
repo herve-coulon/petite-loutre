@@ -10,7 +10,7 @@ import { seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 import { WATER_Y } from './minigame.js';
 import { itemById, RARITIES, ITEMS } from './items.js';
 import { LANE_X, SLIDE_OTTER_Y } from './toboggan.js';
-import { TILE, SHEET_M, WORLD_W, WORLD_H, groundTile, decorTile } from './tilemap.js';
+import { TILE, SHEET_M, WORLD_W, WORLD_H, T, groundTile, decorTile } from './tilemap.js';
 
 // Canvas PORTRAIT plein écran (ratio ~ écran mobile) : le ciel occupe le haut,
 // l'eau le bas, la berge au milieu. La scène de base est dessinée pour un sol à
@@ -648,6 +648,46 @@ export function makeRenderer(cv) {
       dx | 0, dy | 0, TILE, TILE);
   }
 
+  /**
+   * Passe graphique de la BERGE : le sol et la rivière en tuiles (atlas Kenney).
+   * Le ciel reste peint — il vit avec l'heure et la saison. Dessiné en coords
+   * ÉCRAN (pas de décalage). Retourne false si l'atlas n'est pas encore là,
+   * auquel cas l'ancien décor peint prend le relais.
+   */
+  function drawBergeTiles(c, season, frame) {
+    if (!tilesReady) return false;
+    const WATER_TOP = GROUND_Y + 8;          // 248 : la ligne d'eau
+    const GRASS_TOP = WATER_TOP - 112;       // 7 rangées : la clairière respire
+    for (let y = GRASS_TOP; y < WATER_TOP; y += 16) {
+      for (let x = 0; x < CANVAS_W; x += 16) {
+        blit((((x + y) / 16) % 5 === 0) ? T.grass2 : T.grass, x, y);
+      }
+    }
+    // lisière de forêt à l'horizon : essences alternées et hauteurs décalées,
+    // avec quelques trouées — sinon la rangée fait grille mécanique
+    for (let i = 0, x = -8; x < CANVAS_W; x += 16, i++) {
+      blit((i % 3 === 1) ? T.tree : T.pine, x, GRASS_TOP - 8 - (i % 2 ? 2 : 0));
+    }
+    for (let i = 0, x = 0; x < CANVAS_W; x += 16, i++) {
+      if (i % 4 !== 2) blit(T.tree, x, GRASS_TOP + 8 + (i % 3 === 0 ? 2 : 0));
+    }
+    // quelques arbres isolés sur les côtés, le centre reste dégagé pour la loutre
+    for (const tx of [0, 144]) blit(T.tree, tx, GRASS_TOP + 40);
+    for (const bx of [16, 128]) blit(T.bush, bx, GRASS_TOP + 60);
+    if (season.key !== 'hiver') for (const fx2 of [40, 104]) blit(T.flower, fx2, GRASS_TOP + 44);
+    // la rive s'ourle sur la première rangée d'eau, puis la rivière descend
+    for (let x = 0; x < CANVAS_W; x += 16) blit(T.bankN, x, WATER_TOP);
+    for (let y = WATER_TOP + 16; y < CANVAS_H; y += 16) {
+      for (let x = 0; x < CANVAS_W; x += 16) blit(T.water, x, y);
+    }
+    // ambiance : la nuit et l'hiver teintent les tuiles (l'atlas, lui, est fixe)
+    const wash = c.night ? 'rgba(24,34,70,.44)'
+      : season.key === 'hiver' ? 'rgba(226,238,255,.20)'
+        : season.key === 'automne' ? 'rgba(224,138,58,.12)' : null;
+    if (wash) { ctx.fillStyle = wash; ctx.fillRect(0, GRASS_TOP, CANVAS_W, CANVAS_H - GRASS_TOP); }
+    return true;
+  }
+
   // Dessine une loutre (joueuse ou sauvage) à l'échelle des tuiles (16 px).
   function drawFigure(otterLike, px, py, frame, walking, flip) {
     const spr = SPRITES[otterLike.stage] || SPRITES.adult;
@@ -759,7 +799,9 @@ export function makeRenderer(cv) {
 
     // --- BERGE (collines, herbe, eau) : dessinée pour un sol à y=96 puis
     //     décalée vers le bas ; l'eau s'étend jusqu'au bas de l'écran. ---
+    const tiled = drawBergeTiles(c, season, frame);   // sol + rivière en tuiles
     ctx.save(); ctx.translate(0, BERGE_SHIFT);
+    if (!tiled) {   // --- repli peint (atlas pas encore chargé) ---
     // collines LOINTAINES : perspective atmosphérique (plus claires, brumeuses)
     const far = mix(c.hill2, c.sky, 0.5);
     ctx.fillStyle = far;
@@ -802,6 +844,7 @@ export function makeRenderer(cv) {
     ctx.fillStyle = mix(c.water, '#0a1830', 0.30); ctx.fillRect(0, waterBot - 46, CANVAS_W, 46);
     ctx.fillStyle = mix(c.water, '#0a1830', 0.5); ctx.fillRect(0, waterBot - 18, CANVAS_W, 18);
     ctx.fillStyle = mix(c.water, '#ffffff', 0.4); ctx.fillRect(0, 104, CANVAS_W, 1);
+    }   // --- fin du repli peint ---
     ctx.fillStyle = c.wave;
     const off = (frame >> 3) % 16;
     for (let x = -16; x < CANVAS_W; x += 16) {
