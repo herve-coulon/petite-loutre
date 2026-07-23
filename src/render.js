@@ -10,7 +10,7 @@ import { seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 import { WATER_Y, TELL_MS, COMBO_STEP as FISH_COMBO_STEP, fishProgress } from './minigame.js';
 import { itemById, RARITIES, ITEMS } from './items.js';
 import { LANE_X, SLIDE_OTTER_Y, COMBO_STEP, slideProgress } from './toboggan.js';
-import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, FIND_ICON, groundTile, decorTile } from './tilemap.js';
+import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, FIND_ICON, groundTile, decorTile, zoneGates } from './tilemap.js';
 
 // Canvas PORTRAIT plein écran (ratio ~ écran mobile) : le ciel occupe le haut,
 // l'eau le bas, la berge au milieu. La scène de base est dessinée pour un sol à
@@ -762,6 +762,30 @@ export function makeRenderer(cv) {
       const d = decorTile(zone, cx, cy);
       if (d) figs.push({ y: cy * TILE + TILE, fn: () => blit(d, cx * TILE - camX, cy * TILE - camY) });
     }
+    // PASSAGES : une flèche et le nom du lieu voisin, pour qu'on sache
+    // qu'il y a un ailleurs — sans repère, la vallée paraît close.
+    for (const g of zoneGates(zone)) {
+      const gx = g.x - camX, gy = g.y - camY;
+      if (gx < -30 || gx > CANVAS_W + 30 || gy < -30 || gy > CANVAS_H + 30) continue;
+      const puls = Math.sin(frame / 16) * 2;
+      const fleche = { north: '▲', south: '▼', east: '▶', west: '◀' }[g.dir];
+      ctx.textAlign = 'center';
+      ctx.font = '9px system-ui,sans-serif';
+      const w = ctx.measureText(g.name).width + 8;
+      // calé sur la largeur du libellé, sinon le nom déborde de l'écran
+      const ax = Math.max(w / 2 + 2, Math.min(CANVAS_W - w / 2 - 2, gx));
+      const ay = Math.max(20, Math.min(CANVAS_H - 8, gy));
+      ctx.fillStyle = 'rgba(20,30,50,.55)';
+      ctx.fillRect(Math.round(ax - w / 2), Math.round(ay - 15), Math.round(w), 10);
+      ctx.fillStyle = '#ffe9a8';
+      ctx.fillText(g.name, Math.round(ax), Math.round(ay - 7));
+      ctx.font = '10px system-ui,sans-serif';
+      const dy = g.dir === 'north' ? -puls : g.dir === 'south' ? puls : 0;
+      const dx = g.dir === 'west' ? -puls : g.dir === 'east' ? puls : 0;
+      ctx.fillText(fleche, Math.round(ax + dx), Math.round(ay + 4 + dy));
+      ctx.textAlign = 'left';
+    }
+
     // trouvailles au sol : elles flottent doucement pour attirer l'œil
     for (const f of (w.finds || [])) {
       figs.push({ y: f.y, fn: () => {

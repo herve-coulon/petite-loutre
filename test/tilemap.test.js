@@ -6,7 +6,7 @@ import {
   TILE, ZONES, START_ZONE, zoneById, MAP_W, MAP_H, WORLD_W, WORLD_H, T,
   charAt, isWater, isSolid, waterTile, groundTile, decorTile,
   moveWithCollision, zoneExit, nearestFree, safeEntry, spawnPoint,
-  zoneFinds, FIND_ICON
+  zoneFinds, FIND_ICON, zoneGates, ZOOM
 } from '../src/tilemap.js';
 
 const ids = Object.keys(ZONES);
@@ -228,4 +228,29 @@ test('trouvailles : les identifiants sont uniques d\'une zone à l\'autre', () =
       vus.add(f.id);
     }
   }
+});
+
+test('passages : chaque bord ouvert a un repère, posé sur une case praticable', () => {
+  for (const id of ids) {
+    const gates = zoneGates(id);
+    const dirs = Object.keys(ZONES[id].links).sort();
+    assert.deepEqual(gates.map(g => g.dir).sort(), dirs,
+      id + ' : il faut un repère par bord ouvert, ni plus ni moins');
+    for (const g of gates) {
+      assert.equal(g.to, ZONES[id].links[g.dir]);
+      assert.ok(g.name, 'le repère doit nommer le lieu voisin');
+      const cx = Math.floor(g.x / TILE), cy = Math.floor(g.y / TILE);
+      assert.equal(isSolid(id, cx, cy), false,
+        id + '/' + g.dir + ' : repère planté dans un obstacle');
+      assert.ok(g.x >= 0 && g.x <= WORLD_W && g.y >= 0 && g.y <= WORLD_H);
+    }
+  }
+});
+
+test('agrandissement : la vallée est assez vaste pour qu\'on s\'y promène', () => {
+  assert.ok(ZOOM >= 2, 'les cartes dessinées sont agrandies');
+  assert.ok(MAP_W >= 60 && MAP_H >= 60, 'zone de ' + MAP_W + 'x' + MAP_H + ' tuiles');
+  // l'écran (10 x 21 tuiles) ne doit jamais montrer la zone entière
+  assert.ok(MAP_W > 10 * 2, 'on doit voir moins de la moitié de la largeur');
+  assert.ok(MAP_H > 21 * 1.5, 'on doit voir moins des deux tiers de la hauteur');
 });

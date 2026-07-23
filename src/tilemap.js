@@ -248,38 +248,55 @@ const LAC = [
  * `start` = case d'arrivée par défaut (en coords de tuiles).
  */
 /**
+ * Les cartes sont DESSINÉES en 30x30 (lisible à écrire et à relire), puis
+ * agrandies : chaque case devient un carré de ZOOM x ZOOM tuiles. On double
+ * ainsi le territoire sans doubler le travail d'écriture — et les sentiers
+ * gagnent de la largeur au passage.
+ */
+export const ZOOM = 2;
+function expand(rows, k) {
+  const out = [];
+  for (const row of rows) {
+    let large = '';
+    for (const ch of row) large += ch.repeat(k);
+    for (let i = 0; i < k; i++) out.push(large);
+  }
+  return out;
+}
+
+/**
  * Chaque zone a son INTÉRÊT propre, pour que s'éloigner du foyer paie :
  *  - `find`  : ce qu'on y ramasse au sol (nature + quantité) ;
  *  - `boost` : les loutres sauvages y sont d'autant plus fortes qu'on va loin.
  */
 export const ZONES = {
   clairiere: {
-    id: 'clairiere', name: 'La clairière', rows: CLAIRIERE, start: [8, 22],
+    id: 'clairiere', name: 'La clairière', rows: expand(CLAIRIERE, ZOOM), start: [8 * ZOOM, 22 * ZOOM],
     links: { north: 'foret', east: 'lac', west: 'roseaux', south: 'vallon' },
     find: { kind: 'poisson', count: 3 }, boost: 0
   },
   foret: {
-    id: 'foret', name: 'La forêt', rows: FORET, start: [14, 27],
+    id: 'foret', name: 'La forêt', rows: expand(FORET, ZOOM), start: [14 * ZOOM, 27 * ZOOM],
     links: { south: 'clairiere', west: 'cascade' },
     find: { kind: 'champignon', count: 3 }, boost: 2
   },
   cascade: {
-    id: 'cascade', name: 'La cascade', rows: CASCADE, start: [20, 5],
+    id: 'cascade', name: 'La cascade', rows: expand(CASCADE, ZOOM), start: [20 * ZOOM, 5 * ZOOM],
     links: { east: 'foret', south: 'roseaux' },
     find: { kind: 'gemme', count: 2 }, boost: 4
   },
   roseaux: {
-    id: 'roseaux', name: 'Les roseaux', rows: ROSEAUX, start: [15, 1],
+    id: 'roseaux', name: 'Les roseaux', rows: expand(ROSEAUX, ZOOM), start: [15 * ZOOM, 1 * ZOOM],
     links: { north: 'cascade', east: 'clairiere' },
     find: { kind: 'coquillage', count: 3 }, boost: 1
   },
   lac: {
-    id: 'lac', name: 'Le grand lac', rows: LAC, start: [2, 24],
+    id: 'lac', name: 'Le grand lac', rows: expand(LAC, ZOOM), start: [2 * ZOOM, 24 * ZOOM],
     links: { west: 'clairiere' },
     find: { kind: 'tresor', count: 2 }, boost: 3
   },
   vallon: {
-    id: 'vallon', name: 'Le vallon', rows: VALLON, start: [8, 2],
+    id: 'vallon', name: 'Le vallon', rows: expand(VALLON, ZOOM), start: [8 * ZOOM, 2 * ZOOM],
     links: { north: 'clairiere' },
     find: { kind: 'fleur', count: 3 }, boost: 1
   }
@@ -354,8 +371,9 @@ export const START_ZONE = 'clairiere';
 /** La zone (objet) depuis son id, un objet zone, ou n'importe quoi -> repli. */
 export const zoneById = (z) => (z && z.rows) ? z : (ZONES[z] || ZONES[START_ZONE]);
 
-export const MAP_W = CLAIRIERE[0].length;
-export const MAP_H = CLAIRIERE.length;
+// dimensions de la carte JOUÉE (donc après agrandissement), pas de la source
+export const MAP_W = CLAIRIERE[0].length * ZOOM;
+export const MAP_H = CLAIRIERE.length * ZOOM;
 export const WORLD_W = MAP_W * TILE;
 export const WORLD_H = MAP_H * TILE;
 
@@ -460,6 +478,34 @@ export function nearestFree(zone, cx, cy) {
     }
   }
   return toPx(1, 1);
+}
+
+/**
+ * Les PASSAGES d'une zone : pour chaque bord ouvert, le milieu de la brèche
+ * praticable, en pixels monde. Sans repère visible, on croit la carte close —
+ * c'est exactement ce qui donnait l'impression d'un monde minuscule.
+ */
+export function zoneGates(zone) {
+  const z = zoneById(zone);
+  const out = [];
+  const milieu = (cases) => cases[(cases.length / 2) | 0];
+  for (const [dir, to] of Object.entries(z.links)) {
+    const libres = [];
+    if (dir === 'north' || dir === 'south') {
+      const cy = dir === 'north' ? 0 : MAP_H - 1;
+      for (let cx = 0; cx < MAP_W; cx++) if (!isSolid(z, cx, cy)) libres.push(cx);
+      if (!libres.length) continue;
+      out.push({ dir, to, name: zoneById(to).name,
+        x: (milieu(libres) + 0.5) * TILE, y: (dir === 'north' ? 0.5 : MAP_H - 0.5) * TILE });
+    } else {
+      const cx = dir === 'west' ? 0 : MAP_W - 1;
+      for (let cy = 0; cy < MAP_H; cy++) if (!isSolid(z, cx, cy)) libres.push(cy);
+      if (!libres.length) continue;
+      out.push({ dir, to, name: zoneById(to).name,
+        x: (dir === 'west' ? 0.5 : MAP_W - 0.5) * TILE, y: (milieu(libres) + 0.5) * TILE });
+    }
+  }
+  return out;
 }
 
 /** Position d'arrivée sûre dans une zone, au plus près du point visé. */
