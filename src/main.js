@@ -324,25 +324,28 @@ function actPlay() {
 }
 
 function endGame(res) {
-  const sc = res.score, tot = res.total;
-  s.fun = clamp(s.fun + 8 + sc * 5, 0, 100);
+  // score = POINTS (combos et dorés compris) ; caught = nombre de POISSONS pris
+  const sc = res.score, tot = res.total, got = res.caught || 0, best = res.bestCombo || 0;
+  s.fun = clamp(s.fun + 8 + got * 5, 0, 100);
   s.energy = clamp(s.energy - 8, 0, 100);
   s.hunger = clamp(s.hunger - 4, 0, 100);
   s.played++;
   rec.gamesTotal++;
-  rec.fishTotal += sc;
-  if (sc >= tot && tot >= 5) rec.perfectGames++;
+  rec.fishTotal += got;
+  const perfect = got >= tot && tot >= 5;   // aucun poisson manqué
+  if (perfect) rec.perfectGames++;
   mg = null;
-  if (sc >= tot && tot >= 5) { R.burst('confetti', 24, s.stage); feel('big'); }  // partie parfaite !
-  else if (sc >= tot - 1 && sc > 0) { R.burst('sparkle', 8, s.stage); feel('med'); }
-  if (sc >= tot - 1) { sfx.happy(); ui.log('Pêche royale : ' + sc + ' poisson' + (sc > 1 ? 's' : '') + ' ! ' + s.name + ' est ravie ! 🎉'); }
-  else if (sc > 0) { sfx.eat(); ui.log(sc + ' poisson' + (sc > 1 ? 's' : '') + ' attrapé' + (sc > 1 ? 's' : '') + ' ! Pas mal !'); }
+  if (perfect) { R.burst('confetti', 24, s.stage); feel('big'); }
+  else if (got >= tot - 1 && got > 0) { R.burst('sparkle', 8, s.stage); feel('med'); }
+  const combo = best >= 3 ? ' Plus belle série : x' + best + ' !' : '';
+  if (perfect) { sfx.happy(); ui.log('Pêche royale : ' + got + ' poissons, aucun manqué — ' + sc + ' points ! 🎉' + combo); }
+  else if (got > 0) { sfx.eat(); ui.log(got + ' poisson' + (got > 1 ? 's' : '') + ' sur ' + tot + ' — ' + sc + ' points !' + combo); }
   else { sfx.sad(); ui.log('Aucun poisson… ils étaient rusés aujourd\'hui.'); }
   gainXp(XP.game + sc * XP.fish);
   persist();
   ui.updateHUD(s, mg, rec);
   quest('games');
-  if (sc > 0) quest('fish', sc);
+  if (got > 0) quest('fish', got);
   tryDrop();
   careBond('play');
 }

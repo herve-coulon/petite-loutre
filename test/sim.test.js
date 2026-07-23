@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { H, MIN, HATCH_MS, CHILD_AT, ADULT_AT, SAVE_KEY } from '../src/constants.js';
 import { newState, saveState, loadState, clearSave } from '../src/state.js';
 import { stepSim, simulateOffline, stageFor, ageMs } from '../src/sim.js';
-import { newGame, tickGame, clickGame, GAME_DURATION } from '../src/minigame.js';
+import { newGame, tickGame, clickGame, GAME_DURATION, TELL_MS } from '../src/minigame.js';
 import { PAL, SPRITES } from '../src/sprites.js';
 
 // Horloge fixe en automne : saison NEUTRE (ni chaud ni froid) pour mesurer la
@@ -213,24 +213,34 @@ test('hors-ligne : rattrapage plafonné à MAX_OFFLINE', () => {
 
 /* ---------- mini-jeu ---------- */
 
-test('pêche : spawn, capture, fin', () => {
+test('pêche : annonce puis jaillissement, capture, fin', () => {
   const mg = newGame(T0);
-  assert.equal(tickGame(mg, T0 + 700, () => 0.5), null);
-  assert.ok(mg.fish, 'un poisson doit apparaître');
-  const { x, y } = mg.fish;
+  // l'ondulation d'annonce paraît d'abord : rien à attraper encore
+  tickGame(mg, T0 + 500, () => 0.5);
+  assert.equal(mg.tells.length, 1, 'une ondulation annonce le saut');
+  assert.equal(mg.fishes.length, 0, 'le poisson ne jaillit pas encore');
+  // après le délai d'annonce, il jaillit à l'endroit annoncé
+  const tellX = mg.tells[0].x;
+  tickGame(mg, T0 + 500 + TELL_MS + 1, () => 0.5);
+  assert.equal(mg.fishes.length, 1, 'le poisson jaillit');
+  assert.equal(mg.fishes[0].baseX, tellX, 'à l\'endroit annoncé');
+
+  const { x, y } = mg.fishes[0];
   assert.equal(clickGame(mg, x - 100, y, 4), false, 'raté loin du poisson');
-  assert.ok(mg.fish, 'toujours là après un raté');
+  assert.equal(mg.fishes.length, 1, 'toujours là après un raté');
   assert.equal(clickGame(mg, x + 5, y + 2, 4), true, 'attrapé');
+  assert.equal(mg.caught, 1);
   assert.equal(mg.score, 1);
   const end = tickGame(mg, T0 + GAME_DURATION + 1, () => 0.5);
   assert.equal(end.type, 'end');
-  assert.equal(end.score, 1);
+  assert.equal(end.caught, 1);
 });
 
 test('pêche : hitbox élargie au doigt', () => {
   const mg = newGame(T0);
-  tickGame(mg, T0 + 700, () => 0.5);
-  const { x, y } = mg.fish;
+  tickGame(mg, T0 + 500, () => 0.5);
+  tickGame(mg, T0 + 500 + TELL_MS + 1, () => 0.5);
+  const { x, y } = mg.fishes[0];
   assert.equal(clickGame(mg, x - 7, y - 7, 8), true, 'tolérance tactile');
 });
 

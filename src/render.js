@@ -7,7 +7,7 @@ import { moodOf, pickIdle, canIdle, IDLE_FRAMES } from './mood.js';
 import { dailyEvent, butterflyPos } from './events.js';
 import { dayKey } from './quests.js';
 import { seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
-import { WATER_Y } from './minigame.js';
+import { WATER_Y, TELL_MS, COMBO_STEP as FISH_COMBO_STEP, fishProgress } from './minigame.js';
 import { itemById, RARITIES, ITEMS } from './items.js';
 import { LANE_X, SLIDE_OTTER_Y, COMBO_STEP, slideProgress } from './toboggan.js';
 import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, groundTile, decorTile } from './tilemap.js';
@@ -1197,25 +1197,65 @@ export function makeRenderer(cv) {
     if (mg && mg.mode === 'slide') {
       drawSlide(mg, frame, s, fur);
     } else if (mg) {
-      // nuit de pêche : la scène s'assombrit, l'eau (en bas) reste le terrain de jeu
-      ctx.fillStyle = 'rgba(20,30,60,.42)'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      const now = Date.now();
+      // Nuit de pêche : la berge s'assombrit, l'eau (en bas) est le terrain de jeu.
+      ctx.fillStyle = 'rgba(20,30,60,.30)'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = 'rgba(12,20,44,.16)'; ctx.fillRect(0, WATER_Y, CANVAS_W, CANVAS_H - WATER_Y);
+      // ligne de surface, pour bien lire d'où sortent les poissons
+      ctx.fillStyle = 'rgba(210,240,255,.55)'; ctx.fillRect(0, WATER_Y - 1, CANVAS_W, 1);
+
+      // ONDULATIONS d'annonce : un rond qui s'ouvre là où un poisson va jaillir
+      for (const t of (mg.tells || [])) {
+        const k = Math.min(1, (now - t.at) / TELL_MS);
+        const r = 3 + k * 11;
+        ctx.strokeStyle = t.kind === 'gold'
+          ? 'rgba(255,214,90,' + (1 - k * 0.35).toFixed(2) + ')'
+          : 'rgba(225,245,255,' + (0.95 - k * 0.35).toFixed(2) + ')';
+        ctx.lineWidth = t.kind === 'gold' ? 2 : 1;
+        ctx.beginPath(); ctx.ellipse(t.x + 5, WATER_Y, r, r * 0.4, 0, 0, 6.283); ctx.stroke();
+      }
+
       // éclaboussure à la surface (jaillissement / replongeon)
-      if (mg.splash && Date.now() - mg.splash.t < 380) {
-        const st = (Date.now() - mg.splash.t) / 380;
+      if (mg.splash && now - mg.splash.t < 380) {
+        const st = (now - mg.splash.t) / 380;
         ctx.fillStyle = 'rgba(233,223,192,' + (0.8 * (1 - st)).toFixed(2) + ')';
         const r = 3 + st * 9;
         ctx.fillRect(mg.splash.x - r, WATER_Y - 1, r * 2, 2);
         ctx.fillRect(mg.splash.x - r + 1, WATER_Y - 4, 2, 3);
         ctx.fillRect(mg.splash.x + r - 3, WATER_Y - 4, 2, 3);
       }
-      // le poisson qui bondit hors de l'eau (orienté selon son sens)
-      if (mg.fish) {
-        drawSprite(SPRITES.fish, Math.round(mg.fish.x), Math.round(mg.fish.y), 1, null, mg.fish.dir > 0);
+
+      // les poissons qui bondissent (orientés selon leur sens)
+      for (const f of (mg.fishes || [])) {
+        const fx2 = Math.round(f.x), fy2 = Math.round(f.y);
+        if (f.kind === 'gold') {
+          ctx.fillStyle = 'rgba(255,226,120,.30)'; ctx.fillRect(fx2 - 4, fy2 - 4, 18, 14);
+          drawSprite(SPRITES.fish, fx2, fy2, 1, { B: '#ffd94a', D: '#c9922a', W: '#fff6cd' }, f.dir > 0);
+        } else {
+          drawSprite(SPRITES.fish, fx2, fy2, 1, null, f.dir > 0);
+        }
       }
-      const left = Math.max(0, (mg.endsAt - Date.now()) / SEC);
-      ctx.fillStyle = 'rgba(15,18,26,.8)'; ctx.fillRect(0, 0, CANVAS_W, 11);
+
+      // flashs : doré pris, ou poisson manqué
+      if (mg.goldAt && now - mg.goldAt < 300) {
+        ctx.fillStyle = 'rgba(255,214,90,.20)'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      }
+      if (mg.missAt && now - mg.missAt < 240) {
+        ctx.fillStyle = 'rgba(120,150,190,.16)'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      }
+
+      // bandeau : temps, points, série en cours
+      const left = Math.max(0, (mg.endsAt - now) / SEC);
+      ctx.fillStyle = 'rgba(15,18,26,.8)'; ctx.fillRect(0, 0, CANVAS_W, 13);
       ctx.fillStyle = '#ffe9a8'; ctx.font = '8px monospace';
-      ctx.fillText('PÊCHE  ' + left.toFixed(0) + 's   score:' + mg.score, 6, 9);
+      ctx.fillText(left.toFixed(0) + 's', 6, 10);
+      ctx.fillText('score ' + mg.score, 34, 10);
+      if (mg.combo >= 2) {
+        ctx.fillStyle = mg.combo >= FISH_COMBO_STEP ? '#ffd94a' : '#cfe8ff';
+        ctx.fillText('x' + mg.combo, CANVAS_W - 28, 10);
+      }
+      ctx.fillStyle = 'rgba(255,233,168,.75)';
+      ctx.fillRect(0, 13, Math.round(CANVAS_W * (1 - fishProgress(mg, now))), 2);
     }
 
     // jeton de nourriture (poisson) : posé sur la berge quand elle a faim, ou suivant
