@@ -10,7 +10,7 @@ import { seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 import { WATER_Y } from './minigame.js';
 import { itemById, RARITIES, ITEMS } from './items.js';
 import { LANE_X, SLIDE_OTTER_Y } from './toboggan.js';
-import { TILE, SHEET_M, WORLD_W, WORLD_H, T, groundTile, decorTile } from './tilemap.js';
+import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, groundTile, decorTile } from './tilemap.js';
 
 // Canvas PORTRAIT plein écran (ratio ~ écran mobile) : le ciel occupe le haut,
 // l'eau le bas, la berge au milieu. La scène de base est dessinée pour un sol à
@@ -585,10 +585,14 @@ export function makeRenderer(cv) {
     const owned = fx.owned || [];
     const S = BERGE_SHIFT;   // même règle plein écran que la berge
     // Fond plein écran : mur de terre qui monte jusqu'en haut, plancher qui
-    // descend jusqu'en bas — la scène (autrefois 120px) est décalée de S.
-    ctx.fillStyle = '#33231a'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-    ctx.fillStyle = '#4a3221'; ctx.fillRect(0, 90 + S, CANVAS_W, CANVAS_H - (90 + S));
+    // descend jusqu'en bas — en tuiles, ou peint en repli.
+    const tiled = drawDenTiles(S);
+    if (!tiled) {
+      ctx.fillStyle = '#33231a'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = '#4a3221'; ctx.fillRect(0, 90 + S, CANVAS_W, CANVAS_H - (90 + S));
+    }
     ctx.save(); ctx.translate(0, S);
+    if (!tiled) {   // --- repli peint ---
     for (let y = 4 - S; y < 88; y += 6) for (let x = 6; x < CANVAS_W; x += 11) { // texture de terre (jusqu'en haut)
       ctx.fillStyle = ((x + y) % 2) ? 'rgba(255,220,170,.045)' : 'rgba(0,0,0,.06)';
       ctx.fillRect(x + (((y % 6 + 6) >> 1) % 3), y, 2, 2);
@@ -598,6 +602,7 @@ export function makeRenderer(cv) {
     ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(0, 90, CANVAS_W, 2);
     ctx.fillStyle = '#5a3f2a';
     for (let x = 8; x < CANVAS_W; x += 22) ctx.fillRect(x, 92, 1, 28);
+    }   // --- fin du repli peint ---
     // tapis douillet
     ctx.fillStyle = '#7a4a5a'; ctx.fillRect(38, 104, 84, 12);
     ctx.fillStyle = '#94586c'; ctx.fillRect(42, 106, 76, 3);
@@ -646,6 +651,40 @@ export function makeRenderer(cv) {
     if (!t) return;
     ctx.drawImage(tiles, t[0] * (TILE + SHEET_M), t[1] * (TILE + SHEET_M), TILE, TILE,
       dx | 0, dy | 0, TILE, TILE);
+  }
+
+  /**
+   * Passe graphique de la TANIÈRE : mur de terre du terrier et plancher de bois
+   * en tuiles, plus quelques meubles au sol sur les côtés (la loutre dort au
+   * centre). Étagères, tapis, lanterne et nid restent peints : ils sont calés
+   * sur les emplacements de trésors. Coords ÉCRAN.
+   */
+  function drawDenTiles(S) {
+    if (!tilesReady) return false;
+    const FLOOR_TOP = 90 + S;                  // 234 : la ligne du plancher
+    for (let y = 0; y < FLOOR_TOP; y += 16) {
+      for (let x = 0; x < CANVAS_W; x += 16) {
+        blit((((x + y) / 16) % 4 === 0) ? TD.wallAlt : TD.wall, x, y);
+      }
+    }
+    for (let y = FLOOR_TOP; y < CANVAS_H; y += 16) {
+      for (let x = 0; x < CANVAS_W; x += 16) {
+        blit((((x + y) / 16) % 3 === 0) ? TD.floorAlt : TD.floor, x, y);
+      }
+    }
+    // le haut du mur n'est pas une paroi nue : on l'habille
+    blit(TD.picture, 26, 96); blit(TD.mirror, 118, 96);
+    blit(TD.sack, 8, 128); blit(TD.crate, 136, 128);
+    // meubles posés au sol, sur les côtés
+    blit(TD.barrel, 2, FLOOR_TOP - 16);
+    blit(TD.crate, 20, FLOOR_TOP - 16);
+    blit(TD.chest, 140, FLOOR_TOP - 16);
+    // le terrier est un lieu chaud et clos : on assombrit le mur vers le haut
+    const g = ctx.createLinearGradient(0, 0, 0, FLOOR_TOP);
+    g.addColorStop(0, 'rgba(20,10,4,.55)');
+    g.addColorStop(1, 'rgba(20,10,4,.05)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, CANVAS_W, FLOOR_TOP);
+    return true;
   }
 
   /**

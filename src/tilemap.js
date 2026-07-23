@@ -18,6 +18,16 @@ export const T = {
   lily: [25, 11], sprout: [22, 10]
 };
 
+/** Tuiles d'INTÉRIEUR, pour la tanière (terrier de terre au plancher de bois). */
+export const TD = {
+  wall: [6, 0], wallAlt: [6, 1],     // terre du terrier
+  floor: [5, 4], floorAlt: [5, 5],   // plancher de bois chaud
+  shelf: [30, 0], shelfFull: [31, 0],
+  bed: [29, 4], barrel: [28, 5], crate: [28, 2], chest: [28, 6],
+  candle: [20, 7], sack: [26, 2],
+  picture: [23, 8], mirror: [24, 8]  // de quoi habiller le mur
+};
+
 /**
  * La carte de la vallée. Une rivière descend du nord (un lac) vers le sud, un
  * sentier de terre serpente sur la rive ouest, des bosquets ferment l'horizon.
