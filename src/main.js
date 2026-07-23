@@ -31,6 +31,7 @@ import { unlockedFurs, unlockedDecors } from './skins.js';
 import { newAchievements } from './achievements.js';
 import { encodeCard, decodeCard, newBattle, playTurn } from './battle.js';
 import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
+import { TILE, WORLD_W, WORLD_H, moveWithCollision, spawnPoint, isSolid } from './tilemap.js';
 import { makeCard, CARD_URL } from './photocard.js';
 import { nextBeat, markSeen, coachStep } from './story.js';
 import { seasonFor, seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
@@ -426,16 +427,28 @@ function togglePlace() {
 /* ---------------- Le Monde : balade libre, rencontres, recrutement ---------------- */
 const clampN = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
 
+/** Une case libre proche de l'ancre donnée (en coords de tuiles) -> pixels monde. */
+function freeSpotNear(cx, cy) {
+  for (let r = 0; r < 8; r++) {
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const tx = cx + dx, ty = cy + dy;
+      if (!isSolid(tx, ty)) return { x: tx * TILE + TILE / 2, y: ty * TILE + TILE - 2 };
+    }
+  }
+  return spawnPoint();
+}
+
 /** Entre dans la vallée : engendre les loutres sauvages du jour et place tout le monde. */
 function enterWorld() {
   if (!denAvailable()) return;
-  const spots = [{ x: 34, y: 192 }, { x: 122, y: 214 }, { x: 74, y: 268 }];
+  const anchors = [[5, 22], [20, 15], [4, 8]];   // dispersées sur la carte
   const cands = recruitBoard(curLevel(), dayKey(), 3).filter(c => !isRecruited(c.id));
-  const otters = cands.map((c, i) => ({
-    ...c, x: spots[i].x, y: spots[i].y, wx: spots[i].x, phase: i * 60,
-    facing: spots[i].x > CANVAS_W / 2 ? -1 : 1, friend: 0, cooldown: 0
-  }));
-  world = { px: CANVAS_W / 2, py: CANVAS_H - 52, tx: CANVAS_W / 2, ty: CANVAS_H - 52, walking: false, facing: 1, otters };
+  const otters = cands.map((c, i) => {
+    const p = freeSpotNear(anchors[i % anchors.length][0], anchors[i % anchors.length][1]);
+    return { ...c, x: p.x, y: p.y, wx: p.x, phase: i * 60, facing: 1, friend: 0, cooldown: 0 };
+  });
+  const sp = spawnPoint();
+  world = { px: sp.x, py: sp.y, tx: sp.x, ty: sp.y, walking: false, facing: 1, otters };
   s.place = 'monde';
   sfx.press(); vibrate(8);
   ui.log('🗺️ ' + (s.name || 'La loutre') + ' part explorer la vallée…');
@@ -458,18 +471,31 @@ function stepWorld() {
   if (!encounterOtter) {
     const dx = world.tx - world.px, dy = world.ty - world.py, d = Math.hypot(dx, dy);
     if (d > 1.5) {
-      const step = Math.min(2.3, d);
-      world.px += dx / d * step; world.py += dy / d * step;
-      world.facing = dx < 0 ? -1 : 1; world.walking = true;
+      const step = Math.min(1.4, d);   // ~11 frames par tuile : marche posée
+      const res = moveWithCollision(world.px, world.py, dx / d * step, dy / d * step);
+      if (res.x === world.px && res.y === world.py) {
+        world.tx = world.px; world.ty = world.py; world.walking = false;  // bloquée : on renonce
+      } else {
+        world.px = res.x; world.py = res.y;
+        world.facing = dx < 0 ? -1 : 1; world.walking = true;
+      }
     } else world.walking = false;
   }
   for (const o of world.otters) {
     if (o.gone) continue;
-    o.wx = o.x + Math.sin((frame + o.phase) / 55) * 5;
+    o.wx = o.x + Math.sin((frame + o.phase) / 55) * 3;
     if (encounterOtter) continue;
     const pd = Math.hypot(o.wx - world.px, o.y - world.py);
-    if (pd < 20 && frame > (o.cooldown || 0)) openEncounter(o);
+    if (pd < 16 && frame > (o.cooldown || 0)) openEncounter(o);
   }
+}
+
+/** Coin haut-gauche de la caméra (mêmes bornes que le rendu). */
+function worldCam() {
+  return {
+    x: Math.max(0, Math.min(WORLD_W - CANVAS_W, Math.round(world.px - CANVAS_W / 2))),
+    y: Math.max(0, Math.min(WORLD_H - CANVAS_H, Math.round(world.py - CANVAS_H / 2)))
+  };
 }
 
 /** Ouvre la rencontre avec une loutre sauvage (la balade se met en pause). */
@@ -526,11 +552,12 @@ function onCanvasPointer(e) {
     if (s.stage === 'egg') { actWarm(); return; }
     if (s.away) return; // elle n'est pas là — le bouton du héron fait le travail
 
-    // dans le Monde : on guide la loutre au toucher (elle marche vers le point)
+    // dans le Monde : on guide la loutre au toucher (coords écran -> monde)
     if (s.place === 'monde') {
       if (world && !encounterOtter) {
-        world.tx = clampN(x, 14, CANVAS_W - 14);
-        world.ty = clampN(y, 164, CANVAS_H - 46);
+        const cam = worldCam();
+        world.tx = clampN(x + cam.x, 4, WORLD_W - 4);
+        world.ty = clampN(y + cam.y, 4, WORLD_H - 4);
       }
       return;
     }

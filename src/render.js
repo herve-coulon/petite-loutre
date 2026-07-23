@@ -10,6 +10,7 @@ import { seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 import { WATER_Y } from './minigame.js';
 import { itemById, RARITIES, ITEMS } from './items.js';
 import { LANE_X, SLIDE_OTTER_Y } from './toboggan.js';
+import { TILE, SHEET_M, WORLD_W, WORLD_H, groundTile, decorTile } from './tilemap.js';
 
 // Canvas PORTRAIT plein écran (ratio ~ écran mobile) : le ciel occupe le haut,
 // l'eau le bas, la berge au milieu. La scène de base est dessinée pour un sol à
@@ -600,59 +601,67 @@ export function makeRenderer(cv) {
     ctx.restore();
   }
 
-  // ── MONDE : balade libre dans la vallée, on y croise d'autres loutres ──
-  // Dessine une loutre (joueuse ou sauvage) centrée en (px, bas=py).
+  // ── MONDE : la vallée en tuiles (atlas Kenney CC0), caméra qui suit la loutre ──
+  // (hors navigateur — tests Node — il n'y a pas d'Image : on reste en repli)
+  let tiles = null, tilesReady = false;
+  if (typeof Image !== 'undefined') {
+    tiles = new Image();
+    tiles.onload = () => { tilesReady = true; };
+    tiles.src = './assets/tileset.png';
+  }
+
+  /** Colle une tuile [col,row] de l'atlas à l'écran en (dx, dy). */
+  function blit(t, dx, dy) {
+    if (!t) return;
+    ctx.drawImage(tiles, t[0] * (TILE + SHEET_M), t[1] * (TILE + SHEET_M), TILE, TILE,
+      dx | 0, dy | 0, TILE, TILE);
+  }
+
+  // Dessine une loutre (joueuse ou sauvage) à l'échelle des tuiles (16 px).
   function drawFigure(otterLike, px, py, frame, walking, flip) {
     const spr = SPRITES[otterLike.stage] || SPRITES.adult;
     const fur = furById(otterLike.fur).map;
-    const sc = 2, w = spr[0].length * sc, h = spr.length * sc;
-    const bob = Math.sin((frame + (px | 0)) / 6) * (walking ? 1.7 : 0.5);
+    const w = spr[0].length, h = spr.length;                 // échelle 1 = une tuile de large
+    const bob = walking ? (Math.sin(frame / 5) < 0 ? 1 : 0) : 0;   // pas chaloupé
     const ox = Math.round(px - w / 2), oy = Math.round(py - h + bob);
-    // ombre au sol
-    ctx.fillStyle = 'rgba(0,0,0,.14)';
-    ctx.fillRect(ox + 4, py - 3, w - 8, 3);
-    drawSprite(spr, ox, oy, sc, fur, flip);
-    drawRim(spr, ox, oy, sc, 'rgba(255,255,255,.22)', 'rgba(0,0,0,.16)');
-    drawFace(otterLike, 'contente', ox, oy, frame, fur, false);
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    ctx.fillRect(ox + 3, py - 2, w - 6, 2);                  // ombre au sol
+    drawSprite(spr, ox, oy, 1, fur, flip);
     return oy;
   }
 
   function drawWorld(s, frame, fx) {
     const w = fx.world;
-    // ciel + collines lointaines
-    ctx.fillStyle = '#bfe6ef'; ctx.fillRect(0, 0, CANVAS_W, 160);
-    ctx.fillStyle = '#a9d59a';
-    for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(18 + i * 44, 160, 42, Math.PI, 0); ctx.fill(); }
-    // prairie
-    ctx.fillStyle = '#8fce78'; ctx.fillRect(0, 152, CANVAS_W, CANVAS_H - 152);
-    ctx.fillStyle = 'rgba(0,0,0,.05)'; ctx.fillRect(0, 152, CANVAS_W, 3);
-    ctx.fillStyle = '#79bf62';
-    for (let gy = 172; gy < 300; gy += 22) for (let gx = 10; gx < CANVAS_W; gx += 26) {
-      const o = (gx * 7 + gy * 3) % 11;
-      ctx.fillRect(gx + o, gy, 2, 4); ctx.fillRect(gx + o + 3, gy - 1, 2, 5);
+    if (!tilesReady || !w) {                                  // atlas pas encore chargé
+      ctx.fillStyle = '#7fbf5f'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      return;
     }
-    // rivière en bas
-    ctx.fillStyle = '#57a6cf'; ctx.fillRect(0, CANVAS_H - 42, CANVAS_W, 42);
-    ctx.fillStyle = 'rgba(255,255,255,.16)'; ctx.fillRect(0, CANVAS_H - 42, CANVAS_W, 2);
-    for (const rx of [20, 70, 120]) ctx.fillRect((rx + (frame % 60)) % CANVAS_W, CANVAS_H - 28, 10, 2);
+    // caméra centrée sur la loutre, bornée aux limites du monde
+    const camX = Math.max(0, Math.min(WORLD_W - CANVAS_W, Math.round(w.px - CANVAS_W / 2)));
+    const camY = Math.max(0, Math.min(WORLD_H - CANVAS_H, Math.round(w.py - CANVAS_H / 2)));
+    const c0 = Math.floor(camX / TILE), c1 = Math.ceil((camX + CANVAS_W) / TILE);
+    const r0 = Math.floor(camY / TILE), r1 = Math.ceil((camY + CANVAS_H) / TILE);
 
-    if (!w) return;
-    if (w.walking) { // marqueur de destination
-      ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(w.tx, w.ty, 4 + (frame % 12) / 3, 0, 6.283); ctx.stroke();
+    for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
+      blit(groundTile(cx, cy), cx * TILE - camX, cy * TILE - camY);
     }
+    // décor + loutres, triés par profondeur (y) pour que ça passe devant/derrière
     const figs = [];
+    for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
+      const d = decorTile(cx, cy);
+      if (d) figs.push({ y: cy * TILE + TILE, fn: () => blit(d, cx * TILE - camX, cy * TILE - camY) });
+    }
     for (const o of w.otters) {
       if (o.gone) continue;
-      const px = o.wx != null ? o.wx : o.x;
+      const ox = o.wx != null ? o.wx : o.x;
       figs.push({ y: o.y, fn: () => {
-        drawFigure(o, px, o.y, frame, false, o.facing < 0);
-        const by = o.y - (SPRITES[o.stage] || SPRITES.adult).length * 2 - 10 + Math.sin(frame / 10) * 2;
-        ctx.font = '11px system-ui,sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText('💬', px, by); ctx.textAlign = 'left';
+        drawFigure(o, ox - camX, o.y - camY, frame, false, o.facing < 0);
+        const by = o.y - camY - 20 + (Math.sin(frame / 12) < 0 ? 1 : 0);
+        ctx.font = '9px system-ui,sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('💬', ox - camX, by); ctx.textAlign = 'left';
       } });
     }
-    figs.push({ y: w.py, fn: () => drawFigure(s, w.px, w.py, frame, w.walking, w.facing < 0) });
+    figs.push({ y: w.py, fn: () => drawFigure(s, w.px - camX, w.py - camY, frame, w.walking, w.facing < 0) });
     figs.sort((a, b) => a.y - b.y).forEach(f => f.fn());
   }
 

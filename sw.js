@@ -1,6 +1,6 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v3.38.0';
+const VERSION = 'v3.39.0';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [
@@ -30,6 +30,8 @@ const PRECACHE = [
   './src/personality.js',
   './src/world.js',
   './src/gang.js',
+  './src/tilemap.js',
+  './assets/tileset.png',
   './src/seasonpass.js',
   './src/push.js',
   './src/photocard.js',
