@@ -65,7 +65,112 @@ const CLAIRIERE = [
   '..TTTT.......~~~~.............',
   '.............~~~~.............',
   '......ss.....~~~~......ss.....',
-  'TTTTTTTTTTTTT~~~~TTTTTTTTTTTTT'
+  'TTTTTTTT.....~~~~.......TTTTTT'   // la rivière file au sud, vers le vallon
+];
+
+// LA CASCADE : au nord-ouest, la chute qui alimente la rivière.
+// Ouvertures : à l'est vers la forêt, au sud vers les roseaux.
+const CASCADE = [
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TT~~~~~~~~~~TTTTTTTTTTTTTTTTTT',
+  'TT~~~~~~~~~~TT.........TTTTTTT',
+  'TT~~~~~~~~~~T....ff.......TTTT',
+  'TT~~~~~~~~~~..................',
+  'TT~~~~~~~~~~..bb..............',
+  'TT~~~~~~~~~~..................',
+  'T.~~~~~~~~~~..................',
+  'T..~~~~~~~~..........TT......T',
+  'T...~~~~~~..........TT.......T',
+  'T....~~~~...........TT.......T',
+  'T....~~~~....................T',
+  'T....~~~~......ff............T',
+  'T....~~~~....................T',
+  'T....~~~~........bb..........T',
+  'T....~~~~....................T',
+  'T....~~~~...........TT.......T',
+  'T....~~~~...........TT.......T',
+  'T....~~~~....................T',
+  'T....~~~~.......ss...........T',
+  'T....~~~~....................T',
+  'T....~~~~..........ff........T',
+  'T....~~~~....................T',
+  'T....~~~~....TT..............T',
+  'T....~~~~....TT..............T',
+  'T....~~~~....................T',
+  'T....~~~~........bb..........T',
+  'T....~~~~....................T',
+  'T....~~~~....................T',
+  'TTTTT~~~~TTTT......TTTTTTTTTTT'
+];
+
+// LES ROSEAUX : à l'ouest, un marais de mares peu profondes.
+// Ouvertures : au nord vers la cascade, à l'est vers la clairière.
+const ROSEAUX = [
+  'TTTTTTTTTTTTT......TTTTTTTTTTT',
+  'T............................T',
+  'T..ss....~~~~......ss........T',
+  'T........~~~~................T',
+  'T...ss...~~~~.....ss.........T',
+  'T................~~~~........T',
+  'T....bb..........~~~~........T',
+  'T................~~~~........T',
+  'T.......ss...................T',
+  'T..~~~~..........ss..........T',
+  'T..~~~~......................T',
+  'T..~~~~...........~~~~.......T',
+  'T.................~~~~.......T',
+  'T....ss...........~~~~........',
+  'T.............................',
+  'T..........ss.................',
+  'T............................T',
+  'T...~~~~.....................T',
+  'T...~~~~.......ss............T',
+  'T...~~~~.....................T',
+  'T..............~~~~..........T',
+  'T....ss........~~~~..........T',
+  'T..............~~~~..........T',
+  'T............................T',
+  'T.......ss........ss.........T',
+  'T............................T',
+  'T..bb........................T',
+  'T..............ss............T',
+  'T............................T',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'
+];
+
+// LE VALLON : au sud, une prairie douce que la rivière traverse.
+// Ouverture : au nord vers la clairière.
+const VALLON = [
+  'TTTTTTTT.....~~~~.......TTTTTT',
+  'T............~~~~............T',
+  'T...ff.......~~~~............T',
+  'T............~~~~............T',
+  'T.....bb.....~~~~............T',
+  'T............~~~~............T',
+  'T............~~~~........bb..T',
+  'T....TT......~~~~....TT......T',
+  'T....TT......~~~~....TT......T',
+  'T............~~~~............T',
+  'T.......ff...~~~~............T',
+  'T............~~~~............T',
+  'T............~~~~.....ff.....T',
+  'T..bb........~~~~............T',
+  'T............~~~~............T',
+  'T............~~~~............T',
+  'T......ss....~~~~....ss......T',
+  'T............~~~~............T',
+  'T...TT.......~~~~............T',
+  'T...TT.......~~~~............T',
+  'T............~~~~............T',
+  'T......ff....~~~~............T',
+  'T............~~~~............T',
+  'T............~~~~.....bb.....T',
+  'T.....bb.....~~~~............T',
+  'T............~~~~............T',
+  'T..TT........~~~~....TT......T',
+  'T..TT........~~~~....TT......T',
+  'T......ss....~~~~............T',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'
 ];
 
 // LA FORÊT : dense, des trouées, un étang. Ouverture au sud vers la clairière.
@@ -75,10 +180,10 @@ const FORET = [
   'T....TT...TT.....TT...TT....TT',
   'T.TT......TT..T...TT.......T.T',
   'T.TT..ff...........TT..bb..T.T',
-  'T......TT...~~~~....TT.....T.T',
-  'TT.TT..TT..~~~~~~...TT..TT...T',
-  'T...T......~~~~~~.......TT...T',
-  'T...T..bb...~~~~....ff.......T',
+  '.......TT...~~~~....TT.....T.T',
+  '.T.TT..TT..~~~~~~...TT..TT...T',
+  '....T......~~~~~~.......TT...T',
+  '....T..bb...~~~~....ff.......T',
   'T.TTT........~~..........TT..T',
   'T.TT....TT.......TT......TT..T',
   'T.......TT.......TT..........T',
@@ -143,9 +248,30 @@ const LAC = [
  * `start` = case d'arrivée par défaut (en coords de tuiles).
  */
 export const ZONES = {
-  clairiere: { id: 'clairiere', name: 'La clairière', rows: CLAIRIERE, start: [8, 22], links: { north: 'foret', east: 'lac' } },
-  foret: { id: 'foret', name: 'La forêt', rows: FORET, start: [14, 27], links: { south: 'clairiere' } },
-  lac: { id: 'lac', name: 'Le grand lac', rows: LAC, start: [2, 24], links: { west: 'clairiere' } }
+  clairiere: {
+    id: 'clairiere', name: 'La clairière', rows: CLAIRIERE, start: [8, 22],
+    links: { north: 'foret', east: 'lac', west: 'roseaux', south: 'vallon' }
+  },
+  foret: {
+    id: 'foret', name: 'La forêt', rows: FORET, start: [14, 27],
+    links: { south: 'clairiere', west: 'cascade' }
+  },
+  cascade: {
+    id: 'cascade', name: 'La cascade', rows: CASCADE, start: [20, 5],
+    links: { east: 'foret', south: 'roseaux' }
+  },
+  roseaux: {
+    id: 'roseaux', name: 'Les roseaux', rows: ROSEAUX, start: [15, 1],
+    links: { north: 'cascade', east: 'clairiere' }
+  },
+  lac: {
+    id: 'lac', name: 'Le grand lac', rows: LAC, start: [2, 24],
+    links: { west: 'clairiere' }
+  },
+  vallon: {
+    id: 'vallon', name: 'Le vallon', rows: VALLON, start: [8, 2],
+    links: { north: 'clairiere' }
+  }
 };
 
 export const START_ZONE = 'clairiere';

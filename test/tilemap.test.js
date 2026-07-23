@@ -36,15 +36,40 @@ test('zones : les liaisons pointent vers des zones qui existent', () => {
   assert.ok(ZONES[START_ZONE], 'la zone de départ doit exister');
 });
 
+test('zones : toute liaison est RÉCIPROQUE (on peut revenir sur ses pas)', () => {
+  const oppose = { north: 'south', south: 'north', east: 'west', west: 'east' };
+  for (const id of ids) {
+    for (const [dir, to] of Object.entries(ZONES[id].links)) {
+      const retour = ZONES[to].links[oppose[dir]];
+      assert.equal(retour, id,
+        id + ' part au ' + dir + ' vers ' + to + ', mais ' + to + ' ne revient pas');
+    }
+  }
+});
+
+test('zones : le monde est d\'un seul tenant (tout est atteignable du départ)', () => {
+  const vus = new Set([START_ZONE]);
+  const file = [START_ZONE];
+  while (file.length) {
+    for (const to of Object.values(ZONES[file.pop()].links)) {
+      if (!vus.has(to)) { vus.add(to); file.push(to); }
+    }
+  }
+  assert.equal(vus.size, ids.length,
+    'zones inatteignables : ' + ids.filter(i => !vus.has(i)).join(', '));
+});
+
 test('zones : un bord SANS liaison est un mur, un bord AVEC liaison s\'ouvre', () => {
-  const cl = ZONES.clairiere;
-  assert.ok(cl.links.north, 'la clairière ouvre au nord');
-  assert.equal(isSolid('clairiere', 5, -1), false, 'le nord doit être franchissable');
-  assert.ok(!cl.links.south, 'la clairière est fermée au sud');
-  assert.equal(isSolid('clairiere', 5, MAP_H), true, 'le sud doit être un mur');
-  // la forêt n'ouvre qu'au sud
-  assert.equal(isSolid('foret', 5, -1), true, 'la forêt est fermée au nord');
-  assert.equal(isSolid('foret', 5, MAP_H), false, 'la forêt ouvre au sud');
+  // la clairière est le carrefour : elle ouvre des quatre côtés
+  assert.equal(isSolid('clairiere', 5, -1), false, 'nord franchissable');
+  assert.equal(isSolid('clairiere', 5, MAP_H), false, 'sud franchissable');
+  // le lac est un cul-de-sac : seul l'ouest s'ouvre
+  const lac = ZONES.lac;
+  assert.deepEqual(Object.keys(lac.links), ['west']);
+  assert.equal(isSolid('lac', -1, 5), false, 'le lac ouvre à l\'ouest');
+  assert.equal(isSolid('lac', 5, -1), true, 'le lac est fermé au nord');
+  assert.equal(isSolid('lac', MAP_W, 5), true, 'le lac est fermé à l\'est');
+  assert.equal(isSolid('lac', 5, MAP_H), true, 'le lac est fermé au sud');
 });
 
 test('passage : sortir par un bord lié amène dans la zone voisine, côté opposé', () => {
@@ -56,8 +81,8 @@ test('passage : sortir par un bord lié amène dans la zone voisine, côté oppo
   assert.equal(back.to, 'clairiere');
   assert.ok(back.y < 2 * TILE, 'on entre par le haut de la clairière');
   // un bord non lié ne mène nulle part
-  assert.equal(zoneExit('clairiere', 200, WORLD_H + 2), null);
-  assert.equal(zoneExit('foret', -2, 100), null);
+  assert.equal(zoneExit('lac', 200, -2), null, 'le lac n\'ouvre pas au nord');
+  assert.equal(zoneExit('vallon', -2, 100), null, 'le vallon n\'ouvre pas à l\'ouest');
 });
 
 test('passage : l\'arrivée est toujours sur une case praticable', () => {
