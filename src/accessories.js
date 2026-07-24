@@ -6,7 +6,7 @@ import { EPREUVE_ZONES } from './tilemap.js';
 
 export const HATS = [
   {
-    id: 'noeud', bonus: { fun: 1.10 }, icon: '🎀', name: 'Nœud rose',
+    id: 'noeud', bonus: { atq: 1.04, fun: 1.10 }, icon: '🎀', name: 'Nœud rose',
     cond: 'Servir 5 repas',
     test: r => r.mealsTotal >= 5,
     rows: [
@@ -18,7 +18,7 @@ export const HATS = [
     ]
   },
   {
-    id: 'beret', bonus: { xp: 1.05 }, icon: '🧢', name: 'Béret bleu',
+    id: 'beret', bonus: { atq: 1.05, xp: 1.05 }, icon: '🧢', name: 'Béret bleu',
     cond: 'Jouer 10 parties de pêche',
     test: r => r.gamesTotal >= 10,
     rows: [
@@ -29,7 +29,7 @@ export const HATS = [
     ]
   },
   {
-    id: 'fleur', bonus: { luck: 1.15 }, icon: '🌼', name: 'Marguerite',
+    id: 'fleur', bonus: { pv: 1.04, luck: 1.15 }, icon: '🌼', name: 'Marguerite',
     cond: 'Donner 10 bains',
     test: r => r.bathsTotal >= 10,
     rows: [
@@ -42,7 +42,7 @@ export const HATS = [
     // Récompense de collection : on ne l'obtient qu'en battant les six
     // championnes de la vallée. Le laurier se voit sur la tête, partout —
     // c'est le trophée qu'on porte plutôt qu'on range.
-    id: 'laurier', bonus: { xp: 1.18, fun: 1.10 }, icon: '🥇', name: 'Laurier des épreuves',
+    id: 'laurier', bonus: { atq: 1.15, xp: 1.18, fun: 1.10 }, icon: '🥇', name: 'Laurier des épreuves',
     cond: 'Battre les ' + EPREUVE_ZONES.length + ' championnes de la vallée',
     test: r => (r.epreuves || []).length >= EPREUVE_ZONES.length,
     // laurier DORÉ : la palette des sprites n'a pas de vert (G y est un gris
@@ -56,7 +56,7 @@ export const HATS = [
     ]
   },
   {
-    id: 'couronne', bonus: { xp: 1.12, luck: 1.10 }, icon: '👑', name: 'Couronne dorée',
+    id: 'couronne', bonus: { atq: 1.08, xp: 1.12, luck: 1.10 }, icon: '👑', name: 'Couronne dorée',
     cond: 'Élever une loutre jusqu\'à l\'âge adulte',
     test: r => r.bestAge >= 72 * H,
     rows: [
@@ -66,7 +66,7 @@ export const HATS = [
     ]
   },
   {
-    id: 'bonnet', bonus: { energy: 1.15 }, icon: '🌙', name: 'Bonnet de nuit',
+    id: 'bonnet', bonus: { pv: 1.06, energy: 1.15 }, icon: '🌙', name: 'Bonnet de nuit',
     cond: 'Border la loutre 10 fois',
     test: r => r.sleepsTotal >= 10,
     rows: [
@@ -77,7 +77,7 @@ export const HATS = [
     ]
   },
   {
-    id: 'hautform', bonus: { luck: 1.20 }, icon: '🎩', name: 'Haut-de-forme',
+    id: 'hautform', bonus: { vit: 1.08, luck: 1.20 }, icon: '🎩', name: 'Haut-de-forme',
     cond: 'Gagner 5 combats',
     test: r => r.wins >= 5,
     rows: [
@@ -88,7 +88,7 @@ export const HATS = [
     ]
   },
   {
-    id: 'etoile', icon: '⭐', name: 'Étoile dorée',
+    id: 'etoile', bonus: { atq: 1.10 }, icon: '⭐', name: 'Étoile dorée',
     cond: 'Atteindre le niveau 5',
     test: r => levelFromXp(r.xp || 0).level >= 5,
     rows: [
@@ -100,7 +100,7 @@ export const HATS = [
     ]
   },
   {
-    id: 'aureole', icon: '😇', name: 'Auréole',
+    id: 'aureole', bonus: { pv: 1.10 }, icon: '😇', name: 'Auréole',
     cond: 'Atteindre le niveau 10',
     test: r => levelFromXp(r.xp || 0).level >= 10,
     rows: [

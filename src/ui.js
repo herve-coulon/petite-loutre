@@ -12,6 +12,8 @@ import { ITEMS, RARITIES, MILESTONES, describeBonus, itemById } from './items.js
 import { traitById, bondLevel } from './personality.js';
 import { gangPower, fighterPower, MAX_MEMBERS } from './gang.js';
 import { makeFighter, encodeCard, ELAN_MAX } from './battle.js';
+import { TECHNIQUES, unlockedTechniques } from './skills.js';
+import { equipBonus } from './skins.js';
 import { paintOtter } from './render.js';
 import { ZONES, ZONE_INTRO, FIND_ICON, SPECIALITE, COFFRE_ZONES, EPREUVE_ZONES, zoneDuJour, zoneLayout } from './tilemap.js';
 
@@ -625,7 +627,7 @@ export function renderWardrobe(s, rec, h, tab) {
 
 /* ---------------- Combat ---------------- */
 /** Écran de préparation : la loutre sauvage proposée du moment. */
-export function renderBattleSetup(foe, s) {
+export function renderBattleSetup(foe, s, rec) {
   $('bt-setup').classList.remove('hidden');
   $('bt-arena').classList.add('hidden');
   const fc = $('bt-foecode'); if (fc) fc.value = '';
@@ -637,6 +639,42 @@ export function renderBattleSetup(foe, s) {
   paintOtter($('bt-wildpic'), foe, 3, true);
   const code = $('bt-mycode');
   if (code && s) code.value = encodeCard(s);
+  renderTechniques(rec, s);
+}
+
+/**
+ * Les techniques acquises, et LA PROCHAINE à décrocher. Sans cette dernière
+ * ligne, rien ne dirait au joueur que le duel s'adoucit à mesure qu'il joue —
+ * il croirait seulement le combat trop dur.
+ */
+function renderTechniques(rec, s) {
+  const box = $('bt-tech'); if (!box) return;
+  const acquises = unlockedTechniques(rec || {});
+  box.innerHTML = '';
+  const mien = s ? makeFighter(s, equipBonus(s)) : null;
+  const ligne = document.createElement('div');
+  ligne.className = 'bt-tech-mine';
+  ligne.textContent = mien
+    ? '💪 Toi : ' + mien.maxHp + ' PV · force ' + mien.atk + ' (équipement compris)'
+    : '';
+  box.appendChild(ligne);
+
+  const acq = document.createElement('div');
+  acq.className = 'bt-tech-list';
+  acq.textContent = acquises.length
+    ? acquises.map(id => TECHNIQUES.find(t => t.id === id).icon).join(' ') +
+      '  ' + acquises.length + '/' + TECHNIQUES.length + ' techniques'
+    : 'Aucune technique — elles s\'acquièrent en jouant.';
+  box.appendChild(acq);
+
+  const suivante = TECHNIQUES.find(t => !acquises.includes(t.id));
+  if (suivante) {
+    const nx = document.createElement('div');
+    nx.className = 'bt-tech-next';
+    nx.textContent = '→ ' + suivante.icon + ' ' + suivante.name + ' : ' + suivante.cond;
+    nx.title = suivante.desc;
+    box.appendChild(nx);
+  }
 }
 
 /** Jauge d'élan : « ⚡⚡· » — la ressource doit se LIRE, sinon on choisit à l'aveugle. */

@@ -34,18 +34,24 @@ export function hashSeed(str) {
 const STAGE_BONUS = { baby: 0, child: 15, adult: 30 };
 const STAGE_ATK = { baby: 0, child: 3, adult: 6 };
 
-/** Construit un combattant depuis un état de loutre (ou une carte décodée). */
-export function makeFighter(o) {
+/**
+ * Construit un combattant depuis un état de loutre (ou une carte décodée).
+ * `bonus` est l'équipement porté (chapeau, pelage, trésor) : jusqu'à la v3.63 il
+ * n'avait AUCUN effet en duel — on collectionnait des objets qui ne servaient
+ * qu'aux jauges. Désormais pv/atq/vit s'y appliquent, donc s'équiper compte.
+ */
+export function makeFighter(o, bonus) {
   const stage = o.stage === 'adult' ? 'adult' : o.stage === 'child' ? 'child' : 'baby';
-  const hp = 40 + STAGE_BONUS[stage] + Math.round((o.health ?? 80) * 0.3);
+  const b = bonus || {};
+  const hp = Math.round((40 + STAGE_BONUS[stage] + Math.round((o.health ?? 80) * 0.3)) * (b.pv || 1));
   return {
     name: (o.name || 'Loutre mystère').slice(0, 12),
     stage,
     fur: o.fur || 'roux',
     hat: o.hat || null,
     maxHp: hp, hp,
-    atk: 8 + Math.round((o.fun ?? 60) * 0.08) + STAGE_ATK[stage],
-    spd: Math.round(o.energy ?? 50)
+    atk: Math.round((8 + Math.round((o.fun ?? 60) * 0.08) + STAGE_ATK[stage]) * (b.atq || 1)),
+    spd: Math.round((o.energy ?? 50) * (b.vit || 1))
   };
 }
 
@@ -152,10 +158,11 @@ export function frappeDamage(att, elan, mult = 1) {
   return Math.max(1, Math.round(att.atk * (0.30 + 0.55 * elan) * mult));
 }
 
-export function newBattle(meState, foeCard, seedStr) {
+export function newBattle(meState, foeCard, seedStr, opts) {
   const seed = hashSeed(seedStr || (encodeCard(meState) + JSON.stringify(foeCard)));
+  const o = opts || {};
   const b = {
-    me: makeFighter(meState),
+    me: makeFighter(meState, o.bonus),
     foe: makeFighter(foeCard),
     rng: makeRng(seed),      // conservé pour la compatibilité : le duel ne s'en sert plus
     round: 1,
@@ -164,26 +171,57 @@ export function newBattle(meState, foeCard, seedStr) {
     winner: null,
     lastMine: null,          // ce que l'adversaire a vu de nous au tour d'avant
     lastTheirs: null,        // et ce qu'elle a joué
-    hist: []                 // nos deux derniers coups : ce qu'elle lit pour prédire
+    hist: [],                // nos deux derniers coups : ce qu'elle lit pour prédire
+    buffs: o.buffs || {},    // techniques acquises : ce que le jeu a appris à la loutre
+    souffleUse: false        // le second souffle ne se déclenche qu'une fois
   };
-  b.me.elan = 0; b.foe.elan = 0;
+  // Difficulté de l'adversaire, appliquée aux STATISTIQUES et non aux jauges :
+  // celles-ci sont plafonnées à 100, si bien qu'un multiplicateur de 1,45 y
+  // saturait et que les « championnes » n'étaient guère plus fortes qu'une
+  // sauvage. C'est ici qu'une épreuve devient vraiment une épreuve.
+  if (o.foeMult && o.foeMult !== 1) {
+    b.foe.maxHp = Math.round(b.foe.maxHp * o.foeMult);
+    b.foe.hp = b.foe.maxHp;
+    b.foe.atk = Math.round(b.foe.atk * o.foeMult);
+  }
+  b.me.elanMax = Math.max(ELAN_MAX, b.buffs.elanMax || 0);
+  b.foe.elanMax = ELAN_MAX;
+  b.me.elan = Math.min(b.me.elanMax, b.buffs.elanDepart || 0);
+  b.foe.elan = 0;
   return b;
 }
 
+/** Applique les techniques du joueur : sa force en attaque, sa cuirasse en défense. */
+function ajuste(b, att, def, brut) {
+  let d = brut;
+  if (att === b.me && b.buffs.force) d *= b.buffs.force;
+  if (def === b.me && b.buffs.encaisse) d *= b.buffs.encaisse;
+  return Math.max(1, Math.round(d));
+}
+
 function frapper(b, att, def, mult, note) {
-  const dmg = frappeDamage(att, att.elan, mult);
+  const dmg = ajuste(b, att, def, frappeDamage(att, att.elan, mult));
   att.elan = 0;                                   // le coup dépense toute la charge
   def.hp = Math.max(0, def.hp - dmg);
   b.log.push(att.name + ' place un coup de queue' + (note || '') + ' — ' + dmg + ' dégâts !');
   return dmg;
 }
 
+/** Le seuil d'élan à partir duquel une charge traverse une esquive (jamais modifié :
+ *  l'abaisser rendait la frappe imparable et effondrait le triangle). */
+const SEUIL_PERCEE = 2;
+/** Ce qui reste des dégâts quand une charge lourde traverse une esquive. */
+function forcePercee(b, who) {
+  return who === b.me && b.buffs.perceeForce ? b.buffs.perceeForce : 0.5;
+}
+
 function charger(b, who) {
-  if (who.elan < ELAN_MAX) {
+  const max = who.elanMax || ELAN_MAX;
+  if (who.elan < max) {
     who.elan++;
-    b.log.push(who.name + ' prend son élan (⚡' + who.elan + '/' + ELAN_MAX + ')');
+    b.log.push(who.name + ' prend son élan (⚡' + who.elan + '/' + max + ')');
   } else {
-    b.log.push(who.name + ' est déjà à pleine charge (⚡' + ELAN_MAX + ')');
+    b.log.push(who.name + ' est déjà à pleine charge (⚡' + max + ')');
   }
   const soin = Math.min(who.maxHp - who.hp, 4);   // on reprend son souffle
   if (soin > 0) who.hp += soin;
@@ -252,13 +290,13 @@ export function playTurn(b, myMoveId) {
     frapper(b, a, d, 1);
     if (d.hp > 0) frapper(b, d, a, 1);
   } else if (mine === 'frappe' && theirs === 'esquive') {
-    if (me.elan >= 2) {
+    if (me.elan >= SEUIL_PERCEE) {
       // une charge lourde ne s'esquive pas proprement : elle passe, atténuée.
       // Sans cette percée, un adversaire qui esquive rendait l'élan indépensable.
-      frapper(b, me, foe, 0.5, ' malgré l\'esquive');
+      frapper(b, me, foe, forcePercee(b, me), ' malgré l\'esquive');
     } else {
       me.elan = 0;
-      const riposte = Math.max(1, Math.round(foe.atk * 0.5));
+      const riposte = ajuste(b, foe, me, foe.atk * 0.5);
       me.hp = Math.max(0, me.hp - riposte);
       b.log.push(foe.name + ' esquive et riposte — ' + riposte + ' dégâts !');
     }
@@ -267,11 +305,11 @@ export function playTurn(b, myMoveId) {
     foe.elan = 0;
     b.log.push(foe.name + ' perd sa charge !');
   } else if (mine === 'esquive' && theirs === 'frappe') {
-    if (foe.elan >= 2) {
-      frapper(b, foe, me, 0.5, ' malgré l\'esquive');
+    if (foe.elan >= SEUIL_PERCEE) {
+      frapper(b, foe, me, forcePercee(b, foe), ' malgré l\'esquive');
     } else {
       foe.elan = 0;
-      const riposte = Math.max(1, Math.round(me.atk * 0.5));
+      const riposte = ajuste(b, me, foe, me.atk * 0.5 * (b.buffs.riposte || 1));
       foe.hp = Math.max(0, foe.hp - riposte);
       b.log.push(me.name + ' esquive et riposte — ' + riposte + ' dégâts !');
     }
@@ -290,6 +328,13 @@ export function playTurn(b, myMoveId) {
   } else {                                        // elan / elan
     charger(b, me);
     charger(b, foe);
+  }
+
+  // Second souffle : dos au mur, la loutre retrouve un cran d'élan. Une fois.
+  if (b.buffs.secondSouffle && !b.souffleUse && me.hp > 0 && me.hp <= me.maxHp * 0.25) {
+    b.souffleUse = true;
+    me.elan = Math.min(me.elanMax || ELAN_MAX, me.elan + 1);
+    b.log.push('🌬️ ' + me.name + ' trouve un second souffle (⚡' + me.elan + ') !');
   }
 
   if (me.hp <= 0 || foe.hp <= 0) {

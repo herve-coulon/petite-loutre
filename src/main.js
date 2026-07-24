@@ -30,6 +30,7 @@ import { unlockedHats, hatById } from './accessories.js';
 import { unlockedFurs, unlockedDecors, equipBonus, furById } from './skins.js';
 import { newAchievements } from './achievements.js';
 import { encodeCard, decodeCard, newBattle, playTurn, wildFoe, makeFighter } from './battle.js';
+import { combatBuffs, unlockedTechniques, techniqueById } from './skills.js';
 import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
 import {
   TILE, WORLD_W, WORLD_H, START_ZONE, zoneById, zoneFinds, ZONE_INTRO,
@@ -505,6 +506,10 @@ function epreuvesGagnees() {
  * contient PAS le jour : la championne d'un lieu est toujours la même.
  */
 function carteGardienne(e) {
+  // La championne se cale sur la loutre NUE, jamais sur son équipement : sinon
+  // elle monterait avec lui et chaque trésor gagné ne servirait à rien. C'est
+  // précisément l'écart entre elle et la loutre équipée qui rend l'épreuve
+  // franchissable à force de jouer.
   const base = wildFoe(curLevel(), 'gardienne|' + e.zone, makeFighter(s));
   const up = (v) => Math.max(1, Math.min(100, Math.round(v * e.force)));
   return { ...base, name: e.nom, fur: e.fur, hat: null,
@@ -1695,11 +1700,13 @@ function boot() {
   // Combat de loutres : une sauvage à défier tout de suite (ou le code d'un ami)
   let wildRoll = 0;                       // change d'adversaire sans quitter l'écran
   // l'adversaire se cale sur la forme réelle de la loutre -> duels serrés
-  const rollWildFoe = () => wildFoe(curLevel(), 'wild|' + dayKey() + '|' + wildRoll, makeFighter(s));
+  const rollWildFoe = () => wildFoe(curLevel(), 'wild|' + dayKey() + '|' + wildRoll, makeFighter(s, equipBonus(s)));
   /** Lance un combat contre la carte donnée. */
-  const startBattle = (card, seed) => {
+  const startBattle = (card, seed, foeMult) => {
     if (!card) return;
-    battle = newBattle(s, card, seed);
+    // l'équipement porté ET les techniques apprises entrent enfin dans le duel
+    battle = newBattle(s, card, seed,
+      { bonus: equipBonus(s), buffs: combatBuffs(rec), foeMult: foeMult || 1 });
     battle.log.push('Le combat commence ! ' + battle.me.name + ' vs ' + battle.foe.name);
     rec.battles++;
     persistRec();
@@ -1714,7 +1721,7 @@ function boot() {
     if (!unlocked('battle')) { ui.log('⚔️ Les combats s\'ouvrent au niveau ' + UNLOCK_LEVEL.battle + ' ! ⭐'); return; }
     sfx.press();
     battle = null;
-    ui.renderBattleSetup(rollWildFoe(), s);
+    ui.renderBattleSetup(rollWildFoe(), s, rec);
     ui.showOverlay('ovl-battle');
   };
   $('b-battle').addEventListener('click', () => {
@@ -1723,8 +1730,8 @@ function boot() {
   });
   battleStarter = startBattle;   // les rencontres du monde peuvent lancer un combat
   $('bt-wild').addEventListener('click', () => startBattle(rollWildFoe(), 'wild|' + dayKey() + '|' + wildRoll));
-  $('bt-reroll').addEventListener('click', () => { wildRoll++; sfx.press(); ui.renderBattleSetup(rollWildFoe(), s); });
-  $('bt-again').addEventListener('click', () => { wildRoll++; ui.renderBattleSetup(rollWildFoe(), s); });
+  $('bt-reroll').addEventListener('click', () => { wildRoll++; sfx.press(); ui.renderBattleSetup(rollWildFoe(), s, rec); });
+  $('bt-again').addEventListener('click', () => { wildRoll++; ui.renderBattleSetup(rollWildFoe(), s, rec); });
   $('bt-close').addEventListener('click', () => { battle = null; epreuveEnCours = null; ui.hideOverlay('ovl-battle'); });
   $('bt-copy').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText($('bt-mycode').value); ui.toast('📋 Code copié !'); }

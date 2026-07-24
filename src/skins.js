@@ -9,22 +9,22 @@ import { COFFRE_ZONES } from './tilemap.js';
 export const FURS = [
   { id: 'roux', bonus: { }, icon: '🦦', name: 'Rousse classique', cond: 'Toujours disponible',
     test: () => true, map: null },
-  { id: 'choco', bonus: { fun: 1.08 }, icon: '🍫', name: 'Chocolat', cond: 'Servir 20 repas',
+  { id: 'choco', bonus: { pv: 1.05, fun: 1.08 }, icon: '🍫', name: 'Chocolat', cond: 'Servir 20 repas',
     test: r => r.mealsTotal >= 20, map: { B: '#5d3a22', C: '#c9a06b', D: '#2a1a0e' } },
-  { id: 'doree', bonus: { xp: 1.10 }, icon: '✨', name: 'Dorée', cond: 'Attraper 50 poissons',
+  { id: 'doree', bonus: { atq: 1.05, xp: 1.10 }, icon: '✨', name: 'Dorée', cond: 'Attraper 50 poissons',
     test: r => r.fishTotal >= 50, map: { B: '#c99a3d', C: '#f4e3b2', D: '#6b4e1a' } },
-  { id: 'neige', bonus: { coldResist: 0.45 }, icon: '❄️', name: 'Neige', cond: 'Donner 25 bains',
+  { id: 'neige', bonus: { pv: 1.10, coldResist: 0.45 }, icon: '❄️', name: 'Neige', cond: 'Donner 25 bains',
     test: r => r.bathsTotal >= 25, map: { B: '#d3dfe9', C: '#ffffff', D: '#4f6170' } },
-  { id: 'nuit', bonus: { energy: 1.12 }, icon: '🌙', name: 'Bleu nuit', cond: 'Dormir 20 fois',
+  { id: 'nuit', bonus: { vit: 1.10, energy: 1.12 }, icon: '🌙', name: 'Bleu nuit', cond: 'Dormir 20 fois',
     test: r => r.sleepsTotal >= 20, map: { B: '#3d4c6e', C: '#9fb0d0', D: '#1c2438' } },
-  { id: 'bonbon', bonus: { luck: 1.18 }, icon: '🍬', name: 'Rose bonbon', cond: 'Gagner 3 combats',
+  { id: 'bonbon', bonus: { atq: 1.06, luck: 1.18 }, icon: '🍬', name: 'Rose bonbon', cond: 'Gagner 3 combats',
     test: r => r.wins >= 3, map: { B: '#d97ba6', C: '#f7d4e3', D: '#7a3a58' } },
-  { id: 'braise', bonus: { heatResist: 0.5 }, icon: '🔥', name: 'Braise', cond: 'Série de 7 jours d\'affilée',
+  { id: 'braise', bonus: { atq: 1.08, heatResist: 0.5 }, icon: '🔥', name: 'Braise', cond: 'Série de 7 jours d\'affilée',
     test: r => (r.streakBest || 0) >= 7, map: { B: '#b5502a', C: '#f2b28c', D: '#571d0c' } },
   // Récompense de collection : le pelage ne s'achète ni ne se farme, il se
   // MÉRITE en vidant les six coffres de la vallée. C'est la seule trace qu'on
   // porte sur soi en permanence — d'où le choix d'un pelage plutôt qu'un objet.
-  { id: 'tresor', bonus: { luck: 1.25, xp: 1.10 }, icon: '🧰', name: 'Reflet de trésor',
+  { id: 'tresor', bonus: { pv: 1.15, atq: 1.05, luck: 1.25, xp: 1.10 }, icon: '🧰', name: 'Reflet de trésor',
     cond: 'Ouvrir les ' + COFFRE_ZONES.length + ' coffres de la vallée',
     test: r => (r.chests || []).length >= COFFRE_ZONES.length,
     map: { B: '#2f7f86', C: '#9fe6dd', D: '#12454c' } }

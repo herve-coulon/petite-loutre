@@ -588,3 +588,10 @@ input#name-input:focus{border-color:var(--teal);}
 /* Duel : l'élan est la ressource qui porte la décision, il doit se lire d'un coup d'œil. */
 .bt-elan{display:block; margin-top:3px; font-size:11px; letter-spacing:2px; color:#c9a24b;}
 .bt-tip{margin:2px 0 6px; text-align:center; opacity:.75; font-size:10px;}
+
+/* Duel : ce que la loutre vaut, ce qu'elle sait faire, et le palier suivant.
+   Sans le palier suivant, un combat perdu passerait pour une impasse. */
+.bt-tech{margin:6px 0 10px; text-align:center; line-height:1.5;}
+.bt-tech-mine{font-size:11px; font-weight:700; color:var(--ink);}
+.bt-tech-list{font-size:11px; color:rgba(38,54,78,.72);}
+.bt-tech-next{font-size:10px; color:var(--orange); font-weight:700;}

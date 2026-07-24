@@ -31,19 +31,19 @@ export const ITEMS = [
   { id: 'luciole',      emoji: '💫', name: 'Luciole apprivoisée',   rarity: 'rare',       drop: true,  bonus: { luck: 1.35 } },
   { id: 'ambre',        emoji: '🍯', name: 'Goutte d\'ambre',       rarity: 'rare',       drop: true,  bonus: { xp: 1.09 } },
   // ---- Épiques ----
-  { id: 'cristal',      emoji: '🔮', name: 'Cristal de rivière',    rarity: 'epique',     drop: false, bonus: { xp: 1.15 } },
-  { id: 'opale',        emoji: '🔷', name: 'Opale de rivière',      rarity: 'epique',     drop: false, bonus: { xp: 1.13, luck: 1.25 } },
-  { id: 'lune',         emoji: '🌙', name: 'Éclat de lune',         rarity: 'epique',     drop: false, bonus: { decay: 0.86, coldResist: 0.5 } },
-  { id: 'soleil',       emoji: '☀️', name: 'Éclat de soleil',       rarity: 'epique',     drop: false, bonus: { xp: 1.14, heatResist: 0.6 } },
+  { id: 'cristal',      emoji: '🔮', name: 'Cristal de rivière',    rarity: 'epique',     drop: false, bonus: { atq: 1.06, xp: 1.15 } },
+  { id: 'opale',        emoji: '🔷', name: 'Opale de rivière',      rarity: 'epique',     drop: false, bonus: { vit: 1.08, xp: 1.13, luck: 1.25 } },
+  { id: 'lune',         emoji: '🌙', name: 'Éclat de lune',         rarity: 'epique',     drop: false, bonus: { pv: 1.06, decay: 0.86, coldResist: 0.5 } },
+  { id: 'soleil',       emoji: '☀️', name: 'Éclat de soleil',       rarity: 'epique',     drop: false, bonus: { atq: 1.06, xp: 1.14, heatResist: 0.6 } },
   { id: 'amulette',     emoji: '🧿', name: 'Amulette des saisons',  rarity: 'epique',     drop: true,  bonus: { coldResist: 0.6, heatResist: 0.6 } },
   { id: 'boussole',     emoji: '🧭', name: 'Boussole d\'ambre',     rarity: 'epique',     drop: true,  bonus: { decay: 0.88 } },
   // ---- Légendaires ----
-  { id: 'diademe',      emoji: '💎', name: 'Diadème d\'écume',      rarity: 'legendaire', drop: false, bonus: { xp: 1.22, luck: 1.3 } },
-  { id: 'aurore',       emoji: '🌅', name: 'Cœur d\'aurore',        rarity: 'legendaire', drop: false, bonus: { xp: 1.2, decay: 0.88 } },
-  { id: 'etoilefilante', emoji: '🌠', name: 'Étoile filante',       rarity: 'legendaire', drop: false, bonus: { xp: 1.25, luck: 1.5 } },
-  { id: 'perle',        emoji: '⚪', name: 'Perle des profondeurs', rarity: 'legendaire', drop: true,  bonus: { xp: 1.2, decay: 0.92 } },
-  { id: 'coeur',        emoji: '💠', name: 'Cœur de la rivière',    rarity: 'legendaire', drop: true,  bonus: { decay: 0.82, coldResist: 0.8, heatResist: 0.8 } },
-  { id: 'larme',        emoji: '💧', name: 'Larme de la rivière',   rarity: 'legendaire', drop: true,  bonus: { decay: 0.8, coldResist: 0.7, heatResist: 0.7 } }
+  { id: 'diademe',      emoji: '💎', name: 'Diadème d\'écume',      rarity: 'legendaire', drop: false, bonus: { atq: 1.12, xp: 1.22, luck: 1.3 } },
+  { id: 'aurore',       emoji: '🌅', name: 'Cœur d\'aurore',        rarity: 'legendaire', drop: false, bonus: { pv: 1.12, xp: 1.2, decay: 0.88 } },
+  { id: 'etoilefilante', emoji: '🌠', name: 'Étoile filante',       rarity: 'legendaire', drop: false, bonus: { atq: 1.15, xp: 1.25, luck: 1.5 } },
+  { id: 'perle',        emoji: '⚪', name: 'Perle des profondeurs', rarity: 'legendaire', drop: true,  bonus: { pv: 1.10, xp: 1.2, decay: 0.92 } },
+  { id: 'coeur',        emoji: '💠', name: 'Cœur de la rivière',    rarity: 'legendaire', drop: true,  bonus: { pv: 1.15, atq: 1.10, decay: 0.82, coldResist: 0.8, heatResist: 0.8 } },
+  { id: 'larme',        emoji: '💧', name: 'Larme de la rivière',   rarity: 'legendaire', drop: true,  bonus: { vit: 1.15, pv: 1.08, decay: 0.8, coldResist: 0.7, heatResist: 0.7 } }
 ];
 
 // Paliers garantis : atteindre CE niveau octroie le trésor (étalés sur les 50
@@ -74,7 +74,8 @@ export function bonusOf(gearId) {
  */
 export function mergeBonus(...bonuses) {
   const out = {};
-  const MULT = ['xp', 'luck', 'fun', 'energy'];
+  // pv/atq/vit : les stats de DUEL. Sans elles, l'équipement ne servait qu'aux jauges.
+  const MULT = ['xp', 'luck', 'fun', 'energy', 'pv', 'atq', 'vit'];
   for (const b of bonuses) {
     if (!b) continue;
     for (const k of MULT) if (b[k]) out[k] = (out[k] || 1) * b[k];
@@ -112,6 +113,9 @@ export function describeBonus(bonus) {
   if (bonus.xp) parts.push('+' + Math.round((bonus.xp - 1) * 100) + '% XP');
   if (bonus.decay) parts.push('jauges ' + Math.round((1 - bonus.decay) * 100) + '% plus lentes');
   if (bonus.luck) parts.push('+' + Math.round((bonus.luck - 1) * 100) + '% de chance');
+  if (bonus.pv) parts.push('+' + Math.round((bonus.pv - 1) * 100) + '% PV en duel');
+  if (bonus.atq) parts.push('+' + Math.round((bonus.atq - 1) * 100) + '% d\'attaque');
+  if (bonus.vit) parts.push('+' + Math.round((bonus.vit - 1) * 100) + '% de vitesse');
   if (bonus.coldResist || bonus.heatResist) parts.push('résiste au froid et à la chaleur');
   return parts.join(' · ') || 'porte-bonheur';
 }

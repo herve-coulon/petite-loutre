@@ -1,6 +1,6 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v3.62.0';
+const VERSION = 'v3.63.0';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [
@@ -18,6 +18,7 @@ const PRECACHE = [
   './src/achievements.js',
   './src/skins.js',
   './src/battle.js',
+  './src/skills.js',
   './src/quests.js',
   './src/level.js',
   './src/streak.js',
