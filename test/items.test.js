@@ -1,11 +1,11 @@
 // Tests v3.8 : trésors rares (raretés, paliers, drops, bonus). Pur + intégration moteur.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { HATS } from '../src/accessories.js';
-import { FURS, DECORS, equipBonus } from '../src/skins.js';
+import { HATS, unlockedHats } from '../src/accessories.js';
+import { FURS, DECORS, equipBonus, unlockedFurs, unlockedDecors } from '../src/skins.js';
 
 import {
-  RARITIES, ITEMS, MILESTONES, itemById, milestoneItem, bonusOf, rollDrop, describeBonus, mergeBonus } from '../src/items.js';
+  RARITIES, ITEMS, MILESTONES, itemById, milestoneItem, bonusOf, rollDrop, describeBonus, mergeBonus, cosmeticPrice } from '../src/items.js';
 import { stepSim } from '../src/sim.js';
 import { newState } from '../src/state.js';
 import { H } from '../src/constants.js';
@@ -180,4 +180,41 @@ test('décor : chaque décor déblocable porte un effet (sauf le décor par déf
   const avecEffet = DECORS.filter(d => d.bonus && Object.keys(d.bonus).length);
   assert.equal(avecEffet.length, DECORS.length - 1, 'seul « Berge nature » reste neutre');
   assert.deepEqual(DECORS[0].bonus, undefined, 'le décor par défaut ne donne rien');
+});
+
+/* ---------------- Boutique de gemmes (prix des cosmétiques) ---------------- */
+
+test('prix des cosmétiques : dérivé du bonus, borné, arrondi ; trophées non vendus', () => {
+  // les cosmétiques toujours disponibles ne coûtent rien
+  assert.equal(cosmeticPrice(FURS.find(f => f.id === 'roux').bonus), 0, 'la rousse est gratuite');
+  assert.equal(cosmeticPrice(DECORS.find(d => d.id === 'aucun').bonus), 0, 'la berge nature est gratuite');
+  assert.equal(cosmeticPrice(null), 0, 'pas de bonus -> pas de prix');
+
+  // tout cosmétique VENDABLE a un prix fini, positif, arrondi à 5, dans une fourchette saine
+  const vendables = [...HATS, ...FURS, ...DECORS]
+    .filter(it => !it.earnOnly && it.bonus && Object.keys(it.bonus).length);
+  assert.ok(vendables.length >= 10, 'la boutique doit proposer de quoi dépenser');
+  for (const it of vendables) {
+    const p = cosmeticPrice(it.bonus);
+    assert.ok(Number.isFinite(p) && p > 0 && p <= 150, it.id + ' : prix aberrant (' + p + ')');
+    assert.equal(p % 5, 0, it.id + ' : prix non arrondi à 5 (' + p + ')');
+  }
+
+  // plus le bonus renforce la loutre, plus il coûte cher
+  assert.ok(cosmeticPrice({ xp: 1.20, atq: 1.10 }) > cosmeticPrice({ xp: 1.05 }),
+    'un bonus plus fort doit coûter plus cher');
+
+  // les récompenses de collection restent des trophées : ni farmables, ni achetables
+  assert.ok(HATS.find(h => h.id === 'laurier').earnOnly, 'le laurier reste un trophée');
+  assert.ok(FURS.find(f => f.id === 'tresor').earnOnly, 'le pelage trésor reste un trophée');
+});
+
+test('déblocage : un cosmétique ACHETÉ compte comme débloqué (au même titre qu\'un mérité)', () => {
+  const vierge = { xp: 0 };                    // aucun exploit, aucun achat
+  assert.ok(!unlockedFurs(vierge).includes('choco'), 'chocolat verrouillé sans exploit ni achat');
+  assert.ok(unlockedFurs({ xp: 0, bought: ['choco'] }).includes('choco'), 'chocolat débloqué une fois acheté');
+  assert.ok(unlockedHats({ xp: 0, bought: ['beret'] }).includes('beret'), 'béret débloqué une fois acheté');
+  assert.ok(unlockedDecors({ xp: 0, bought: ['nenuphars'] }).includes('nenuphars'), 'nénuphars débloqués une fois achetés');
+  // le mérité marche toujours sans rien acheter
+  assert.ok(unlockedFurs({ xp: 0, mealsTotal: 20 }).includes('choco'), 'chocolat encore mérité en servant 20 repas');
 });

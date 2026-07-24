@@ -27,7 +27,7 @@ import { sfx, vibrate, setMuted, setVolume, getVolume } from './audio.js';
 import * as ui from './ui.js';
 import { registerSW, setupInstall, requestPersistentStorage, isIOS, isStandalone } from './pwa.js';
 import { unlockedHats, hatById } from './accessories.js';
-import { unlockedFurs, unlockedDecors, equipBonus, furById } from './skins.js';
+import { unlockedFurs, unlockedDecors, equipBonus, furById, decorById } from './skins.js';
 import { newAchievements } from './achievements.js';
 import { encodeCard, decodeCard, newBattle, playTurn, wildFoe, makeFighter } from './battle.js';
 import { combatBuffs, jeuBuffs, unlockedTechniques, techniqueById } from './skills.js';
@@ -43,7 +43,7 @@ import {
 import { makeCard, CARD_URL } from './photocard.js';
 import { nextBeat, markSeen, coachStep } from './story.js';
 import { seasonFor, seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
-import { ITEMS, RARITIES, itemById, bonusOf, rollDrop, milestoneItem, describeBonus } from './items.js';
+import { ITEMS, RARITIES, itemById, bonusOf, rollDrop, milestoneItem, describeBonus, cosmeticPrice } from './items.js';
 import { pickTrait, traitById, isFavorite, favoriteLine, bondGain, bondLevel } from './personality.js';
 
 const $ = id => document.getElementById(id);
@@ -2070,8 +2070,43 @@ function boot() {
       s.gear = (s.gear === id ? null : id); // touché à nouveau = retirer
       sfx.press(); vibrate(10); persist();
       ui.renderWardrobe(s, rec, wardrobeHandlers);
-    }
+    },
+    // Acheter un cosmétique avec des gemmes : la voie « impatiente », en plus de
+    // l'exploit. On équipe dans la foulée — la récompense doit être immédiate.
+    onBuyHat(id) { buyCosmetic(hatById(id), unlockedHats, (i) => { s.hat = i; }); },
+    onBuyFur(id) { buyCosmetic(furById(id), unlockedFurs, (i) => { s.fur = i; }); },
+    onBuyDecor(id) { buyCosmetic(decorById(id), unlockedDecors, (i) => { s.decor = i; }); }
   };
+
+  /**
+   * Achat d'un cosmétique en gemmes. Refuse les trophées (earnOnly) et les
+   * emplettes déjà à soi ; débite, inscrit dans rec.bought, équipe aussitôt.
+   * On réaligne prevHats/prevFurs pour que checkUnlocks ne le ré-annonce pas
+   * comme un cadeau — on vient de le PAYER.
+   */
+  function buyCosmetic(item, unlockedFn, equip) {
+    if (!s || !rec || !item || item.earnOnly) return;
+    if (item.id && unlockedFn(rec).includes(item.id)) return;   // déjà débloqué
+    const prix = cosmeticPrice(item.bonus);
+    if (prix <= 0) return;
+    if ((rec.gems || 0) < prix) {
+      ui.toast('💎 Pas assez de gemmes — il en faut ' + prix + '.'); sfx.sad(); vibrate(20);
+      return;
+    }
+    rec.gems -= prix;
+    (rec.bought = rec.bought || []).push(item.id);
+    equip(item.id);                                             // satisfaction immédiate
+    prevHats = new Set(unlockedHats(rec));
+    prevFurs = new Set(unlockedFurs(rec));
+    persist(); persistRec();
+    sfx.levelup(); vibrate([20, 40, 20]);
+    if (s && !s.gameOver && s.stage !== 'egg') R.burst('sparkle', 12, s.stage);
+    ui.toast(item.icon + ' Acheté : ' + item.name + ' ! (−' + prix + ' 💎)');
+    ui.renderLevel(rec);
+    ui.renderWardrobe(s, rec, wardrobeHandlers);
+  }
+  // exposé pour les tests (le banc jsdom pilote l'achat via ces gestionnaires)
+  if (window.__loutre) window.__loutre.__wardrobeHandlers = wardrobeHandlers;
   // La garde-robe s'ouvre SUR L'ONGLET voulu : chaque slot du profil est un
   // raccourci distinct (chapeau, pelage, décor, trésors) — plus un doublon.
   const openWardrobe = (tab) => {

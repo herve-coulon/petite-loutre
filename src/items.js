@@ -115,6 +115,25 @@ export function rollDrop(rnd, luck = 1) {
   return DROPPABLE[DROPPABLE.length - 1].id;
 }
 
+/**
+ * PRIX D'UN COSMÉTIQUE, en gemmes, DÉRIVÉ de son bonus. Un seul barème pour
+ * chapeaux, pelages et décors : plus un cosmétique renforce la loutre, plus il
+ * coûte cher. On dérive plutôt que de coder un prix par objet, pour qu'aucun
+ * ajout futur ne parte sans étiquette et que prix affiché == prix débité.
+ * Les multiplicateurs (>1) pèsent le plus ; les résistances et la lenteur des
+ * jauges (decay <1) comptent aussi. Résultat arrondi à 5 gemmes, borné.
+ */
+export function cosmeticPrice(bonus) {
+  if (!bonus) return 0;
+  let poids = 0;
+  for (const [k, v] of Object.entries(bonus)) {
+    if (k === 'decay') poids += Math.max(0, 1 - v) * 260;             // jauges plus lentes
+    else if (k === 'coldResist' || k === 'heatResist') poids += v * 70;
+    else poids += Math.max(0, v - 1) * 200;                          // xp/atq/pv/vit/luck/fun/energy…
+  }
+  return Math.max(0, Math.min(150, Math.round(poids / 5) * 5));
+}
+
 /** Texte court du bonus, pour la garde-robe. */
 export function describeBonus(bonus) {
   const parts = [];

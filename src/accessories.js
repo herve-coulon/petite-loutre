@@ -43,7 +43,7 @@ export const HATS = [
     // championnes de la vallée. Le laurier se voit sur la tête, partout —
     // c'est le trophée qu'on porte plutôt qu'on range.
     id: 'laurier', bonus: { atq: 1.15, xp: 1.18, fun: 1.10 }, icon: '🥇', name: 'Laurier des épreuves',
-    cond: 'Battre les ' + EPREUVE_ZONES.length + ' championnes de la vallée',
+    cond: 'Battre les ' + EPREUVE_ZONES.length + ' championnes de la vallée', earnOnly: true,
     test: r => (r.epreuves || []).length >= EPREUVE_ZONES.length,
     // laurier DORÉ : la palette des sprites n'a pas de vert (G y est un gris
     // bleuté), et un laurier grisâtre n'aurait rien d'un trophée
@@ -116,5 +116,7 @@ export function hatById(id) {
 }
 
 export function unlockedHats(rec) {
-  return HATS.filter(h => h.test(rec)).map(h => h.id);
+  // mérité (exploit) OU acheté avec des gemmes — les deux voies se valent
+  const bought = Array.isArray(rec.bought) ? rec.bought : [];
+  return HATS.filter(h => h.test(rec) || bought.includes(h.id)).map(h => h.id);
 }

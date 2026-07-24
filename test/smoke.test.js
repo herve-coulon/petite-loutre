@@ -915,3 +915,37 @@ test('confins : chaque trouvaille lointaine paie vraiment (pas de ramassage à v
     assert.ok(gain > 0, kind + ' : ramassage à vide — ni gemme ni XP');
   }
 });
+
+test('boutique : acheter un chapeau en gemmes le débloque et l\'équipe ; sans gemmes, refus', () => {
+  // Les cosmétiques se gagnent par exploit OU s'achètent avec les gemmes des
+  // confins. On vérifie la voie « gemmes » de bout en bout.
+  L.state.gameOver = false; L.state.away = false; L.state.stage = 'adult';
+  L.state.hat = null;
+  // un chapeau qu'aucun exploit n'a débloqué (compteurs bas -> 'noeud' verrouillé)
+  Object.assign(L.records, {
+    bought: [], mealsTotal: 0, gamesTotal: 0, bathsTotal: 0,
+    wins: 0, sleepsTotal: 0, epreuves: [], bestAge: 0, xp: 0
+  });
+
+  const handlers = L.__wardrobeHandlers;
+
+  // pas assez de gemmes : l'achat est refusé, rien ne bouge
+  L.records.gems = 0;
+  assert.ok(handlers && handlers.onBuyHat, 'les gestionnaires d\'achat existent');
+  handlers.onBuyHat('noeud');
+  assert.ok(!(L.records.bought || []).includes('noeud'), 'sans gemmes : pas d\'achat');
+  assert.equal(L.state.hat, null, 'et rien d\'équipé');
+
+  // assez de gemmes : achat, débit, déblocage, équipement
+  L.records.gems = 200;
+  handlers.onBuyHat('noeud');
+  assert.ok((L.records.bought || []).includes('noeud'), 'le chapeau est acheté');
+  assert.ok(L.records.gems < 200, 'les gemmes ont été débitées');
+  assert.equal(L.state.hat, 'noeud', 'et il est équipé dans la foulée');
+
+  // un trophée (laurier) ne s'achète jamais, même riche
+  const gemsAvant = L.records.gems;
+  handlers.onBuyHat('laurier');
+  assert.ok(!(L.records.bought || []).includes('laurier'), 'un trophée ne s\'achète pas');
+  assert.equal(L.records.gems, gemsAvant, 'et aucune gemme n\'est prélevée');
+});

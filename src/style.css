@@ -529,6 +529,10 @@ input#name-input:focus{border-color:var(--teal);}
 .row-item small{display:block; color:var(--dim); font-size:11px; margin-top:2px;}
 .row-item .tag{flex:none; font-size:12px; color:var(--teal);}
 .row-item.locked{opacity:.5; cursor:default;}
+/* verrouillé mais ACHETABLE : on le remet en avant et on le rend cliquable */
+.row-item.buyable{opacity:.9; cursor:pointer; border-color:var(--gold);}
+.row-item .tag.price{color:#b8860b; font-weight:700; white-space:nowrap;}
+.row-item .tag.price.short{color:var(--dim); font-weight:400;}
 .row-item.equipped{border-color:var(--teal); box-shadow:0 0 0 1px var(--teal) inset;}
 .ovl textarea{width:100%; background:#fff8e6; border:2px solid var(--ink); color:var(--ink);
   font-family:inherit; font-size:12px; padding:7px; resize:none; border-radius:6px;

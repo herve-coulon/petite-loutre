@@ -8,7 +8,7 @@ import { ACHIEVEMENTS } from './achievements.js';
 import { dailyQuests, dayKey } from './quests.js';
 import { dailyEvent } from './events.js';
 import { seasonInfo } from './seasons.js';
-import { ITEMS, RARITIES, MILESTONES, describeBonus, itemById } from './items.js';
+import { ITEMS, RARITIES, MILESTONES, describeBonus, itemById, cosmeticPrice } from './items.js';
 import { traitById, bondLevel } from './personality.js';
 import { gangPower, fighterPower, MAX_MEMBERS } from './gang.js';
 import { makeFighter, encodeCard, ELAN_MAX } from './battle.js';
@@ -553,17 +553,29 @@ export function fmtDur(ms) {
 }
 
 /* ---------------- Garde-robe (chapeaux, pelages, décors) ---------------- */
-function sectionRows(list, items, unlocked, currentId, onPick, removable) {
+function sectionRows(list, items, unlocked, currentId, onPick, removable, rec, onBuy) {
+  const gems = (rec && rec.gems) || 0;
   for (const it of items) {
     const ok = unlocked.includes(it.id);
     const on = currentId === it.id;
+    // un cosmétique verrouillé et non-trophée peut s'ACHETER avec des gemmes
+    const prix = (!ok && !it.earnOnly) ? cosmeticPrice(it.bonus) : 0;
+    const achetable = !ok && !it.earnOnly && prix > 0;
+    const abordable = achetable && gems >= prix;
+
     const btn = document.createElement('button');
-    btn.className = 'row-item' + (ok ? '' : ' locked') + (on ? ' equipped' : '');
+    btn.className = 'row-item' + (ok ? '' : ' locked') + (abordable ? ' buyable' : '') + (on ? ' equipped' : '');
+    let sub;
+    if (ok) sub = on ? (removable ? 'Touché pour retirer' : 'Actuel') : 'Touché pour choisir';
+    else if (achetable) sub = it.cond + ' — ou ' + (abordable ? 'touche pour acheter' : 'gemmes manquantes');
+    else sub = it.cond;                                   // trophée : se mérite, point
+    const tag = on ? '<span class="tag">✓</span>'
+      : achetable ? '<span class="tag price' + (abordable ? '' : ' short') + '">💎 ' + prix + '</span>' : '';
     btn.innerHTML =
       '<span class="ic2">' + (ok ? it.icon : '🔒') + '</span>' +
-      '<div>' + it.name + '<small>' + (ok ? (on ? (removable ? 'Touché pour retirer' : 'Actuel') : 'Touché pour choisir') : it.cond) + '</small></div>' +
-      (on ? '<span class="tag">✓</span>' : '');
+      '<div>' + it.name + '<small>' + sub + '</small></div>' + tag;
     if (ok) btn.addEventListener('click', () => onPick(it.id));
+    else if (abordable && onBuy) btn.addEventListener('click', () => onBuy(it.id));
     list.appendChild(btn);
   }
 }
@@ -616,18 +628,19 @@ export function renderWardrobe(s, rec, h, tab) {
     const p = document.createElement('p'); p.className = 'small'; p.textContent = t;
     list.appendChild(p);
   };
+  const solde = '   ·   💎 ' + ((rec && rec.gems) || 0);
   if (wardrobeTab === 'tresors') {
     caption('Trésors trouvés : ' + ((rec.items || []).length) + ' / ' + ITEMS.length);
     treasureRows(list, s, rec, h.onGear);
   } else if (wardrobeTab === 'hats') {
-    caption('Chapeaux — débloqués par tes exploits');
-    sectionRows(list, HATS, unlockedHats(rec), s && s.hat, h.onHat, true);
+    caption('Chapeaux — mérités par tes exploits, ou achetés en gemmes' + solde);
+    sectionRows(list, HATS, unlockedHats(rec), s && s.hat, h.onHat, true, rec, h.onBuyHat);
   } else if (wardrobeTab === 'furs') {
-    caption('Pelages');
-    sectionRows(list, FURS, unlockedFurs(rec), s && s.fur, h.onFur, false);
+    caption('Pelages' + solde);
+    sectionRows(list, FURS, unlockedFurs(rec), s && s.fur, h.onFur, false, rec, h.onBuyFur);
   } else {
-    caption('Décor de berge');
-    sectionRows(list, DECORS, unlockedDecors(rec), s && s.decor, h.onDecor, false);
+    caption('Décor de berge' + solde);
+    sectionRows(list, DECORS, unlockedDecors(rec), s && s.decor, h.onDecor, false, rec, h.onBuyDecor);
   }
 }
 

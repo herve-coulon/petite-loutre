@@ -25,7 +25,7 @@ export const FURS = [
   // MÉRITE en vidant les six coffres de la vallée. C'est la seule trace qu'on
   // porte sur soi en permanence — d'où le choix d'un pelage plutôt qu'un objet.
   { id: 'tresor', bonus: { pv: 1.15, atq: 1.05, luck: 1.25, xp: 1.10 }, icon: '🧰', name: 'Reflet de trésor',
-    cond: 'Ouvrir les ' + COFFRE_ZONES.length + ' coffres de la vallée',
+    cond: 'Ouvrir les ' + COFFRE_ZONES.length + ' coffres de la vallée', earnOnly: true,
     test: r => (r.chests || []).length >= COFFRE_ZONES.length,
     map: { B: '#2f7f86', C: '#9fe6dd', D: '#12454c' } }
 ];
@@ -47,8 +47,12 @@ export const DECORS = [
 
 export const furById = id => FURS.find(f => f.id === id) || FURS[0];
 export const decorById = id => DECORS.find(d => d.id === id) || DECORS[0];
-export const unlockedFurs = rec => FURS.filter(f => f.test(rec)).map(f => f.id);
-export const unlockedDecors = rec => DECORS.filter(d => d.test(rec)).map(d => d.id);
+// « débloqué » = MÉRITÉ (achievement) OU ACHETÉ avec des gemmes. Les deux voies
+// se valent : on gagne un cosmétique en jouant, ou on l'obtient plus tôt en
+// dépensant les gemmes amassées dans les confins.
+const estAchete = (rec, id) => Array.isArray(rec.bought) && rec.bought.includes(id);
+export const unlockedFurs = rec => FURS.filter(f => f.test(rec) || estAchete(rec, f.id)).map(f => f.id);
+export const unlockedDecors = rec => DECORS.filter(d => d.test(rec) || estAchete(rec, d.id)).map(d => d.id);
 
 /**
  * Tous les bonus portés par la loutre : trésor équipé + chapeau + pelage.
