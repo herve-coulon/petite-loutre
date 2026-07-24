@@ -32,7 +32,7 @@ import { newAchievements } from './achievements.js';
 import { encodeCard, decodeCard, newBattle, playTurn, wildFoe, makeFighter } from './battle.js';
 import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
 import {
-  TILE, WORLD_W, WORLD_H, START_ZONE, zoneById, zoneFinds,
+  TILE, WORLD_W, WORLD_H, START_ZONE, zoneById, zoneFinds, ZONE_INTRO,
   moveWithCollision, spawnPoint, zoneExit, safeEntry, nearestFree
 } from './tilemap.js';
 import { makeCard, CARD_URL } from './photocard.js';
@@ -492,17 +492,34 @@ function collectFind(f) {
   ui.updateHUD(s, mg, rec);
 }
 
+const isVisited = id => !!rec && Array.isArray(rec.visited) && rec.visited.includes(id);
+
+/** Première venue dans un lieu : on marque la découverte et on la met en scène. */
+function discoverZone(zoneId) {
+  if (!rec || isVisited(zoneId)) return false;
+  (rec.visited = rec.visited || []).push(zoneId);
+  persistRec();
+  const intro = ZONE_INTRO[zoneId];
+  if (!intro) return false;
+  sfx.evolve(); vibrate([12, 40, 12]);
+  ui.showStory({ ...intro, cta: 'EXPLORER' });
+  return true;
+}
+
 /** Change de zone : nouvelle carte, nouvelles loutres, on entre par le bon bord. */
 function goToZone(zoneId, px, py) {
   const p = safeEntry(zoneId, px, py);
   world.zone = zoneId;
+  s.worldZone = zoneId;                 // pour que le profil sache où l'on est
   world.px = p.x; world.py = p.y; world.tx = p.x; world.ty = p.y;
   world.walking = false;
   world.otters = wildOttersFor(zoneId);
   world.finds = findsFor(zoneId);
-  ui.log('🗺️ ' + zoneById(zoneId).name);
-  ui.toast('🗺️ ' + zoneById(zoneId).name);
   sfx.press(); vibrate(8);
+  if (!discoverZone(zoneId)) {          // déjà connu : simple annonce
+    ui.log('🗺️ ' + zoneById(zoneId).name);
+    ui.toast('🗺️ ' + zoneById(zoneId).name);
+  }
 }
 
 /** Entre dans la vallée : engendre les loutres sauvages du jour et place tout le monde. */
@@ -514,10 +531,11 @@ function enterWorld() {
     zone, px: sp.x, py: sp.y, tx: sp.x, ty: sp.y,
     walking: false, facing: 1, otters: wildOttersFor(zone), finds: findsFor(zone)
   };
+  s.worldZone = zone;
   s.place = 'monde';
   sfx.press(); vibrate(8);
-  ui.log('🗺️ ' + (s.name || 'La loutre') + ' part explorer la vallée…');
   updatePlaceBtn(); persist();
+  if (!discoverZone(zone)) ui.log('🗺️ ' + (s.name || 'La loutre') + ' part explorer la vallée…');
 }
 
 /** Quitte la vallée, retour à la berge. */

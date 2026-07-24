@@ -13,6 +13,7 @@ import { traitById, bondLevel } from './personality.js';
 import { gangPower, fighterPower, MAX_MEMBERS } from './gang.js';
 import { makeFighter, encodeCard } from './battle.js';
 import { paintOtter } from './render.js';
+import { ZONES, ZONE_INTRO, zoneLayout } from './tilemap.js';
 
 const $ = id => document.getElementById(id);
 const setTxt = (id, v) => { const e = $(id); if (e) e.textContent = v; };
@@ -153,6 +154,43 @@ export function renderProfile(s, rec) {
   setTxt('prof-shell', fmtNum(rec.treatsTotal));
   setTxt('prof-gang', (gang && gang.name) ? ((gang.emblem || '🦦') + ' ' + gang.name) : 'Aucune');
   setTxt('prof-streak', streak);
+  // la carte de la vallée fait partie du profil : un seul point d'appel
+  renderValleyMap(rec, s.place === 'monde' ? (s.worldZone || null) : null);
+}
+
+/**
+ * Carte de la vallée : la disposition vient des liaisons réelles (zoneLayout),
+ * donc elle ne peut pas mentir sur la géographie. Les lieux non découverts
+ * restent des points d'interrogation — il reste quelque chose à trouver.
+ */
+export function renderValleyMap(rec, currentZone) {
+  const grid = $('pm-grid'); if (!grid) return;
+  const layout = zoneLayout();
+  const vus = (rec && rec.visited) || [];
+  const ids = Object.keys(ZONES);
+  const cols = Math.max(...Object.values(layout).map(p => p.col)) + 1;
+  const rows = Math.max(...Object.values(layout).map(p => p.row)) + 1;
+  setTxt('pm-count', vus.length + '/' + ids.length);
+  grid.innerHTML = '';
+  grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const id = ids.find(k => layout[k] && layout[k].col === c && layout[k].row === r);
+      const cell = document.createElement('div');
+      cell.className = 'pm-cell';
+      if (!id) { cell.classList.add('empty'); grid.appendChild(cell); continue; }
+      const connu = vus.includes(id);
+      const ici = id === currentZone;
+      if (!connu) cell.classList.add('unknown');
+      if (ici) cell.classList.add('here');
+      const ic = document.createElement('span'); ic.className = 'pm-ic';
+      ic.textContent = connu ? ((ZONE_INTRO[id] && ZONE_INTRO[id].emoji) || '📍') : '❔';
+      const nm = document.createElement('span'); nm.className = 'pm-nm';
+      nm.textContent = connu ? ZONES[id].name : '???';
+      cell.appendChild(ic); cell.appendChild(nm);
+      grid.appendChild(cell);
+    }
+  }
 }
 
 /** Écran Escouade : création du gang, ou gestion (membres, recrues, combat).

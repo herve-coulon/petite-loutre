@@ -302,6 +302,31 @@ export const ZONES = {
   }
 };
 
+/**
+ * L'arrivée dans un lieu, la PREMIÈRE fois : une petite carte qui plante le
+ * décor. Découvrir un endroit doit être un moment, pas une ligne de journal.
+ */
+export const ZONE_INTRO = {
+  clairiere: { emoji: '🌿', title: 'La clairière',
+    lines: ['La rivière descend en chantant entre les herbes hautes.',
+      'C\'est ici que tout commence — le cœur de la vallée.'] },
+  foret: { emoji: '🌲', title: 'La forêt',
+    lines: ['Les sapins se resserrent et la lumière se fait rare.',
+      'Sous les fougères, des champignons attendent d\'être trouvés.'] },
+  cascade: { emoji: '💧', title: 'La cascade',
+    lines: ['Un grondement d\'eau blanche : la chute qui nourrit la rivière.',
+      'Dans l\'écume, quelque chose scintille… et les loutres d\'ici sont coriaces.'] },
+  roseaux: { emoji: '🌾', title: 'Les roseaux',
+    lines: ['Un marais tranquille, criblé de mares peu profondes.',
+      'La vase garde de beaux coquillages pour qui prend le temps de chercher.'] },
+  lac: { emoji: '🏞️', title: 'Le grand lac',
+    lines: ['L\'eau s\'ouvre d\'un coup, immense et calme.',
+      'On raconte que le fond du lac cache des trésors.'] },
+  vallon: { emoji: '🌼', title: 'Le vallon',
+    lines: ['La vallée s\'adoucit en une prairie fleurie.',
+      'La rivière y coule sans se presser — un endroit pour souffler.'] }
+};
+
 /** Ce que chaque trouvaille montre à l'écran. */
 export const FIND_ICON = {
   poisson: '🐟', champignon: '🍄', gemme: '💎',

@@ -1,6 +1,6 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v3.49.0';
+const VERSION = 'v3.50.0';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [

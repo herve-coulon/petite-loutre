@@ -6,7 +6,7 @@ import {
   TILE, ZONES, START_ZONE, zoneById, MAP_W, MAP_H, WORLD_W, WORLD_H, T,
   charAt, isWater, isSolid, waterTile, groundTile, decorTile,
   moveWithCollision, zoneExit, nearestFree, safeEntry, spawnPoint,
-  zoneFinds, FIND_ICON, zoneGates, ZOOM
+  zoneFinds, FIND_ICON, zoneGates, ZOOM, zoneLayout, ZONE_INTRO
 } from '../src/tilemap.js';
 
 const ids = Object.keys(ZONES);
@@ -253,4 +253,39 @@ test('agrandissement : la vallée est assez vaste pour qu\'on s\'y promène', ()
   // l'écran (10 x 21 tuiles) ne doit jamais montrer la zone entière
   assert.ok(MAP_W > 10 * 2, 'on doit voir moins de la moitié de la largeur');
   assert.ok(MAP_H > 21 * 1.5, 'on doit voir moins des deux tiers de la hauteur');
+});
+
+/* ---------------- Carte de la vallée & arrivées mises en scène ---------------- */
+
+test('carte : la disposition respecte la géographie réelle des liaisons', () => {
+  const L = zoneLayout();
+  assert.equal(Object.keys(L).length, ids.length, 'chaque zone doit être placée');
+  const D = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
+  for (const id of ids) {
+    for (const [dir, to] of Object.entries(ZONES[id].links)) {
+      const a = L[id], b = L[to], d = D[dir];
+      assert.equal(b.col - a.col, d[0], id + ' -> ' + to + ' (' + dir + ') : colonne');
+      assert.equal(b.row - a.row, d[1], id + ' -> ' + to + ' (' + dir + ') : ligne');
+    }
+  }
+});
+
+test('carte : deux lieux n\'occupent jamais la même case', () => {
+  const L = zoneLayout();
+  const cases = Object.values(L).map(p => p.col + ',' + p.row);
+  assert.equal(new Set(cases).size, cases.length, 'lieux superposés sur la carte');
+  // origine ramenée à zéro : pas de coordonnée négative
+  for (const p of Object.values(L)) {
+    assert.ok(p.col >= 0 && p.row >= 0, 'coordonnée négative');
+  }
+});
+
+test('arrivée : chaque lieu a son texte de découverte', () => {
+  for (const id of ids) {
+    const it = ZONE_INTRO[id];
+    assert.ok(it, id + ' : pas de scène d\'arrivée');
+    assert.ok(it.emoji && it.title, id + ' : emoji ou titre manquant');
+    assert.ok(Array.isArray(it.lines) && it.lines.length >= 1, id + ' : pas de texte');
+    assert.equal(it.title, ZONES[id].name, id + ' : le titre doit nommer le lieu');
+  }
 });
