@@ -7,8 +7,10 @@ import {
   charAt, isWater, isSolid, waterTile, groundTile, decorTile,
   moveWithCollision, zoneExit, nearestFree, safeEntry, spawnPoint,
   zoneFinds, FIND_ICON, zoneGates, ZOOM, zoneLayout, ZONE_INTRO,
-  SPECIALITE, zoneDuJour, findCount
+  SPECIALITE, zoneDuJour, findCount,
+  HABITANT, COFFRE, COFFRE_ZONES, habitantAt, coffreAt, HABITANT_PRES, COFFRE_LOIN
 } from '../src/tilemap.js';
+import { ITEMS } from '../src/items.js';
 
 const ids = Object.keys(ZONES);
 
@@ -355,5 +357,64 @@ test('voyage : on ne peut viser que des lieux connus, et jamais celui où l\'on 
     const p = spawnPoint(id);
     assert.equal(isSolid(id, Math.floor(p.x / TILE), Math.floor(p.y / TILE)), false,
       id + ' : arrivée de voyage bloquée');
+  }
+});
+
+test('habitants : un par lieu, chacun avec son service', () => {
+  const dons = new Set(), emojis = new Set();
+  for (const id of ids) {
+    const h = HABITANT[id];
+    assert.ok(h, id + ' : lieu sans habitant');
+    for (const champ of ['emoji', 'nom', 'role', 'don']) {
+      assert.ok(h[champ] && h[champ].length, id + ' : ' + champ + ' manquant');
+    }
+    assert.ok(Array.isArray(h.mots) && h.mots.length >= 1, id + ' : rien à dire');
+    // deux habitants qui rendent le même service, c'est une zone en double
+    assert.equal(dons.has(h.don), false, 'service en double : ' + h.don);
+    assert.equal(emojis.has(h.emoji), false, 'habitant en double : ' + h.emoji);
+    dons.add(h.don); emojis.add(h.emoji);
+  }
+});
+
+test('habitants : postés sur une case praticable, et pas trop loin de l\'arrivée', () => {
+  for (const id of ids) {
+    const h = habitantAt(id);
+    assert.equal(isSolid(id, h.cx, h.cy), false, id + ' : habitant dans l\'eau ou un arbre');
+    assert.ok(h.x > 0 && h.x < WORLD_W && h.y > 0 && h.y < WORLD_H, id + ' : hors carte');
+    // il doit se CROISER : posté à l'autre bout, on ne le rencontrerait jamais
+    const [sx, sy] = ZONES[id].start;
+    assert.ok(Math.hypot(h.cx - sx, h.cy - sy) <= HABITANT_PRES,
+      id + ' : habitant trop loin de l\'arrivée');
+    // stable : on doit le retrouver au même endroit à chaque venue
+    assert.deepEqual(habitantAt(id), h, id + ' : l\'habitant se déplace');
+  }
+});
+
+test('coffres : un trésor réel par lieu, et jamais deux fois le même', () => {
+  assert.deepEqual(COFFRE_ZONES.slice().sort(), ids.slice().sort());
+  const vus = new Set();
+  for (const id of ids) {
+    const item = COFFRE[id];
+    assert.ok(ITEMS.some(it => it.id === item), id + ' : trésor inconnu « ' + item + ' »');
+    assert.equal(vus.has(item), false, 'trésor en double : ' + item);
+    vus.add(item);
+  }
+});
+
+test('coffres : atteignables, stables, et à l\'écart de l\'arrivée', () => {
+  for (const id of ids) {
+    const c = coffreAt(id);
+    assert.equal(isSolid(id, c.cx, c.cy), false, id + ' : coffre inaccessible');
+    assert.deepEqual(coffreAt(id), c, id + ' : le coffre se déplace');
+    // il doit se mériter : sinon on le ramasse en arrivant, sans explorer
+    const [sx, sy] = ZONES[id].start;
+    assert.ok(Math.hypot(c.cx - sx, c.cy - sy) >= COFFRE_LOIN, id + ' : coffre trop près de l\'arrivée');
+  }
+});
+
+test('coffre et habitant ne se marchent pas dessus', () => {
+  for (const id of ids) {
+    const h = habitantAt(id), c = coffreAt(id);
+    assert.ok(Math.hypot(h.x - c.x, h.y - c.y) > 24, id + ' : coffre et habitant superposés');
   }
 });

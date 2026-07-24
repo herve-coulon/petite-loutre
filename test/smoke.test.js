@@ -616,3 +616,55 @@ test('balade : on repart du dernier lieu quitté, pas systématiquement de la cl
   $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
   assert.equal(L.world && L.world.zone, 'clairiere', 'repli sur le lieu de départ');
 });
+
+// Le hit-stop (freezeUntil) gèle la frame après un choc ou une fin de partie, et
+// stepWorld ne tourne pas tant qu'il dure : on le laisse expirer avant d'agir.
+const degeler = () => new Promise(r => setTimeout(r, 320));
+
+test('coffre : marcher dessus l\'ouvre, une seule fois, et il ne repousse pas', async () => {
+  L.state.gameOver = false; L.state.away = false; L.state.divingUntil = 0;
+  L.state.stage = 'child'; L.state.hatchedAt = Date.now() - 25 * 3600 * 1000;
+  L.records.visited = ['clairiere']; L.records.chests = []; L.records.pnjDon = {};
+  L.state.place = 'berge'; L.state.worldZone = 'clairiere';
+
+  $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
+  const c = L.world.coffre;
+  assert.ok(c, 'la clairière doit receler un coffre non ouvert');
+
+  L.world.px = c.x; L.world.py = c.y; L.world.tx = c.x; L.world.ty = c.y;
+  await degeler();
+  renderOnce();
+  assert.deepEqual(L.records.chests, ['clairiere'], 'coffre enregistré');
+  assert.equal(L.world.coffre, null, 'et retiré du décor');
+  assert.ok(L.records.items.includes('trefle'), 'son trésor est acquis');
+
+  // on ressort et on revient : le coffre ne doit pas réapparaître
+  $('b-world-back').dispatchEvent(new window.Event('click', { bubbles: true }));
+  $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(L.world.coffre, null, 'un coffre ouvert reste ouvert');
+  assert.equal(L.records.chests.length, 1, 'et n\'est pas compté deux fois');
+});
+
+test('habitant : rend son service une fois par jour, puis se contente de bavarder', async () => {
+  L.records.visited = ['vallon']; L.records.pnjDon = {};
+  L.state.place = 'berge'; L.state.worldZone = 'vallon';
+  L.state.energy = 20; L.state.fun = 20;
+
+  $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
+  const p = L.world.pnj;
+  assert.ok(p && p.nom === 'Sylve', 'le vallon est habité par Sylve');
+
+  L.world.px = p.x; L.world.py = p.y; L.world.tx = p.x; L.world.ty = p.y;
+  await degeler();
+  renderOnce();
+  assert.equal(L.state.energy, 45, 'le repos du vallon remonte l\'énergie');
+  assert.equal(L.state.fun, 35, 'et l\'entrain');
+  assert.equal(L.records.pnjDon.vallon, dayKey(), 'service du jour marqué comme rendu');
+
+  // deuxième passage le même jour : plus de cadeau
+  L.state.energy = 20; L.state.fun = 20;
+  L.world.pnjCooldown = 0;
+  renderOnce();
+  assert.equal(L.state.energy, 20, 'pas de second service dans la journée');
+  assert.equal(L.state.fun, 20, 'ni pour l\'entrain');
+});

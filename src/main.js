@@ -33,7 +33,7 @@ import { encodeCard, decodeCard, newBattle, playTurn, wildFoe, makeFighter } fro
 import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
 import {
   TILE, WORLD_W, WORLD_H, START_ZONE, zoneById, zoneFinds, ZONE_INTRO,
-  SPECIALITE, zoneDuJour,
+  SPECIALITE, zoneDuJour, HABITANT, COFFRE, COFFRE_ZONES, habitantAt, coffreAt,
   moveWithCollision, spawnPoint, zoneExit, safeEntry, nearestFree
 } from './tilemap.js';
 import { makeCard, CARD_URL } from './photocard.js';
@@ -468,6 +468,96 @@ function findsFor(zoneId) {
   return zoneFinds(zoneId, dayKey()).filter(f => !isFound(f.id));
 }
 
+/** L'habitant du lieu, posté à sa place habituelle. */
+function habitantFor(zoneId) {
+  const h = HABITANT[zoneId];
+  if (!h) return null;
+  return { ...h, ...habitantAt(zoneId), zone: zoneId };
+}
+
+/** Le coffre du lieu — plus rien à voir une fois ouvert. */
+function coffreFor(zoneId) {
+  if (!COFFRE[zoneId] || coffreOuvert(zoneId)) return null;
+  return { zone: zoneId, item: COFFRE[zoneId], ...coffreAt(zoneId) };
+}
+
+const coffreOuvert = (zoneId) => !!(rec && (rec.chests || []).includes(zoneId));
+/** Combien de coffres de la vallée ont été ouverts (pour le profil). */
+function coffresOuverts() {
+  return COFFRE_ZONES.filter(coffreOuvert).length;
+}
+
+/** L'habitant n'offre son service qu'UNE FOIS PAR JOUR, et par lieu. */
+function donDispo(zoneId) {
+  return !rec || ((rec.pnjDon || {})[zoneId] !== dayKey());
+}
+
+/**
+ * Parler à l'habitant. S'il a encore son service du jour, il le rend et on
+ * met la rencontre en scène ; sinon il jette juste un mot au passage.
+ */
+function parlerAuPnj(pnj) {
+  const lignes = [...pnj.mots];
+  if (!donDispo(pnj.zone)) {                       // déjà vu aujourd'hui
+    ui.toast(pnj.emoji + ' ' + lignes[0]);
+    return;
+  }
+  (rec.pnjDon = rec.pnjDon || {})[pnj.zone] = dayKey();
+  const nom = s.name || 'La loutre';
+  // chaque habitant rend LE service de son lieu, poussé plus loin qu'une trouvaille
+  if (pnj.don === 'piste') {
+    const j = zoneById(zoneDuJour(dayKey()));
+    lignes.push('« Aujourd\'hui, c\'est du côté de ' + j.name.toLowerCase() +
+      ' que ça remue. Va donc y faire un tour. »');
+  } else if (pnj.don === 'provisions') {
+    s.hunger = clamp(s.hunger + 30, 0, 100);
+    gainXp(20);
+    lignes.push('🍄 ' + nom + ' repart le ventre plein. (+30 faim, +20 XP)');
+  } else if (pnj.don === 'rincage') {
+    s.clean = 100;
+    lignes.push('🚿 Sous la chute, ' + nom + ' ressort impeccable. (propreté au maximum)');
+  } else if (pnj.don === 'friandise') {
+    s.lastTreat = 0;
+    lignes.push('🍬 La friandise est de nouveau prête !');
+  } else if (pnj.don === 'gemme') {
+    rec.gems = (rec.gems || 0) + 3;
+    lignes.push('💎 Gaspard glisse trois gemmes dans la patte de ' + nom + '.');
+  } else if (pnj.don === 'repos') {
+    s.energy = clamp(s.energy + 25, 0, 100);
+    s.fun = clamp(s.fun + 15, 0, 100);
+    lignes.push('😌 ' + nom + ' souffle un bon coup. (+25 énergie, +15 entrain)');
+  }
+  sfx.chirp(); vibrate(10);
+  persist(); persistRec();
+  ui.updateHUD(s, mg, rec);
+  ui.showStory({ emoji: pnj.emoji, title: pnj.nom + ' — ' + pnj.role, lines: lignes, cta: 'MERCI !' });
+}
+
+/** Ouvrir le coffre d'un lieu : un trésor garanti, une seule fois. */
+function ouvrirCoffre(c) {
+  if (!rec || coffreOuvert(c.zone)) return;
+  (rec.chests = rec.chests || []).push(c.zone);
+  const it = itemById(c.item);
+  const neuf = it && !rec.items.includes(it.id);
+  if (neuf) rec.items.push(it.id);
+  persistRec();
+  const lieu = zoneById(c.zone).name;
+  const lignes = ['Sous les feuilles, un coffre patiné attend depuis longtemps.'];
+  if (it) {
+    lignes.push(it.emoji + ' ' + it.name + ' — ' + RARITIES[it.rarity].label.toLowerCase() + '.');
+    lignes.push(neuf ? 'Un trésor de plus pour la collection ! Équipe-le dans 🎩.'
+      : 'Tu en avais déjà un… mais celui-ci a du cachet.');
+  }
+  lignes.push('Coffres de la vallée : ' + coffresOuverts() + '/' + COFFRE_ZONES.length + '.');
+  if (!neuf) gainXp(25);
+  sfx.levelup(); vibrate([20, 40, 20]);
+  if (!s.gameOver && s.stage !== 'egg') R.burst('confetti', 24, s.stage);
+  // « Le coffre du » + « La forêt » donnait « du la forêt » : on met le lieu
+  // en tête, la seule tournure juste pour les six noms (Le/La/Les)
+  ui.showStory({ emoji: '🧰', title: lieu + ' — un coffre oublié', lines: lignes, cta: 'SUPERBE !' });
+  ui.updateHUD(s, mg, rec);
+}
+
 /**
  * Ramasser une trouvaille. Chaque zone sert un besoin PRÉCIS du jeu — c'est ce
  * qui la rend utile plutôt que décorative — et le lieu du jour paie double.
@@ -562,6 +652,8 @@ function goToZone(zoneId, px, py) {
   world.px = p.x; world.py = p.y; world.tx = p.x; world.ty = p.y;
   world.walking = false;
   world.otters = wildOttersFor(zoneId);
+  world.pnj = habitantFor(zoneId);
+  world.coffre = coffreFor(zoneId);
   world.finds = findsFor(zoneId);
   sfx.press(); vibrate(8);
   if (!discoverZone(zoneId)) {          // déjà connu : simple annonce
@@ -587,7 +679,8 @@ function enterWorld(zoneId) {
   const sp = spawnPoint(zone);
   world = {
     zone, px: sp.x, py: sp.y, tx: sp.x, ty: sp.y,
-    walking: false, facing: 1, otters: wildOttersFor(zone), finds: findsFor(zone)
+    walking: false, facing: 1, otters: wildOttersFor(zone), finds: findsFor(zone),
+    pnj: habitantFor(zone), coffre: coffreFor(zone)
   };
   s.worldZone = zone;
   s.place = 'monde';
@@ -637,6 +730,27 @@ function stepWorld() {
     if (encounterOtter) continue;
     const pd = Math.hypot(o.wx - world.px, o.y - world.py);
     if (pd < 16 && frame > (o.cooldown || 0)) openEncounter(o);
+  }
+  // le coffre : marcher dessus l'ouvre, et il disparaît du décor
+  if (!encounterOtter && world.coffre) {
+    const c = world.coffre;
+    if (Math.hypot(c.x - world.px, c.y - world.py) < 12) {
+      world.coffre = null;
+      ouvrirCoffre(c);
+      return;
+    }
+  }
+  // l'habitant : on lui parle en s'approchant, avec un délai avant de le
+  // relancer — sinon il babille en boucle tant qu'on lui tourne autour
+  if (!encounterOtter && world.pnj) {
+    const p = world.pnj;
+    const pres = Math.hypot(p.x - world.px, p.y - world.py) < 15;
+    if (pres && frame > (world.pnjCooldown || 0)) {
+      world.pnjCooldown = frame + 260;
+      parlerAuPnj(p);
+      return;
+    }
+    if (!pres && (world.pnjCooldown || 0) > frame + 120) world.pnjCooldown = frame + 40;
   }
   // ramassage : marcher sur une trouvaille suffit
   if (!encounterOtter && world.finds && world.finds.length) {

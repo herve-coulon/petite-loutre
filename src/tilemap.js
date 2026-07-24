@@ -370,6 +370,87 @@ export function findCount(zone, dayKey) {
   return z.find.count + (zoneDuJour(dayKey) === z.id ? 2 : 0);
 }
 
+/**
+ * L'HABITANT de chaque lieu. Une zone sans personne est un décor : celui-ci y
+ * vit, on lui parle en s'approchant, et il rend UNE FOIS PAR JOUR le service
+ * de son lieu — poussé plus loin que ce qu'une trouvaille peut donner.
+ * `don` est lu par l'orchestrateur, qui seul touche à l'état du jeu.
+ */
+export const HABITANT = {
+  clairiere: { emoji: '🦡', nom: 'Basile', role: 'le doyen du carrefour', don: 'piste',
+    mots: ['Tout le monde passe par ici, petite. Moi, je regarde.',
+      'Une vallée, ça se lit comme une piste : il faut savoir où renifler.'] },
+  foret: { emoji: '🦉', nom: 'Hulotte', role: 'la gardienne des fougères', don: 'provisions',
+    mots: ['Chut… sous les fougères, tout pousse en silence.',
+      'Tu as l\'air affamée. Tiens, prends de mes réserves.'] },
+  cascade: { emoji: '🦅', nom: 'Milan', role: 'le pêcheur de la chute', don: 'rincage',
+    mots: ['L\'eau blanche décrasse mieux que dix bains tièdes.',
+      'Passe sous la chute, tu ressortiras neuve.'] },
+  roseaux: { emoji: '🐸', nom: 'Coasse', role: 'la commère du marais', don: 'friandise',
+    mots: ['On entend tout, dans les roseaux. Tout !',
+      'J\'avais mis de côté une petite douceur… la voilà.'] },
+  lac: { emoji: '🦫', nom: 'Gaspard', role: 'l\'ingénieur du lac', don: 'gemme',
+    mots: ['Un bon barrage, ça se pense avant de se bâtir.',
+      'Le fond du lac rend ce qu\'on lui laisse le temps de rendre.'] },
+  vallon: { emoji: '🦌', nom: 'Sylve', role: 'la calme du pré', don: 'repos',
+    mots: ['Rien ne presse, dans le vallon. Rien.',
+      'Souffle un peu. Tu repartiras plus vive.'] }
+};
+
+/**
+ * Le COFFRE de chaque lieu : un trésor unique, à l'écart, qu'on n'ouvre qu'une
+ * fois. C'est ce qui donne une raison de fouiller une zone au-delà de ses
+ * trouvailles du jour — six coffres, six trésors, une collection.
+ */
+export const COFFRE = {
+  clairiere: 'trefle', foret: 'gland', cascade: 'bulle',
+  roseaux: 'plume', lac: 'perle', vallon: 'luciole'
+};
+
+/** Toutes les zones qui recèlent un coffre (pour compter la collection). */
+export const COFFRE_ZONES = Object.keys(COFFRE);
+
+/** Distances à l'arrivée, en cases : l'habitant se croise, le coffre se cherche. */
+export const HABITANT_PRES = 12;   // au plus, sinon on ne le rencontre jamais
+export const COFFRE_LOIN = 14;     // au moins, sinon on le ramasse en arrivant
+
+/**
+ * Un point stable et praticable d'une zone, à une distance donnée du point
+ * d'arrivée. La graine ne dépend PAS du jour : l'habitant et le coffre sont
+ * toujours au même endroit, sinon on ne pourrait ni retrouver l'un ni
+ * chercher l'autre.
+ */
+function pointStable(zone, graine, min, max) {
+  const z = zoneById(zone);
+  const rnd = rngFrom(graine + '|' + z.id);
+  const [sx, sy] = z.start;
+  let repli = null, meilleur = Infinity;
+  for (let i = 0; i < 900; i++) {
+    const cx = Math.floor(rnd() * MAP_W), cy = Math.floor(rnd() * MAP_H);
+    if (isSolid(z, cx, cy)) continue;
+    const d = Math.hypot(cx - sx, cy - sy);
+    if (d >= min && d <= max) return { cx, cy };
+    // repli : la case praticable qui rate la fourchette de moins
+    const ecart = d < min ? min - d : d - max;
+    if (ecart < meilleur) { meilleur = ecart; repli = { cx, cy }; }
+  }
+  return repli || { cx: sx, cy: sy };
+}
+
+/** Où se tient l'habitant : à portée de l'arrivée, on doit tomber dessus. */
+export function habitantAt(zone) {
+  const p = pointStable(zone, 'habitant', 5, HABITANT_PRES);
+  const px = nearestFree(zone, p.cx, p.cy);
+  return { ...px, cx: p.cx, cy: p.cy };
+}
+
+/** Où dort le coffre : à l'écart, il doit se mériter. */
+export function coffreAt(zone) {
+  const p = pointStable(zone, 'coffre', COFFRE_LOIN, Infinity);
+  const px = nearestFree(zone, p.cx, p.cy);
+  return { ...px, cx: p.cx, cy: p.cy };
+}
+
 const DELTA = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
 
 /**

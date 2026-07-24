@@ -13,7 +13,7 @@ import { traitById, bondLevel } from './personality.js';
 import { gangPower, fighterPower, MAX_MEMBERS } from './gang.js';
 import { makeFighter, encodeCard } from './battle.js';
 import { paintOtter } from './render.js';
-import { ZONES, ZONE_INTRO, FIND_ICON, SPECIALITE, zoneDuJour, zoneLayout } from './tilemap.js';
+import { ZONES, ZONE_INTRO, FIND_ICON, SPECIALITE, COFFRE_ZONES, zoneDuJour, zoneLayout } from './tilemap.js';
 
 const $ = id => document.getElementById(id);
 const setTxt = (id, v) => { const e = $(id); if (e) e.textContent = v; };
@@ -178,6 +178,8 @@ export function renderProfile(s, rec, onTravel) {
   setTxt('prof-shell', fmtNum(rec.treatsTotal));
   setTxt('prof-gang', (gang && gang.name) ? ((gang.emblem || '🦦') + ' ' + gang.name) : 'Aucune');
   setTxt('prof-streak', streak);
+  // la collection de coffres : sans compteur visible, on ne la poursuit pas
+  setTxt('prof-chests', ((rec.chests || []).length) + '/' + COFFRE_ZONES.length);
   // la carte de la vallée fait partie du profil : un seul point d'appel
   renderValleyMap(rec, s.place === 'monde' ? (s.worldZone || null) : null, onTravel);
 }

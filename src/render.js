@@ -863,6 +863,35 @@ export function makeRenderer(cv) {
         ctx.textAlign = 'left';
       } });
     }
+    // le coffre du lieu : il brille doucement pour se laisser repérer de loin
+    if (w.coffre) {
+      const c = w.coffre;
+      figs.push({ y: c.y, fn: () => {
+        const cx = c.x - camX, cy = c.y - camY;
+        const lueur = 0.25 + 0.2 * Math.sin(frame / 18);
+        ctx.fillStyle = 'rgba(255,214,90,' + lueur.toFixed(2) + ')';
+        ctx.fillRect(Math.round(cx - 8), Math.round(cy - 12), 16, 14);
+        ctx.fillStyle = 'rgba(0,0,0,.18)';
+        ctx.fillRect(Math.round(cx - 5), Math.round(cy - 1), 10, 2);
+        ctx.font = '13px system-ui,sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('🧰', Math.round(cx), Math.round(cy));
+        ctx.textAlign = 'left';
+      } });
+    }
+    // l'habitant du lieu : posté chez lui, avec sa bulle de parole
+    if (w.pnj) {
+      const p = w.pnj;
+      figs.push({ y: p.y, fn: () => {
+        const px = p.x - camX, py = p.y - camY;
+        ctx.fillStyle = 'rgba(0,0,0,.18)';
+        ctx.fillRect(Math.round(px - 5), Math.round(py - 1), 10, 2);
+        ctx.font = '15px system-ui,sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(p.emoji, Math.round(px), Math.round(py));
+        ctx.font = '9px system-ui,sans-serif';
+        ctx.fillText('💬', Math.round(px), Math.round(py - 18 + (Math.sin(frame / 14) < 0 ? 1 : 0)));
+        ctx.textAlign = 'left';
+      } });
+    }
     for (const o of w.otters) {
       if (o.gone) continue;
       const ox = o.wx != null ? o.wx : o.x;
