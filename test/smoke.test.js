@@ -12,6 +12,7 @@ import { seasonFor } from '../src/seasons.js';
 import { ACHIEVEMENTS } from '../src/achievements.js';
 import { ITEMS } from '../src/items.js';
 import { HATS } from '../src/accessories.js';
+import { foeIntent } from '../src/battle.js';
 import { FURS, DECORS } from '../src/skins.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -669,6 +670,15 @@ test('habitant : rend son service une fois par jour, puis se contente de bavarde
   assert.equal(L.state.fun, 20, 'ni pour l\'entrain');
 });
 
+// Le duel n'a plus d'aléa : on le gagne en contrant l'intention annoncée.
+const gagnerLeDuel = () => {
+  for (let i = 0; i < 30 && L.battle && !L.battle.over; i++) {
+    L.battle.foe.hp = 1;                       // on abrège : seul le dénouement nous intéresse
+    const contre = { frappe: 'esquive', esquive: 'elan', elan: 'frappe' };
+    $('bt-' + contre[foeIntent(L.battle)]).dispatchEvent(new window.Event('click', { bubbles: true }));
+  }
+};
+
 test('épreuve : la championne propose son duel, et son trophée ne se gagne qu\'une fois', async () => {
   L.state.gameOver = false; L.state.away = false; L.state.divingUntil = 0; L.state.sleeping = false;
   L.state.stage = 'adult'; L.state.hatchedAt = Date.now() - 5 * 24 * 3600 * 1000;
@@ -693,8 +703,7 @@ test('épreuve : la championne propose son duel, et son trophée ne se gagne qu\
   assert.equal(L.battle.foe.name, 'Ondine', 'et c\'est bien contre elle');
 
   const gemsAvant = L.records.gems || 0;
-  L.battle.foe.hp = 1;
-  $('bt-splash').dispatchEvent(new window.Event('click', { bubbles: true }));
+  gagnerLeDuel();
   assert.equal(L.battle.winner, 'me', 'victoire');
   assert.deepEqual(L.records.epreuves, ['clairiere'], 'épreuve inscrite au palmarès');
   assert.ok(L.records.gems > gemsAvant, 'récompensée en gemmes');
@@ -706,8 +715,7 @@ test('épreuve : la championne propose son duel, et son trophée ne se gagne qu\
   L.world.epreuveCooldown = 0;
   renderOnce();
   $('btn-confirm-yes').dispatchEvent(new window.Event('click', { bubbles: true }));
-  L.battle.foe.hp = 1;
-  $('bt-splash').dispatchEvent(new window.Event('click', { bubbles: true }));
+  gagnerLeDuel();
   assert.equal(L.records.epreuves.length, 1, 'le trophée ne se gagne pas deux fois');
   assert.equal(L.records.gems, gemsApres, 'ni la prime de l\'épreuve');
 });

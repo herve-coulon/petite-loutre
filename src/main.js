@@ -1757,9 +1757,9 @@ function boot() {
       persist(); persistRec(); checkUnlocks();
     }
   };
-  $('bt-splash').addEventListener('click', () => doMove('splash'));
-  $('bt-roulade').addEventListener('click', () => doMove('roulade'));
-  $('bt-calin').addEventListener('click', () => doMove('calin'));
+  $('bt-frappe').addEventListener('click', () => doMove('frappe'));
+  $('bt-esquive').addEventListener('click', () => doMove('esquive'));
+  $('bt-elan').addEventListener('click', () => doMove('elan'));
 
   $('b-mute').addEventListener('click', () => {
     s.mute = !s.mute; setMuted(s.mute); syncMusic(); persist(); ui.updateHUD(s, mg, rec);

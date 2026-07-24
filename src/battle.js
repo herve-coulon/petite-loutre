@@ -113,69 +113,206 @@ export function decodeCard(code) {
   } catch (e) { return null; }
 }
 
+/* ─────────────────────────── Le duel ───────────────────────────
+ * REFONTE v3.62. L'ancien combat empilait trois aléas — 30 % d'échec sur la
+ * roulade, ±15 % sur chaque dégât, et une adversaire qui tirait son coup au
+ * hasard. Le choix du joueur ne portait donc presque aucune information : on
+ * appuyait, on voyait.
+ *
+ * Le duel est maintenant DÉTERMINISTE : à état égal et coup égal, le résultat
+ * est toujours le même. Ce qu'on gagne, on le gagne en lisant l'adversaire.
+ *
+ * Trois coups en triangle, chacun battant le suivant :
+ *   COUP DE QUEUE  bat  PRISE D'ÉLAN   (on la surprend en pleine charge)
+ *   PRISE D'ÉLAN   bat  ESQUIVE        (elle esquive dans le vide, on monte)
+ *   ESQUIVE        bat  COUP DE QUEUE  (on l'évite et on contre)
+ *
+ * L'ÉLAN est la ressource qui donne du poids aux décisions : il se charge
+ * lentement, se dépense d'un coup, et charger expose. Frapper sans élan ne
+ * fait qu'un coup d'épingle — la vraie question est toujours « est-ce que je
+ * charge encore, ou est-ce qu'elle va me punir ? »
+ */
+export const ELAN_MAX = 3;
+export const ROUNDS_MAX = 20;      // au-delà, celui qui tient le mieux l'emporte
+
 export const MOVES = [
-  { id: 'splash', icon: '💦', name: 'Splash !', pow: 1.0, acc: 0.95, heal: 0 },
-  { id: 'roulade', icon: '🌀', name: 'Roulade', pow: 1.6, acc: 0.7, heal: 0 },
-  { id: 'calin', icon: '💛', name: 'Câlin soigneur', pow: 0, acc: 1, heal: 15 }
+  { id: 'frappe', icon: '🌊', name: 'Coup de queue',
+    desc: 'Frappe. Dégâts selon l\'élan. Punit une charge, mais s\'esquive.' },
+  { id: 'esquive', icon: '💨', name: 'Esquive',
+    desc: 'Annule le coup adverse et contre. Inutile face à une charge.' },
+  { id: 'elan', icon: '🔥', name: 'Prise d\'élan',
+    desc: '+1 élan et un souffle repris. Découvre : un coup de queue fait mal.' }
 ];
 const moveById = id => MOVES.find(m => m.id === id) || MOVES[0];
 
+/** Dégâts d'un coup de queue, selon l'élan dépensé. PUR et sans aléa. */
+export function frappeDamage(att, elan, mult = 1) {
+  // sans élan, c'est un coup d'épingle (0,30) ; à pleine charge, c'est décisif
+  // (1,95). Marteler la frappe à vide ne doit jamais être une stratégie payante.
+  return Math.max(1, Math.round(att.atk * (0.30 + 0.55 * elan) * mult));
+}
+
 export function newBattle(meState, foeCard, seedStr) {
   const seed = hashSeed(seedStr || (encodeCard(meState) + JSON.stringify(foeCard)));
-  return {
+  const b = {
     me: makeFighter(meState),
     foe: makeFighter(foeCard),
-    rng: makeRng(seed),
+    rng: makeRng(seed),      // conservé pour la compatibilité : le duel ne s'en sert plus
     round: 1,
     log: [],
     over: false,
-    winner: null
+    winner: null,
+    lastMine: null,          // ce que l'adversaire a vu de nous au tour d'avant
+    lastTheirs: null,        // et ce qu'elle a joué
+    hist: []                 // nos deux derniers coups : ce qu'elle lit pour prédire
   };
+  b.me.elan = 0; b.foe.elan = 0;
+  return b;
 }
 
-function applyMove(b, att, def, move) {
-  if (move.heal > 0) {
-    const heal = move.heal + Math.round(b.rng() * 6);
-    att.hp = Math.min(att.maxHp, att.hp + heal);
-    b.log.push(att.name + ' se fait un câlin (+' + heal + ' PV)');
-    return;
-  }
-  if (b.rng() > move.acc) {
-    b.log.push(att.name + ' rate sa ' + move.name.toLowerCase().replace(' !', '') + ' !');
-    return;
-  }
-  const dmg = Math.max(1, Math.round(att.atk * move.pow * (0.85 + b.rng() * 0.3)));
+function frapper(b, att, def, mult, note) {
+  const dmg = frappeDamage(att, att.elan, mult);
+  att.elan = 0;                                   // le coup dépense toute la charge
   def.hp = Math.max(0, def.hp - dmg);
-  b.log.push(att.name + ' utilise ' + move.name + ' — ' + dmg + ' dégâts !');
-  if (def.hp <= 0) {
-    b.over = true;
-    b.winner = att === b.me ? 'me' : 'foe';
-    b.log.push(def.name + ' est K.O. ! 🏆 ' + att.name + ' gagne !');
-  }
+  b.log.push(att.name + ' place un coup de queue' + (note || '') + ' — ' + dmg + ' dégâts !');
+  return dmg;
 }
 
-/** IA de l'adversaire (seedée, donc reproductible). */
-function foeMove(b) {
-  if (b.foe.hp < b.foe.maxHp * 0.3 && b.rng() < 0.5) return moveById('calin');
-  return b.rng() < 0.35 ? moveById('roulade') : moveById('splash');
+function charger(b, who) {
+  if (who.elan < ELAN_MAX) {
+    who.elan++;
+    b.log.push(who.name + ' prend son élan (⚡' + who.elan + '/' + ELAN_MAX + ')');
+  } else {
+    b.log.push(who.name + ' est déjà à pleine charge (⚡' + ELAN_MAX + ')');
+  }
+  const soin = Math.min(who.maxHp - who.hp, 4);   // on reprend son souffle
+  if (soin > 0) who.hp += soin;
 }
 
 /**
- * Joue un tour complet : le plus rapide agit d'abord.
+ * IA de l'adversaire : DÉTERMINISTE et lisible. Elle contre ce que le joueur
+ * vient de jouer — donc répéter le même coup se paie — et elle réagit à l'état
+ * plutôt que de tirer aux dés. On peut apprendre à la lire : c'est le but.
+ */
+/** Le coup qui bat celui-ci, selon le triangle. */
+const CONTRE = { frappe: 'esquive', esquive: 'elan', elan: 'frappe' };
+
+/**
+ * IA de l'adversaire : DÉTERMINISTE et lisible, mais pas naïve.
+ *
+ * Elle ne contre pas le dernier coup — une simple alternance A,B,A,B suffisait
+ * alors à la battre à tous les coups, puisqu'elle contrait toujours celui qu'on
+ * venait justement de quitter. Elle PRÉDIT le coup suivant à partir des deux
+ * derniers : si le joueur alterne, elle attend le retour de l'avant-dernier ; si
+ * le joueur se répète, elle attend la répétition. Puis elle contre sa prédiction.
+ *
+ * Casser une régularité demande donc de vraies décisions — et rien n'est tiré
+ * aux dés : la même partie rejouée à l'identique se déroule à l'identique.
+ */
+export function foeIntent(b) {
+  const f = b.foe, m = b.me;
+  const h = b.hist || [];
+
+  // L'état prime sur la lecture : ces situations-là commandent.
+  if (f.elan >= ELAN_MAX) return 'frappe';                 // chargée à bloc : elle lâche tout
+  if (m.elan >= 2) return 'frappe';                        // elle interrompt la charge
+  if (f.hp <= f.maxHp * 0.25 && f.elan >= 1) return 'frappe';   // dos au mur : va-tout
+  if (!h.length) return 'elan';                            // rien à lire encore : elle se prépare
+
+  // Elle contre l'HABITUDE : le coup que le joueur a le plus joué récemment.
+  // Contrer le dernier coup se faisait battre par une simple alternance, et un
+  // contre d'ordre 2 par n'importe quel cycle de période 3. La fréquence, elle,
+  // punit toute manie et ne laisse rien de gratuit à un joueur régulier : pour
+  // la prendre en défaut il faut varier POUR DE BON.
+  const cnt = { frappe: 0, esquive: 0, elan: 0 };
+  // fréquence BRUTE : pondérer par la récence revenait à contrer le dernier
+  // coup, et toute alternance A,B,A,B redevenait gratuite
+  h.forEach(c => { if (cnt[c] != null) cnt[c] += 1; });
+  const ordre = ['frappe', 'elan', 'esquive'];             // départage stable
+  let prevu = ordre[0];
+  for (const c of ordre) if (cnt[c] > cnt[prevu]) prevu = c;
+  return CONTRE[prevu];
+}
+
+/**
+ * Joue un tour. Les deux coups sont résolus ENSEMBLE selon le triangle ; seule
+ * la confrontation frappe/frappe départage par la vitesse.
  * @returns le combat mis à jour (muté).
  */
 export function playTurn(b, myMoveId) {
   if (b.over) return b;
-  const mine = moveById(myMoveId);
-  const theirs = foeMove(b);
-  const meFirst = b.me.spd === b.foe.spd ? b.rng() < 0.5 : b.me.spd > b.foe.spd;
-  const order = meFirst
-    ? [[b.me, b.foe, mine], [b.foe, b.me, theirs]]
-    : [[b.foe, b.me, theirs], [b.me, b.foe, mine]];
-  for (const [att, def, mv] of order) {
-    if (b.over) break;
-    applyMove(b, att, def, mv);
+  const mine = moveById(myMoveId).id;
+  const theirs = foeIntent(b);
+  const me = b.me, foe = b.foe;
+
+  if (mine === 'frappe' && theirs === 'frappe') {
+    // duel franc : le plus rapide frappe d'abord, et un K.O. clôt l'échange
+    const meFirst = me.spd >= foe.spd;
+    const [a, d] = meFirst ? [me, foe] : [foe, me];
+    frapper(b, a, d, 1);
+    if (d.hp > 0) frapper(b, d, a, 1);
+  } else if (mine === 'frappe' && theirs === 'esquive') {
+    if (me.elan >= 2) {
+      // une charge lourde ne s'esquive pas proprement : elle passe, atténuée.
+      // Sans cette percée, un adversaire qui esquive rendait l'élan indépensable.
+      frapper(b, me, foe, 0.5, ' malgré l\'esquive');
+    } else {
+      me.elan = 0;
+      const riposte = Math.max(1, Math.round(foe.atk * 0.5));
+      me.hp = Math.max(0, me.hp - riposte);
+      b.log.push(foe.name + ' esquive et riposte — ' + riposte + ' dégâts !');
+    }
+  } else if (mine === 'frappe' && theirs === 'elan') {
+    frapper(b, me, foe, 1.35, ' en pleine charge');
+    foe.elan = 0;
+    b.log.push(foe.name + ' perd sa charge !');
+  } else if (mine === 'esquive' && theirs === 'frappe') {
+    if (foe.elan >= 2) {
+      frapper(b, foe, me, 0.5, ' malgré l\'esquive');
+    } else {
+      foe.elan = 0;
+      const riposte = Math.max(1, Math.round(me.atk * 0.5));
+      foe.hp = Math.max(0, foe.hp - riposte);
+      b.log.push(me.name + ' esquive et riposte — ' + riposte + ' dégâts !');
+    }
+  } else if (mine === 'esquive' && theirs === 'esquive') {
+    b.log.push('Les deux loutres se tournent autour…');
+  } else if (mine === 'esquive' && theirs === 'elan') {
+    charger(b, foe);
+    b.log.push(me.name + ' esquive dans le vide.');
+  } else if (mine === 'elan' && theirs === 'frappe') {
+    frapper(b, foe, me, 1.35, ' en pleine charge');
+    me.elan = 0;
+    b.log.push(me.name + ' perd sa charge !');
+  } else if (mine === 'elan' && theirs === 'esquive') {
+    charger(b, me);
+    b.log.push(foe.name + ' esquive dans le vide.');
+  } else {                                        // elan / elan
+    charger(b, me);
+    charger(b, foe);
   }
+
+  if (me.hp <= 0 || foe.hp <= 0) {
+    b.over = true;
+    b.winner = foe.hp <= 0 && me.hp > 0 ? 'me' : me.hp <= 0 && foe.hp > 0 ? 'foe'
+      : (me.hp / me.maxHp >= foe.hp / foe.maxHp ? 'me' : 'foe');
+    const gagnant = b.winner === 'me' ? me : foe;
+    b.log.push((b.winner === 'me' ? foe.name : me.name) + ' est K.O. ! 🏆 ' + gagnant.name + ' gagne !');
+  }
+
+  b.lastMine = mine;
+  b.lastTheirs = theirs;
+  b.hist.push(mine);
+  if (b.hist.length > 6) b.hist.shift();
   b.round++;
+
+  // Verrou anti-enlisement : deux esquives en boucle pourraient tourner sans
+  // fin. Passé la limite, celle qui tient le mieux l'emporte.
+  if (!b.over && b.round > ROUNDS_MAX) {
+    b.over = true;
+    b.winner = (me.hp / me.maxHp) >= (foe.hp / foe.maxHp) ? 'me' : 'foe';
+    b.log.push('Les deux loutres s\'essoufflent… 🏆 ' +
+      (b.winner === 'me' ? me.name : foe.name) + ' l\'emporte aux points !');
+  }
   return b;
 }

@@ -11,7 +11,7 @@ import { seasonInfo } from './seasons.js';
 import { ITEMS, RARITIES, MILESTONES, describeBonus, itemById } from './items.js';
 import { traitById, bondLevel } from './personality.js';
 import { gangPower, fighterPower, MAX_MEMBERS } from './gang.js';
-import { makeFighter, encodeCard } from './battle.js';
+import { makeFighter, encodeCard, ELAN_MAX } from './battle.js';
 import { paintOtter } from './render.js';
 import { ZONES, ZONE_INTRO, FIND_ICON, SPECIALITE, COFFRE_ZONES, EPREUVE_ZONES, zoneDuJour, zoneLayout } from './tilemap.js';
 
@@ -639,6 +639,9 @@ export function renderBattleSetup(foe, s) {
   if (code && s) code.value = encodeCard(s);
 }
 
+/** Jauge d'élan : « ⚡⚡· » — la ressource doit se LIRE, sinon on choisit à l'aveugle. */
+const elanTxt = (n) => '⚡'.repeat(n || 0) + '·'.repeat(Math.max(0, ELAN_MAX - (n || 0)));
+
 export function updateBattleUI(b) {
   $('bt-setup').classList.add('hidden');
   $('bt-arena').classList.remove('hidden');
@@ -646,8 +649,15 @@ export function updateBattleUI(b) {
   setTxt('bt-foename', b.foe.name + ' ' + b.foe.hp + '/' + b.foe.maxHp);
   $('bt-mehp').style.width = (b.me.hp / b.me.maxHp * 100) + '%';
   $('bt-foehp').style.width = (b.foe.hp / b.foe.maxHp * 100) + '%';
+  setTxt('bt-meelan', elanTxt(b.me.elan));
+  setTxt('bt-foeelan', elanTxt(b.foe.elan));
   $('bt-log').innerHTML = b.log.slice(-4).join('<br>');
-  ['bt-splash', 'bt-roulade', 'bt-calin'].forEach(id => { $(id).disabled = b.over; });
+  // Le triangle ET le fait qu'elle observe : sans cette dernière information,
+  // se faire contrer en boucle passerait pour de l'arbitraire alors que c'est
+  // la règle du jeu. Rien n'est tiré au sort, tout se lit.
+  setTxt('bt-tip', b.over ? ''
+    : '🌊 punit 🔥 · 💨 punit 🌊 · 🔥 punit 💨 — elle contre tes habitudes');
+  ['bt-frappe', 'bt-esquive', 'bt-elan'].forEach(id => { $(id).disabled = b.over; });
   const again = $('bt-again'); if (again) again.classList.toggle('hidden', !b.over);
   paintOtter($('bt-mepic'), b.me, 3, false);
   paintOtter($('bt-foepic'), b.foe, 3, true);

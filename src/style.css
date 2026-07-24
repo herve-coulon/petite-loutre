@@ -584,3 +584,7 @@ input#name-input:focus{border-color:var(--teal);}
   #app{height:auto; max-height:96dvh; border:3px solid var(--ink); border-radius:26px;
     box-shadow:0 12px 34px rgba(0,0,0,.4);}
 }
+
+/* Duel : l'élan est la ressource qui porte la décision, il doit se lire d'un coup d'œil. */
+.bt-elan{display:block; margin-top:3px; font-size:11px; letter-spacing:2px; color:#c9a24b;}
+.bt-tip{margin:2px 0 6px; text-align:center; opacity:.75; font-size:10px;}
