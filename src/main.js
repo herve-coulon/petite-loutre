@@ -30,7 +30,7 @@ import { unlockedHats, hatById } from './accessories.js';
 import { unlockedFurs, unlockedDecors, equipBonus, furById } from './skins.js';
 import { newAchievements } from './achievements.js';
 import { encodeCard, decodeCard, newBattle, playTurn, wildFoe, makeFighter } from './battle.js';
-import { combatBuffs, unlockedTechniques, techniqueById } from './skills.js';
+import { combatBuffs, jeuBuffs, unlockedTechniques, techniqueById } from './skills.js';
 import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
 import {
   TILE, WORLD_W, WORLD_H, START_ZONE, zoneById, zoneFinds, ZONE_INTRO,
@@ -321,7 +321,7 @@ function actPlay() {
   if (busy() || s.sleeping) return;
   if (s.energy < 12) { ui.log(s.name + ' est trop fatiguée pour jouer…'); return; }
   press();
-  mg = newGame(now());
+  mg = newGame(now(), jeuBuffs(rec, equipBonus(s)));
   sfx.press();
   ui.log('Partie de pêche ! Attrape les poissons en les touchant !');
   ui.updateHUD(s, mg, rec);
@@ -360,7 +360,7 @@ function actSlide() {
   if (!unlocked('slide')) { ui.log('🛝 Le toboggan s\'ouvre au niveau ' + UNLOCK_LEVEL.slide + ' ! ⭐'); return; }
   if (s.energy < 14) { ui.log(s.name + ' est trop fatiguée pour le toboggan…'); return; }
   press();
-  mg = newSlide(now());
+  mg = newSlide(now(), jeuBuffs(rec, equipBonus(s)));
   sfx.press();
   ui.log('Toboggan ! Tape le couloir pour gober les 🐟 et esquiver les 🪨 !');
   ui.updateHUD(s, mg, rec);
@@ -944,7 +944,8 @@ function befriend(o) {
 /* ---------------- Canvas (pêche, caresses, œuf) ---------------- */
 function onCanvasPointer(e) {
   const { x, y } = canvasXY(e);
-  const pad = e.pointerType === 'touch' ? 8 : 4; // hitbox élargie au doigt
+  // hitbox élargie au doigt, puis par la technique « Œil de pêcheuse »
+  const pad = (e.pointerType === 'touch' ? 8 : 4) + (mg ? jeuBuffs(rec, equipBonus(s)).pad : 0);
 
   if (mg) {
     if (mg.mode === 'slide') { setSlideLane(mg, laneAt(x)); vibrate(6); }
@@ -1604,7 +1605,11 @@ function loop() {
   const frozen = !mg && now() < freezeUntil;
   if (!frozen) frame++;
   if (mg) {
-    const res = mg.mode === 'slide' ? tickSlide(mg, now()) : tickGame(mg, now());
+    // les techniques et la chance portée valent aussi PENDANT la partie
+    const jb = jeuBuffs(rec, equipBonus(s));
+    const res = mg.mode === 'slide'
+      ? tickSlide(mg, now(), Math.random, jb)
+      : tickGame(mg, now(), Math.random, jb);
     if (res) (mg.mode === 'slide' ? endSlide : endGame)(res);
   }
   if (!frozen && s && s.place === 'monde') stepWorld();

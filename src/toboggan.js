@@ -15,21 +15,29 @@ export const LANES = 3;
 export const LANE_X = [40, 80, 120];   // centre x de chaque couloir (canvas 160)
 export const SLIDE_OTTER_Y = 276;      // ligne de la loutre, bas de l'écran plein format
 export const SLIDE_BOTTOM = 360;       // au-delà, l'item est sorti de l'écran
-export const SPEED_START = 0.10;       // descente en px/ms, au départ
-export const SPEED_END = 0.22;         // …et à la fin
+// Difficulté (v3.64). Mesuré au banc : l'ancienne descente ne faisait encaisser
+// AUCUN rocher, même à 480 ms de réaction — le courant laissait près de 3 s pour
+// changer de couloir. La fin de descente est maintenant réellement tendue.
+export const SPEED_START = 0.11;       // descente en px/ms, au départ
+export const SPEED_END = 0.62;         // …et à la fin
 export const COMBO_STEP = 3;           // un point bonus tous les 3 poissons d'affilée
-export const GOLD_POINTS = 5;
+export const GOLD_POINTS = 8;
+export const ROCK_MALUS = 2;           // un choc coûte des POINTS, pas seulement la série
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
-export function newSlide(now = Date.now()) {
+export function newSlide(now = Date.now(), opts = {}) {
+  const duree = Math.round(SLIDE_DURATION * (opts.duree || 1));
   return {
     mode: 'slide',
     score: 0, bumps: 0, lane: 1,
+    // « Pied marin » : le premier choc de la descente est absorbé
+    amorti: opts.amorti ? 1 : 0,
+    duree,
     combo: 0, bestCombo: 0,
     items: [],                 // {lane, y, kind:'fish'|'rock'|'gold', done, got, hit}
     startedAt: now,
-    endsAt: now + SLIDE_DURATION,
+    endsAt: now + duree,
     nextItem: now + 600,
     lastTick: now,
     bumpAt: 0, goldAt: 0
@@ -38,7 +46,7 @@ export function newSlide(now = Date.now()) {
 
 /** Avancement de la descente : 0 au départ -> 1 à l'arrivée. PUR. */
 export function slideProgress(mg, now) {
-  return mg ? clamp01((now - mg.startedAt) / SLIDE_DURATION) : 0;
+  return mg ? clamp01((now - mg.startedAt) / (mg.duree || SLIDE_DURATION)) : 0;
 }
 
 /** La vitesse du courant à cet instant : elle accélère tout du long. PUR. */
@@ -61,7 +69,7 @@ export function laneAt(x) {
  * Fait apparaître un MOTIF. Toujours franchissable : un mur de rochers laisse
  * une trouée. Retourne les items créés (pratique pour les tests). PUR.
  */
-export function spawnPattern(mg, rnd) {
+export function spawnPattern(mg, rnd, opts = {}) {
   const pick = () => Math.floor(rnd() * LANES);
   const add = (lane, kind, y = -8) => {
     const it = { lane, y, kind, done: false };
@@ -70,18 +78,39 @@ export function spawnPattern(mg, rnd) {
   };
   const made = [];
   const r = rnd();
-  if (r < 0.26) {                       // mur de rochers avec UNE trouée
+  if (r < 0.20) {                       // mur de rochers avec UNE trouée
     const gap = pick();
     for (let l = 0; l < LANES; l++) if (l !== gap) made.push(add(l, 'rock'));
-  } else if (r < 0.52) {                // chapelet de poissons dans un couloir
+  } else if (r < 0.40) {                // chapelet de poissons dans un couloir
     const l = pick();
     for (let k = 0; k < 3; k++) made.push(add(l, 'fish', -8 - k * 15));
-  } else if (r < 0.72) {                // un rocher isolé
+  } else if (r < 0.56) {
+    // CHAPELET PIÉGÉ : un rocher au milieu du chapelet. Tout rafler coûte un
+    // choc ; se dérober coûte la série. Sans motifs de ce genre, jouer la
+    // sécurité donnait exactement le même score que tout tenter — mesuré au
+    // banc : prudent, équilibré et gourmand marquaient tous pareil.
+    const l = pick();
+    made.push(add(l, 'fish', -8));
+    made.push(add(l, 'rock', -8 - 15));
+    made.push(add(l, 'fish', -8 - 30));
+    made.push(add(l, 'fish', -8 - 45));
+  } else if (r < 0.68) {
+    // DORÉ GARDÉ : le gros lot juste derrière un rocher, dans le même couloir.
+    const l = pick();
+    made.push(add(l, 'rock', -8));
+    made.push(add(l, 'gold', -8 - 17));
+  } else if (r < 0.84) {                // un rocher isolé
     made.push(add(pick(), 'rock'));
-  } else if (r < 0.93) {                // un poisson isolé
+  } else if (r < 0.96) {                // un poisson isolé
     made.push(add(pick(), 'fish'));
   } else {                              // poisson doré : gros bonus
     made.push(add(pick(), 'gold'));
+  }
+  // la chance portée transforme parfois un poisson ordinaire en doré
+  if (opts.chance > 1) {
+    for (const it of made) {
+      if (it.kind === 'fish' && rnd() < Math.min(0.3, 0.1 * (opts.chance - 1) * 10)) it.kind = 'gold';
+    }
   }
   return made;
 }
@@ -91,7 +120,7 @@ export function spawnPattern(mg, rnd) {
  * les collisions au passage de la loutre, fait apparaître de nouveaux motifs.
  * @returns {null | {type:'end', score, bumps, bestCombo}}
  */
-export function tickSlide(mg, now = Date.now(), rnd = Math.random) {
+export function tickSlide(mg, now = Date.now(), rnd = Math.random, opts = {}) {
   if (!mg) return null;
   const dt = Math.min(50, Math.max(0, now - mg.lastTick)); // borne le dt (veille)
   mg.lastTick = now;
@@ -105,8 +134,15 @@ export function tickSlide(mg, now = Date.now(), rnd = Math.random) {
     it.done = true;
     if (it.lane !== mg.lane) continue;
     if (it.kind === 'rock') {
-      mg.bumps++; mg.bumpAt = now; it.hit = true;
-      mg.combo = 0;                                   // le choc brise l'élan
+      if (mg.amorti > 0) {                            // pied marin : encaissé sans dommage
+        mg.amorti--; it.amorti = true; mg.bumpAt = now;
+      } else {
+        mg.bumps++; mg.bumpAt = now; it.hit = true;
+        mg.combo = 0;                                 // le choc brise l'élan
+        // …et coûte des points : sans cela, foncer dans un rocher pour rafler
+        // le poisson d'après ne coûtait rien, et la prudence gagnait toujours.
+        mg.score = Math.max(0, mg.score - ROCK_MALUS);
+      }
     } else {
       mg.combo++;
       mg.bestCombo = Math.max(mg.bestCombo, mg.combo);
@@ -119,9 +155,9 @@ export function tickSlide(mg, now = Date.now(), rnd = Math.random) {
 
   // les motifs se resserrent avec la vitesse, sans voler le temps de réaction
   if (now >= mg.nextItem && now < mg.endsAt - 700) {
-    spawnPattern(mg, rnd);
+    spawnPattern(mg, rnd, opts);
     const p = slideProgress(mg, now);
-    mg.nextItem = now + (980 - 320 * p) + rnd() * 240;
+    mg.nextItem = now + (820 - 520 * p) + rnd() * 180;
   }
 
   if (now >= mg.endsAt) {

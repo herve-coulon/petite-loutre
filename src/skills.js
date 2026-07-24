@@ -61,6 +61,30 @@ export const TECHNIQUES = [
       && (r.epreuves || []).length >= EPREUVE_ZONES.length,
     effet: { elanMax: 4 }
   },
+  // ── Techniques de MINI-JEU ──────────────────────────────────────────────
+  // Les mini-jeux sont durcis (v3.64) : sans contrepartie ils décourageraient.
+  // Ces trois-là s'obtiennent en jouant, comme celles du duel.
+  {
+    id: 'oeil', icon: '🎣', name: 'Œil de pêcheuse',
+    cond: 'Jouer 20 parties de pêche',
+    desc: 'Tu attrapes les poissons de plus loin (tolérance élargie).',
+    test: r => (r.gamesTotal || 0) >= 20,
+    effet: { pad: 4 }
+  },
+  {
+    id: 'piedmarin', icon: '🛶', name: 'Pied marin',
+    cond: 'Dévaler 20 descentes',
+    desc: 'Le premier rocher de chaque descente ne te fait rien.',
+    test: r => (r.slidesTotal || 0) >= 20,
+    effet: { amorti: true }
+  },
+  {
+    id: 'endurance', icon: '⏳', name: 'Endurance',
+    cond: 'Jouer 60 parties (pêche et toboggan confondus)',
+    desc: 'Tes mini-jeux durent 20 % plus longtemps.',
+    test: r => ((r.gamesTotal || 0) + (r.slidesTotal || 0)) >= 60,
+    effet: { duree: 1.2 }
+  },
   {
     id: 'veterane', icon: '🎖️', name: 'Vétérane',
     cond: 'Atteindre le niveau 20',
@@ -76,6 +100,23 @@ export const techniqueById = id => TECHNIQUES.find(t => t.id === id) || null;
 export function unlockedTechniques(rec) {
   const r = rec || {};
   return TECHNIQUES.filter(t => t.test(r)).map(t => t.id);
+}
+
+/**
+ * Les effets cumulés à appliquer aux MINI-JEUX. Séparé des buffs de duel : un
+ * mini-jeu n'a que faire d'une riposte, et un duel d'une tolérance au toucher.
+ * `equip` est le bonus d'équipement porté — sa `chance` fait jaillir plus de
+ * poissons dorés, ce qui donne enfin un rôle aux trésors hors du combat.
+ */
+export function jeuBuffs(rec, equip) {
+  const out = { pad: 0, duree: 1, amorti: false, chance: (equip && equip.luck) || 1 };
+  for (const id of unlockedTechniques(rec)) {
+    const e = techniqueById(id).effet;
+    if (e.pad) out.pad += e.pad;
+    if (e.duree) out.duree *= e.duree;
+    if (e.amorti) out.amorti = true;
+  }
+  return out;
 }
 
 /**

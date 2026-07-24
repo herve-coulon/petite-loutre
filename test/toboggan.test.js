@@ -8,7 +8,7 @@ import {
   newSlide, setSlideLane, laneAt, tickSlide, spawnPattern,
   slideProgress, slideSpeed,
   SLIDE_DURATION, LANES, LANE_X, SLIDE_OTTER_Y, SLIDE_BOTTOM,
-  SPEED_START, SPEED_END, COMBO_STEP, GOLD_POINTS
+  SPEED_START, SPEED_END, COMBO_STEP, GOLD_POINTS, ROCK_MALUS
 } from '../src/toboggan.js';
 
 const T0 = 1_750_000_000_000;
@@ -82,7 +82,7 @@ test('motif « chapelet » : plusieurs poissons alignés dans le même couloir',
 
 test('un poisson gobé monte le score une seule fois', () => {
   const mg = newSlide(T0);
-  spawnPattern(mg, seq([0.8, 0.0]));            // poisson isolé, couloir 0
+  spawnPattern(mg, seq([0.9, 0.0]));            // poisson isolé, couloir 0
   assert.equal(mg.items.length, 1);
   setSlideLane(mg, 0);
   settle(mg, T0);
@@ -94,26 +94,57 @@ test('un poisson gobé monte le score une seule fois', () => {
 
 test('un rocher esquivé ne coûte rien ; pris, il choque et brise le combo', () => {
   const dodge = newSlide(T0);
-  spawnPattern(dodge, seq([0.6, 0.0]));         // rocher isolé, couloir 0
+  spawnPattern(dodge, seq([0.7, 0.0]));         // rocher isolé, couloir 0
   setSlideLane(dodge, 2);
   settle(dodge, T0);
   assert.equal(dodge.bumps, 0, 'rocher esquivé');
 
   const hit = newSlide(T0);
   hit.combo = 4;                                 // un bel élan…
-  spawnPattern(hit, seq([0.6, 0.0]));
+  hit.score = 10;
+  spawnPattern(hit, seq([0.7, 0.0]));
   setSlideLane(hit, 0);
   settle(hit, T0);
   assert.equal(hit.bumps, 1, 'choc enregistré');
   assert.ok(hit.bumpAt > 0, 'horodatage du choc (pour le flash)');
   assert.equal(hit.combo, 0, '…brisé par le rocher');
+  // le choc coûte aussi des POINTS : sans cela, foncer dans un rocher pour
+  // rafler le poisson d'après ne coûtait rien et la prudence gagnait toujours
+  assert.equal(hit.score, 10 - ROCK_MALUS, 'et il coûte des points');
+  const plancher = newSlide(T0);
+  plancher.score = 1;
+  spawnPattern(plancher, seq([0.7, 0.0]));
+  setSlideLane(plancher, 0);
+  settle(plancher, T0);
+  assert.equal(plancher.score, 0, 'le score ne passe jamais sous zéro');
+});
+
+test('motifs piégés : le gain et le risque tombent dans le MÊME couloir', () => {
+  // sans motifs conflictuels, esquiver ne coûtait jamais un poisson : jouer la
+  // sécurité donnait exactement le même score que tout tenter (mesuré au banc)
+  const piege = newSlide(T0);
+  spawnPattern(piege, seq([0.5, 0.0]));          // chapelet piégé, couloir 0
+  const couloirs = new Set(piege.items.map(i => i.lane));
+  assert.equal(couloirs.size, 1, 'tout le motif est dans un seul couloir');
+  assert.ok(piege.items.some(i => i.kind === 'rock'), 'avec un rocher');
+  assert.ok(piege.items.filter(i => i.kind === 'fish').length >= 2, 'et des poissons');
+
+  const garde = newSlide(T0);
+  spawnPattern(garde, seq([0.6, 0.0]));          // doré gardé, couloir 0
+  assert.equal(new Set(garde.items.map(i => i.lane)).size, 1);
+  assert.ok(garde.items.some(i => i.kind === 'gold'), 'le doré est là');
+  assert.ok(garde.items.some(i => i.kind === 'rock'), 'gardé par un rocher');
+  // le rocher est DEVANT : on le rencontre avant le doré
+  const rock = garde.items.find(i => i.kind === 'rock');
+  const gold = garde.items.find(i => i.kind === 'gold');
+  assert.ok(rock.y > gold.y, 'le rocher se présente en premier');
 });
 
 test('combo : enchaîner rapporte plus que la même quantité en pointillé', () => {
   const mg = newSlide(T0);
   setSlideLane(mg, 0);
   // 6 poissons d'affilée dans le couloir 0
-  for (let k = 0; k < 6; k++) spawnPattern(mg, seq([0.8, 0.0]));
+  for (let k = 0; k < 6; k++) spawnPattern(mg, seq([0.9, 0.0]));
   settle(mg, T0);
   assert.equal(mg.combo, 6);
   assert.equal(mg.bestCombo, 6);
@@ -153,4 +184,35 @@ test('la piste occupe bien le plein écran (et non l\'ancien format court)', () 
   assert.ok(SLIDE_OTTER_Y > 200, 'la loutre est en bas de l\'écran plein format');
   assert.ok(SLIDE_BOTTOM > SLIDE_OTTER_Y, 'les items sortent sous la loutre');
   for (const x of LANE_X) assert.ok(x > 16 && x < 144, 'couloir dans les bords');
+});
+
+test('difficulté : le courant est bien plus vif qu\'avant sur la fin', () => {
+  // mesuré au banc : l'ancienne descente laissait près de 3 s pour changer de
+  // couloir, et ne faisait encaisser AUCUN rocher même à 480 ms de réaction
+  const mg = newSlide(T0);
+  const traversee = (p) => (SLIDE_OTTER_Y + 8) / slideSpeed(mg, T0 + SLIDE_DURATION * p);
+  assert.ok(traversee(1) < 700, 'moins de 0,7 s pour réagir à l\'arrivée');
+  assert.ok(traversee(0) > 2000, 'mais du temps au départ : la tension doit MONTER');
+});
+
+test('progression : « pied marin » absorbe le premier choc, et un seul', () => {
+  const mg = newSlide(T0, { amorti: true });
+  mg.score = 10;
+  spawnPattern(mg, seq([0.7, 0.0]));            // rocher isolé, couloir 0
+  setSlideLane(mg, 0);
+  settle(mg, T0);
+  assert.equal(mg.bumps, 0, 'le premier rocher ne fait rien');
+  assert.equal(mg.score, 10, 'et ne coûte pas de points');
+
+  spawnPattern(mg, seq([0.7, 0.0]));
+  settle(mg, T0 + 100);
+  assert.equal(mg.bumps, 1, 'le suivant, si');
+});
+
+test('progression : l\'endurance rallonge la descente', () => {
+  const normal = newSlide(T0);
+  const long = newSlide(T0, { duree: 1.2 });
+  assert.equal(normal.endsAt - normal.startedAt, SLIDE_DURATION);
+  assert.equal(long.endsAt - long.startedAt, Math.round(SLIDE_DURATION * 1.2));
+  assert.ok(slideProgress(long, T0 + SLIDE_DURATION) < 1);
 });

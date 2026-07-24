@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   newGame, tickGame, clickGame, fishProgress, firstFish,
-  GAME_DURATION, WATER_Y, TELL_MS, COMBO_STEP, GOLD_POINTS, MAX_IN_AIR
+  GAME_DURATION, WATER_Y, TELL_MS, COMBO_STEP, GOLD_POINTS, MAX_IN_AIR, tellDelay
 } from '../src/minigame.js';
 
 const T0 = 1_750_000_000_000;
@@ -23,11 +23,15 @@ test('équité : tout poisson est ANNONCÉ avant de jaillir', () => {
   assert.equal(mg.fishes.length, 0, 'rien ne jaillit sans annonce');
   assert.equal(mg.tells.length, 1);
   const t = mg.tells[0];
+  // le délai d'annonce se RACCOURCIT en fin de partie : on l'interroge plutôt
+  // que de supposer TELL_MS, sinon le test ne vérifierait plus la bonne chose
+  const delai = tellDelay(fishProgress(mg, t.at));
+  assert.ok(delai > 0 && delai <= TELL_MS);
   // juste avant l'échéance : toujours rien
-  tickGame(mg, t.at + TELL_MS - 5, () => 0.5);
+  tickGame(mg, t.at + delai - 20, () => 0.5);
   assert.equal(mg.fishes.length, 0);
   // à l'échéance : il jaillit, au bon endroit
-  tickGame(mg, t.at + TELL_MS + 1, () => 0.5);
+  tickGame(mg, t.at + delai + 1, () => 0.5);
   assert.equal(mg.fishes.length, 1);
   assert.equal(mg.fishes[0].baseX, t.x);
 });
@@ -113,4 +117,64 @@ test('fin de partie : renvoie points, prises et meilleure série', () => {
   mg.score = 9; mg.total = 5; mg.caught = 4; mg.bestCombo = 3;
   const end = tickGame(mg, T0 + GAME_DURATION + 1, () => 0.5);
   assert.deepEqual(end, { type: 'end', score: 9, total: 5, caught: 4, bestCombo: 3 });
+});
+
+test('difficulté : la fenêtre de capture se referme en fin de partie', () => {
+  // mesuré au banc : l'ancienne pêche laissait prendre 100 % des poissons même
+  // avec 480 ms de réaction, et l'expert marquait comme le lent
+  const debut = newGame(T0);
+  tickGame(debut, T0 + 500, () => 0.5);
+  tickGame(debut, T0 + 500 + TELL_MS + 10, () => 0.5);
+  const volDebut = debut.fishes[0].until - debut.fishes[0].start;
+
+  const fin = newGame(T0);
+  const tard = T0 + GAME_DURATION * 0.95;
+  tickGame(fin, tard, () => 0.5);
+  tickGame(fin, tard + TELL_MS + 10, () => 0.5);
+  const volFin = fin.fishes[0].until - fin.fishes[0].start;
+
+  assert.ok(volFin < volDebut * 0.7,
+    'le saut doit nettement raccourcir : ' + volFin + ' vs ' + volDebut);
+});
+
+test('difficulté : l\'annonce se raccourcit elle aussi, sans jamais disparaître', () => {
+  assert.equal(tellDelay(0), TELL_MS, 'pleine au départ');
+  assert.ok(tellDelay(1) < tellDelay(0), 'plus courte à la fin');
+  assert.ok(tellDelay(1) > 150, 'mais jamais escamotée : rater doit rester une erreur du joueur');
+});
+
+test('progression : la chance portée fait jaillir davantage de dorés', () => {
+  // on compte les poissons À LEUR APPARITION : ceux déjà pris ou enfuis ont
+  // quitté la liste, les compter à la fin ne mesurerait rien
+  const compte = (chance) => {
+    let dores = 0, total = 0;
+    for (let g = 0; g < 30; g++) {
+      const mg = newGame(T0);
+      let r = g * 7 + 1;
+      const rnd = () => { r = (r * 1103515245 + 12345) % 2147483648; return r / 2147483648; };
+      const vus = new Set();
+      for (let t = 0; t < GAME_DURATION; t += 50) {
+        tickGame(mg, T0 + t, rnd, { chance });
+        for (const f of mg.fishes) {
+          if (vus.has(f)) continue;
+          vus.add(f);
+          total++;
+          if (f.kind === 'gold') dores++;
+        }
+      }
+    }
+    return { dores, total };
+  };
+  const sans = compte(1), avec = compte(2.5);
+  assert.ok(avec.dores > sans.dores,
+    'la chance doit peser sur les dorés : ' + avec.dores + ' vs ' + sans.dores);
+});
+
+test('progression : la technique d\'endurance rallonge vraiment la partie', () => {
+  const normal = newGame(T0);
+  const long = newGame(T0, { duree: 1.2 });
+  assert.equal(normal.endsAt - normal.startedAt, GAME_DURATION);
+  assert.equal(long.endsAt - long.startedAt, Math.round(GAME_DURATION * 1.2));
+  // et l'avancement se cale sur la durée réelle, sinon la fin arriverait trop tôt
+  assert.ok(fishProgress(long, T0 + GAME_DURATION) < 1, 'la partie n\'est pas finie');
 });

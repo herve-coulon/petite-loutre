@@ -10,15 +10,22 @@
 import { SEC } from './constants.js';
 
 export const GAME_DURATION = 20 * SEC;
+// Difficulté (v3.64). Mesuré au banc : l'ancienne pêche laissait prendre 100 %
+// des poissons même avec 480 ms de réaction, et l'expert marquait comme le
+// lent. Le vol RACCOURCIT et le rythme se resserre à mesure que la partie
+// avance : c'est la fin de partie qui sépare les joueurs.
+export const VOL_RACCOURCI = 0.55;   // le saut dure 55 % de moins à la fin
+export const MAX_IN_AIR_FIN = 5;     // et il peut y en avoir deux de plus
 export const WATER_Y = 248;      // surface de l'eau (coords canvas) : les poissons en jaillissent
 export const TELL_MS = 520;      // durée de l'ondulation d'annonce
 export const COMBO_STEP = 3;     // un point bonus toutes les 3 prises d'affilée
 export const GOLD_POINTS = 5;
-export const MAX_IN_AIR = 3;
+export const MAX_IN_AIR = 3;      // au départ ; monte à MAX_IN_AIR_FIN sur la fin
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
-export function newGame(now = Date.now()) {
+export function newGame(now = Date.now(), opts = {}) {
+  const duree = Math.round(GAME_DURATION * (opts.duree || 1));
   return {
     mode: 'fish',
     score: 0, total: 0, caught: 0, missed: 0,
@@ -27,7 +34,8 @@ export function newGame(now = Date.now()) {
     tells: [],                   // ondulations d'annonce {x, at, kind}
     splash: null, goldAt: 0, missAt: 0,
     startedAt: now,
-    endsAt: now + GAME_DURATION,
+    duree,
+    endsAt: now + duree,
     nextTell: now + 400,
     lastTick: now
   };
@@ -35,7 +43,12 @@ export function newGame(now = Date.now()) {
 
 /** Avancement de la partie : 0 au début -> 1 à la fin. PUR. */
 export function fishProgress(mg, now) {
-  return mg ? clamp01((now - mg.startedAt) / GAME_DURATION) : 0;
+  return mg ? clamp01((now - mg.startedAt) / (mg.duree || GAME_DURATION)) : 0;
+}
+
+/** La durée d'annonce à cet instant : elle se raccourcit en fin de partie. */
+export function tellDelay(p) {
+  return Math.round(TELL_MS * (1 - 0.4 * p));
 }
 
 /** Le premier poisson encore en l'air (pratique pour le rendu et les tests). */
@@ -46,11 +59,13 @@ export function firstFish(mg) {
 /** Fait jaillir un poisson à l'endroit annoncé. */
 function launch(mg, tell, now, rnd) {
   const gold = tell.kind === 'gold';
+  // plus la partie avance, plus le poisson retombe vite : la fenêtre se ferme
+  const vite = 1 - VOL_RACCOURCI * fishProgress(mg, now);
   mg.fishes.push({
     kind: tell.kind,
     baseX: tell.x, x: tell.x, y: WATER_Y,
     start: now,
-    until: now + (gold ? 900 + rnd() * 200 : 1150 + rnd() * 420),
+    until: now + Math.round((gold ? 620 + rnd() * 160 : 820 + rnd() * 300) * vite),
     jumpH: gold ? 52 + rnd() * 24 : 68 + rnd() * 48,
     dir: rnd() < 0.5 ? -1 : 1,
     p: 0
@@ -60,14 +75,15 @@ function launch(mg, tell, now, rnd) {
 }
 
 /** @returns {null | {type:'end', score, total, caught, bestCombo}} */
-export function tickGame(mg, now = Date.now(), rnd = Math.random) {
+export function tickGame(mg, now = Date.now(), rnd = Math.random, opts = {}) {
   if (!mg) return null;
   mg.lastTick = now;
 
   // les ondulations mûrissent : à échéance, le poisson jaillit
-  const ready = mg.tells.filter(t => now >= t.at + TELL_MS);
+  const attente = tellDelay(fishProgress(mg, now));
+  const ready = mg.tells.filter(t => now >= t.at + attente);
   for (const t of ready) launch(mg, t, now, rnd);
-  if (ready.length) mg.tells = mg.tells.filter(t => now < t.at + TELL_MS);
+  if (ready.length) mg.tells = mg.tells.filter(t => now < t.at + attente);
 
   // arc de saut ; un poisson qui retombe sans être pris brise l'élan
   for (const f of mg.fishes) {
@@ -86,12 +102,15 @@ export function tickGame(mg, now = Date.now(), rnd = Math.random) {
   }
 
   // le rythme se resserre au fil de la partie
+  const p = fishProgress(mg, now);
+  const enAir = MAX_IN_AIR + Math.round((MAX_IN_AIR_FIN - MAX_IN_AIR) * p);
   if (now >= mg.nextTell && now < mg.endsAt - 900
-    && mg.fishes.length + mg.tells.length < MAX_IN_AIR) {
-    const p = fishProgress(mg, now);
-    const kind = rnd() < 0.12 ? 'gold' : 'fish';
+    && mg.fishes.length + mg.tells.length < enAir) {
+    // la chance portée (trésors, pelages) fait jaillir plus de dorés : c'est
+    // ainsi que l'équipement compte aussi dans les mini-jeux
+    const kind = rnd() < Math.min(0.32, 0.12 * (opts.chance || 1)) ? 'gold' : 'fish';
     mg.tells.push({ x: 16 + rnd() * 128, at: now, kind });
-    mg.nextTell = now + (980 - 520 * p) + rnd() * 320;
+    mg.nextTell = now + (560 - 380 * p) + rnd() * 140;
   }
 
   if (now >= mg.endsAt) {

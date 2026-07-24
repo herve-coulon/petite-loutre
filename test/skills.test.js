@@ -16,7 +16,8 @@ const base = () => Object.assign(newState(T0), { stage: 'adult', health: 90, fun
 test('techniques : définitions complètes, identifiants uniques, effets connus', () => {
   const vus = new Set();
   const effetsConnus = new Set([
-    'riposte', 'force', 'encaisse', 'elanDepart', 'elanMax', 'perceeForce', 'secondSouffle'
+    'riposte', 'force', 'encaisse', 'elanDepart', 'elanMax', 'perceeForce', 'secondSouffle',
+    'pad', 'duree', 'amorti'
   ]);
   for (const t of TECHNIQUES) {
     for (const champ of ['id', 'icon', 'name', 'cond', 'desc']) {
@@ -36,7 +37,7 @@ test('techniques : définitions complètes, identifiants uniques, effets connus'
 test('techniques : aucune n\'est acquise au départ, toutes le sont au bout du chemin', () => {
   assert.deepEqual(unlockedTechniques({}), [], 'rien de gratuit au premier jour');
   const complet = {
-    wins: 100, battles: 200, xp: 500000,
+    wins: 100, battles: 200, xp: 500000, gamesTotal: 40, slidesTotal: 40,
     chests: [...COFFRE_ZONES], epreuves: [...EPREUVE_ZONES]
   };
   assert.equal(unlockedTechniques(complet).length, TECHNIQUES.length, 'tout doit être atteignable');
