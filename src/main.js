@@ -388,7 +388,7 @@ function endSlide(res) {
   const combo = best >= 3 ? ' Plus bel enchaînement : x' + best + ' !' : '';
   if (ejectee) {
     sfx.sad(); ui.shake(); vibrate([30, 60, 30]);
-    ui.log('🪨 Trois rochers… ' + (s.name || 'La loutre') +
+    messageImportant('🪨 Trois rochers… ' + (s.name || 'La loutre') +
       ' est éjectée du torrent ! (-' + DEGATS_EJECTION + ' santé) — ' + sc + ' points tout de même.');
   }
   else if (clean) { sfx.happy(); ui.log('Descente parfaite : ' + sc + ' points sans un rocher ! 🛝🎉' + combo); }
@@ -1317,6 +1317,17 @@ function maybeHint() {
   if (now() < hintCooldown) return;
   const next = HINTS.find(h => !s.hints[h.id] && h.when());
   if (next) { activeHint = next.id; hintAt = now(); ui.log(next.msg); }
+}
+
+/**
+ * Un message qui COMPTE (éjection, perte, événement). Les astuces et le coach
+ * écrivent dans le même bandeau et le remplaçaient parfois dans la seconde :
+ * on repousse leur prochaine prise de parole pour laisser lire celui-ci.
+ */
+function messageImportant(msg) {
+  ui.log(msg);
+  activeHint = null;
+  hintCooldown = now() + HINT_GAP;
 }
 
 /** Détecte chapeaux et succès nouvellement débloqués -> toast + son. */
