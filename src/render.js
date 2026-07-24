@@ -171,6 +171,9 @@ export function makeRenderer(cv) {
   let otterDist = 0;          // chemin parcouru sur la berge : cadence le pas
   let otterWalkedAt = -999;   // dernière frame où elle avançait vraiment
   const FOULEE = 4.5;         // pixels parcourus par image du cycle de marche
+  // toboggan : couloir courant, et le saut joué au changement de couloir
+  let slideMg = null, slideLane = null, slideX = LANE_X[1], slideHopAt = -999;
+  const HOP_FRAMES = 15;
   let wanderSeed = 1;         // avance à chaque nouvelle cible (choix pseudo-aléatoire stable)
   let lastFrame = 0;          // dernier numéro de frame vu (pour les appels externes)
   // balle de jeu (ball-fetch). states : idle (au repos) / held (dans la main) /
@@ -1063,16 +1066,37 @@ export function makeRenderer(cv) {
       if (fhat) drawSprite(fhat.rows, 112, fy - fhat.rows.length * 2 + 4, 2, null, true);
     }
 
-    // plongée : la loutre est sous l'eau, on ne voit que des bulles
+    // Plongée : elle est partie pêcher au large. On la voit dériver sur le dos
+    // à la surface, et replonger — les bulles montent depuis l'eau.
+    // (Elles étaient dessinées vers y=112, en coordonnées d'AVANT le décalage
+    // plein écran : elles flottaient dans le ciel, à 130 px au-dessus de l'eau.)
     if (fx.diving) {
+      const t = Date.now();
+      const derive = Math.sin(t / 2600);              // va-et-vient lent d'une rive à l'autre
+      const cx = Math.round(CANVAS_W / 2 + derive * 42);
+      // au large, bien DANS la rivière : sur la ligne de rive elle paraissait
+      // échouée sur la berge, à moitié sur l'herbe
+      const cy = WATER_Y + 30;
+      const sous = Math.sin(t / 1500) < -0.55;        // par moments elle disparaît sous l'eau
+      if (!sous) {
+        drawAnim(ctx, ART, 'swim', frameAt('swim', t), cx, cy, s.fur,
+          Math.cos(t / 2600) < 0, s.stage);
+      } else {
+        // remous à sa place le temps qu'elle est dessous
+        ctx.strokeStyle = 'rgba(210,240,255,.5)'; ctx.lineWidth = 1;
+        const r = 4 + ((frame >> 2) % 8);
+        ctx.beginPath(); ctx.ellipse(cx, cy - 3, r, r * 0.35, 0, 0, 6.283); ctx.stroke();
+      }
+      // bulles : elles remontent vers elle depuis le fond
       ctx.fillStyle = 'rgba(210,240,255,.9)';
-      const ph = (frame >> 3) % 8;
-      ctx.fillRect(70, 112 - ph, 3, 3);
-      ctx.fillRect(78, 116 - ((frame >> 2) % 6), 2, 2);
-      ctx.fillRect(64, 114 - ((frame >> 4) % 4), 2, 2);
-      ctx.fillStyle = 'rgba(15,18,26,.65)'; ctx.fillRect(40, 18, 80, 12);
+      ctx.fillRect(cx - 12, cy + 30 - ((frame >> 3) % 14), 3, 3);
+      ctx.fillRect(cx + 6, cy + 34 - ((frame >> 2) % 18), 2, 2);
+      ctx.fillRect(cx - 3, cy + 26 - ((frame >> 4) % 11), 2, 2);
+      // bandeau au-dessus de la rivière : en haut d'écran il passait DERRIÈRE
+      // l'en-tête (niveau, gemmes) et devenait illisible
+      ctx.fillStyle = 'rgba(15,18,26,.65)'; ctx.fillRect(36, GROUND_Y - 34, 88, 13);
       ctx.fillStyle = '#ffe9a8'; ctx.font = '8px monospace';
-      ctx.fillText('🤿 plongée en cours…', 44, 27);
+      ctx.fillText('🤿 plongée en cours…', 40, GROUND_Y - 24);
       drawParticles();
       return;
     }
@@ -1504,14 +1528,32 @@ export function makeRenderer(cv) {
       }
     }
 
-    // la loutre dans son couloir, ballottée, avec sa gerbe d'eau
-    const ox = LANE_X[mg.lane] - 16;
+    // La loutre dans son couloir : sur le dos dans le courant, et un vrai saut
+    // quand on change de couloir (c'est le geste du joueur, il mérite d'être vu).
+    const cible = LANE_X[mg.lane];
+    // nouvelle descente : on repart du couloir de départ, sans saut fantôme
+    if (slideMg !== mg) { slideMg = mg; slideLane = mg.lane; slideX = cible; slideHopAt = -999; }
+    if (slideLane !== mg.lane) { slideLane = mg.lane; slideHopAt = frame; }
+    slideX += (cible - slideX) * 0.28;                 // glisse vers son couloir
+    const saut = frame - slideHopAt;
+    const enSaut = saut < HOP_FRAMES;
+    const ox = Math.round(slideX) - 16;
     const oy = SLIDE_OTTER_Y - 22 + ((frame >> 2) % 2);
-    const spr = SPRITES[s.stage] || SPRITES.child;
-    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.fillStyle = 'rgba(255,255,255,.55)';           // gerbe d'eau autour d'elle
     ctx.fillRect(ox + 4, oy + 26, 5, 3); ctx.fillRect(ox + 21, oy + 25, 5, 3);
     ctx.fillRect(ox - 2, oy + 20, 3, 2); ctx.fillRect(ox + 31, oy + 18, 3, 2);
-    drawSprite(spr, ox, oy, 2, fur);
+    if (usesArt(s)) {
+      const cy = SLIDE_OTTER_Y + 4 + ((frame >> 2) % 2);
+      if (enSaut) {
+        // l'arc du kit joué une fois, penchée du côté où elle saute
+        const i = Math.min(ANIMS.jump.frames - 1, Math.floor(saut / (HOP_FRAMES / ANIMS.jump.frames)));
+        drawAnim(ctx, ART, 'jump', i, Math.round(slideX), cy, s.fur, cible < slideX, s.stage);
+      } else {
+        drawAnim(ctx, ART, 'swim', frameAt('swim', Date.now()), Math.round(slideX), cy, s.fur, false, s.stage);
+      }
+    } else {
+      drawSprite(SPRITES[s.stage] || SPRITES.child, ox, oy, 2, fur);
+    }
 
     // flashs : rouge au choc, doré sur un poisson d'or
     if (mg.bumpAt && now - mg.bumpAt < 260) {

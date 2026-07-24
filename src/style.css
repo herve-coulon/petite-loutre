@@ -192,6 +192,9 @@ button.pm-cell.go:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,5
 #app.in-game #actionbar,
 #app.in-game #side-left,
 #app.in-game #side-right{display:none !important;}
+/* Plongée : on dégage la rivière pour la voir nager (les actions sont bloquées). */
+#app.in-dive #quest,
+#app.in-dive #log{display:none !important;}
 
 /* ── Arène de combat ───────────────────────────────────────────────────── */
 .bt-foecard{display:flex; align-items:center; gap:12px; margin:2px 0 10px; padding:10px 12px;

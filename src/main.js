@@ -423,6 +423,10 @@ function updatePlaceBtn() {
     app.classList.toggle('in-world', inWorld);
     // un mini-jeu prend tout l'écran : le HUD de la berge s'efface
     app.classList.toggle('in-game', !!mg);
+    // plongée : on la regarde nager au large. Les deux panneaux du bas
+    // recouvraient justement la rivière ; les actions sont bloquées de toute
+    // façon pendant la plongée, mais on garde la barre du haut pour naviguer.
+    app.classList.toggle('in-dive', diving() && !mg && !overlayOpen);
   }
 }
 function togglePlace() {
