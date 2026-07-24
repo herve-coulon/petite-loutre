@@ -14,6 +14,7 @@ import { ITEMS } from '../src/items.js';
 import { HATS } from '../src/accessories.js';
 import { foeIntent } from '../src/battle.js';
 import { VIES_MAX, DEGATS_EJECTION } from '../src/toboggan.js';
+import { COFFRE_ZONES, EPREUVE_ZONES } from '../src/tilemap.js';
 import { FURS, DECORS } from '../src/skins.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -735,8 +736,9 @@ test('maîtrise : boucler les DEUX collections octroie le légendaire, une seule
   L.state.hatchedAt = Date.now() - 5 * 24 * 3600 * 1000;
   L.records.xp = 100000; L.records.maitrise = false;
   L.records.items = L.records.items.filter(i => i !== 'coeur');
-  L.records.chests = ['clairiere', 'foret', 'cascade', 'roseaux', 'lac'];   // il en manque un
-  L.records.epreuves = ['clairiere', 'foret', 'cascade', 'roseaux', 'lac', 'vallon'];
+  // dérivé des constantes : la vallée grandit, le test doit suivre tout seul
+  L.records.chests = COFFRE_ZONES.filter(z => z !== 'vallon');   // il en manque un
+  L.records.epreuves = [...EPREUVE_ZONES];
   L.records.visited = ['vallon'];
   L.state.place = 'berge'; L.state.worldZone = 'vallon';
 

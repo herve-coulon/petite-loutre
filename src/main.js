@@ -34,7 +34,7 @@ import { combatBuffs, jeuBuffs, unlockedTechniques, techniqueById } from './skil
 import { chasseurRode, newChasseur, stepChasseur, DEGATS_CAPTURE } from './chasseur.js';
 import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
 import {
-  TILE, MAP_W, MAP_H, WORLD_W, WORLD_H, START_ZONE, zoneById, zoneFinds, ZONE_INTRO, isSolid,
+  TILE, MAP_W, MAP_H, WORLD_W, WORLD_H, START_ZONE, ZONES, zoneById, zoneFinds, ZONE_INTRO, isSolid,
   SPECIALITE, zoneDuJour, HABITANT, COFFRE, COFFRE_ZONES, habitantAt, coffreAt,
   EPREUVE, EPREUVE_ZONES, epreuveAt,
   moveWithCollision, spawnPoint, zoneExit, safeEntry, nearestFree
@@ -465,7 +465,9 @@ function wildOttersFor(zoneId) {
   const anchors = {
     clairiere: [[5, 22], [20, 15], [4, 8]], foret: [[5, 12], [24, 20], [14, 4]],
     cascade: [[20, 12], [25, 20], [16, 26]], roseaux: [[6, 6], [22, 16], [10, 24]],
-    lac: [[3, 24], [26, 3], [2, 12]], vallon: [[6, 10], [24, 18], [8, 25]]
+    lac: [[3, 24], [26, 3], [2, 12]], vallon: [[6, 10], [24, 18], [8, 25]],
+    delta: [[6, 7], [22, 13], [10, 26]], gorge: [[8, 10], [22, 18], [6, 24]],
+    sapiniere: [[6, 8], [22, 12], [12, 24]]
   };
   const spots = anchors[zoneId] || anchors.clairiere;
   const z = zoneById(zoneId);
@@ -621,6 +623,20 @@ function parlerAuPnj(pnj) {
     s.energy = clamp(s.energy + 25, 0, 100);
     s.fun = clamp(s.fun + 15, 0, 100);
     lignes.push('😌 ' + nom + ' souffle un bon coup. (+25 énergie, +15 entrain)');
+  } else if (pnj.don === 'remede') {
+    s.health = clamp(s.health + 30, 0, 100);
+    lignes.push('🩹 Colvert recoud, panse, tapote. ' + nom + ' repart d\'aplomb. (+30 santé)');
+  } else if (pnj.don === 'lecon') {
+    gainXp(60);
+    lignes.push('📚 Une leçon d\'ombre et de silence. (+60 XP)');
+  } else if (pnj.don === 'guet') {
+    // Le service le plus précieux depuis que l'homme rôde : savoir où NE PAS aller.
+    const jour = dayKey();
+    const dangers = Object.keys(ZONES).filter(z => chasseurRode(z, jour, START_ZONE));
+    lignes.push(dangers.length
+      ? '🔭 « Aujourd\'hui, le chapeau et le fusil sont du côté de ' +
+        dangers.map(z => zoneById(z).name.toLowerCase()).join(', ') + '. Évite. »'
+      : '🔭 « Rien à signaler aujourd\'hui. La vallée est tranquille. »');
   }
   sfx.chirp(); vibrate(10);
   persist(); persistRec();
@@ -745,6 +761,18 @@ function collectFind(f) {
     s.fun = clamp(s.fun + 10 * x2, 0, 100);
     s.energy = clamp(s.energy + 6 * x2, 0, 100);   // le pré du repos
     ui.log('🌼 Une fleur du vallon — ' + name + ' souffle un bon coup.' + bis);
+  } else if (f.kind === 'crabe') {
+    rec.gems = (rec.gems || 0) + x2;
+    s.health = clamp(s.health + 6 * x2, 0, 100);   // le grand large remet d'aplomb
+    ui.log('🦀 Un crabe des bancs de sable — ça pince, mais ça vaut cher !' + bis);
+  } else if (f.kind === 'silex') {
+    gainXp(14 * x2);
+    rec.gems = (rec.gems || 0) + x2;
+    ui.log('🪨 Un silex poli par le torrent — la faille forme le caractère.' + bis);
+  } else if (f.kind === 'baie') {
+    s.hunger = clamp(s.hunger + 10 * x2, 0, 100);
+    s.energy = clamp(s.energy + 5 * x2, 0, 100);
+    ui.log('🫐 Des baies sous les aiguilles — de quoi tenir longtemps.' + bis);
   }
   R.spawn && R.spawn('sparkle', s.stage);
   sfx.eat(); vibrate(10);

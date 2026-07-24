@@ -9,7 +9,7 @@ import {
   zoneFinds, FIND_ICON, zoneGates, ZOOM, zoneLayout, ZONE_INTRO,
   SPECIALITE, zoneDuJour, findCount, BORD_SORTIE,
   HABITANT, COFFRE, COFFRE_ZONES, habitantAt, coffreAt, HABITANT_PRES, COFFRE_LOIN,
-  EPREUVE, EPREUVE_ZONES, epreuveAt
+  EPREUVE, EPREUVE_ZONES, epreuveAt, FAUNE
 } from '../src/tilemap.js';
 import { ITEMS } from '../src/items.js';
 
@@ -68,13 +68,14 @@ test('zones : un bord SANS liaison est un mur, un bord AVEC liaison s\'ouvre', (
   // la clairière est le carrefour : elle ouvre des quatre côtés
   assert.equal(isSolid('clairiere', 5, -1), false, 'nord franchissable');
   assert.equal(isSolid('clairiere', 5, MAP_H), false, 'sud franchissable');
-  // le lac est un cul-de-sac : seul l'ouest s'ouvre
-  const lac = ZONES.lac;
-  assert.deepEqual(Object.keys(lac.links), ['west']);
-  assert.equal(isSolid('lac', -1, 5), false, 'le lac ouvre à l\'ouest');
-  assert.equal(isSolid('lac', 5, -1), true, 'le lac est fermé au nord');
-  assert.equal(isSolid('lac', MAP_W, 5), true, 'le lac est fermé à l\'est');
-  assert.equal(isSolid('lac', 5, MAP_H), true, 'le lac est fermé au sud');
+  // le delta est un cul-de-sac : seul l'ouest s'ouvre (le lac, lui, mène
+  // désormais au delta — c'est ce qui a agrandi la vallée)
+  assert.deepEqual(Object.keys(ZONES.delta.links), ['west']);
+  assert.equal(isSolid('delta', -1, 5), false, 'le delta ouvre à l\'ouest');
+  assert.equal(isSolid('delta', 5, -1), true, 'le delta est fermé au nord');
+  assert.equal(isSolid('delta', MAP_W, 5), true, 'le delta est fermé à l\'est');
+  assert.equal(isSolid('delta', 5, MAP_H), true, 'le delta est fermé au sud');
+  assert.equal(isSolid('lac', MAP_W, 5), false, 'le lac ouvre maintenant à l\'est');
 });
 
 test('passage : sortir par un bord lié amène dans la zone voisine, côté opposé', () => {
@@ -548,4 +549,29 @@ test('franchissement : on n\'est pas renvoyé aussitôt d\'où l\'on vient', () 
         'arrivée en ' + to + ' depuis ' + id + ' : on repart aussitôt !');
     }
   }
+});
+
+test('agrandissement : la vallée compte neuf lieux, tous reliés et tous équipés', () => {
+  assert.ok(ids.length >= 9, 'la vallée doit avoir grandi : ' + ids.length + ' lieux');
+  // chaque lieu, ancien comme nouveau, doit être complet — sinon un ajout
+  // laisserait un trou silencieux (pas d'habitant, pas de coffre, pas d'épreuve)
+  for (const id of ids) {
+    assert.ok(ZONE_INTRO[id], id + ' : pas de texte de découverte');
+    assert.ok(SPECIALITE[id], id + ' : pas de spécialité');
+    assert.ok(HABITANT[id], id + ' : pas d\'habitant');
+    assert.ok(COFFRE[id], id + ' : pas de coffre');
+    assert.ok(EPREUVE[id], id + ' : pas de championne');
+    assert.ok(FAUNE[id] && FAUNE[id].length, id + ' : pas de faune');
+    assert.ok(ZONES[id].find && FIND_ICON[ZONES[id].find.kind], id + ' : trouvaille sans icône');
+  }
+});
+
+test('faune : propre à chaque lieu, et jamais deux fois la même bête au même endroit', () => {
+  for (const id of ids) {
+    const f = FAUNE[id];
+    assert.equal(new Set(f).size, f.length, id + ' : bête en double');
+  }
+  // et la vallée doit être variée dans son ensemble
+  const toutes = new Set(ids.flatMap(id => FAUNE[id]));
+  assert.ok(toutes.size >= 10, 'trop peu d\'espèces : ' + toutes.size);
 });

@@ -254,6 +254,30 @@ const LAC = [
  * gagnent de la largeur au passage.
  */
 export const ZOOM = 2;
+/**
+ * Ouvre un couloir praticable sur chaque bord LIÉ. Les trouées étaient taillées
+ * à la main dans les cartes : fragiles, faciles à refermer sans s'en rendre
+ * compte, et rien ne garantissait qu'une liaison déclarée soit franchissable.
+ * On les DÉRIVE désormais des liaisons — déclarer un lien suffit à l'ouvrir.
+ */
+function ouvrirPassages(rows, links) {
+  const h = rows.length, w = rows[0].length;
+  const grille = rows.map(r => r.split(''));
+  const creuser = (x0, y0, x1, y1) => {
+    for (let y = Math.max(0, y0); y <= Math.min(h - 1, y1); y++) {
+      for (let x = Math.max(0, x0); x <= Math.min(w - 1, x1); x++) grille[y][x] = '.';
+    }
+  };
+  const LARG = 6, PROF = 10;             // couloir large et assez profond pour rejoindre le terrain
+  const cx = Math.floor(w / 2) - Math.floor(LARG / 2);
+  const cy = Math.floor(h / 2) - Math.floor(LARG / 2);
+  if (links.north) creuser(cx, 0, cx + LARG - 1, PROF - 1);
+  if (links.south) creuser(cx, h - PROF, cx + LARG - 1, h - 1);
+  if (links.west) creuser(0, cy, PROF - 1, cy + LARG - 1);
+  if (links.east) creuser(w - PROF, cy, w - 1, cy + LARG - 1);
+  return grille.map(r => r.join(''));
+}
+
 function expand(rows, k) {
   const out = [];
   for (const row of rows) {
@@ -269,6 +293,112 @@ function expand(rows, k) {
  *  - `find`  : ce qu'on y ramasse au sol (nature + quantité) ;
  *  - `boost` : les loutres sauvages y sont d'autant plus fortes qu'on va loin.
  */
+
+// LE DELTA : là où la rivière se répand avant de partir. Bancs de sable, bras
+// d'eau et cris d'oiseaux. Ouverture à l'ouest vers le lac.
+const CARTE_DELTA = [
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'T....~~~~......~~~~..........T',
+  'T...~~~~~~....~~~~~~.....ss..T',
+  'T..~~~~~~~~..~~~~~~~~........T',
+  'T...~~~~~~....~~~~~~.........T',
+  'T....~~~~......~~~~....bb....T',
+  'T.............................',
+  'T.....ss.........ss...........',
+  'T.............................',
+  'T..~~~~~~..........~~~~~~....T',
+  'T.~~~~~~~~........~~~~~~~~...T',
+  'T..~~~~~~..........~~~~~~....T',
+  'T............ss..............T',
+  'T.....bb.....................T',
+  'T.............................',
+  'T....~~~~~~~~~~~~~~~~........T',
+  'T...~~~~~~~~~~~~~~~~~~.......T',
+  'T....~~~~~~~~~~~~~~~~........T',
+  'T............................T',
+  'T.......ss..........bb.......T',
+  'T............................T',
+  'T..~~~~~........~~~~~........T',
+  'T.~~~~~~~......~~~~~~~.......T',
+  'T..~~~~~........~~~~~........T',
+  'T............................T',
+  'T....ss..............ss......T',
+  'T............................T',
+  'T.......bb...........ss......T',
+  'T............................T',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'
+];
+
+// LA GORGE : une faille étroite entre deux parois d'arbres, un torrent au fond.
+// Ouverture au nord vers le vallon.
+const GORGE = [
+  'TTTTTTTTTTTTT......TTTTTTTTTTT',
+  'TTTTTTTTTTT..........TTTTTTTTT',
+  'TTTTTTTTT....~~~~......TTTTTTT',
+  'TTTTTTTT.....~~~~.......TTTTTT',
+  'TTTTTTT..bb..~~~~........TTTTT',
+  'TTTTTT.......~~~~.........TTTT',
+  'TTTTT........~~~~..........TTT',
+  'TTTT....ss...~~~~...........TT',
+  'TTT..........~~~~............T',
+  'TT...........~~~~............T',
+  'TT....bb.....~~~~.....ss.....T',
+  'TT...........~~~~............T',
+  'TT...........~~~~............T',
+  'TT..ss.......~~~~............T',
+  'TT...........~~~~......bb....T',
+  'TT...........~~~~............T',
+  'TT...........~~~~............T',
+  'TTT..........~~~~...........TT',
+  'TTT...bb.....~~~~....ss.....TT',
+  'TTTT.........~~~~..........TTT',
+  'TTTT.........~~~~..........TTT',
+  'TTTTT........~~~~.........TTTT',
+  'TTTTT...ss...~~~~.........TTTT',
+  'TTTTTT.......~~~~........TTTTT',
+  'TTTTTT.......~~~~........TTTTT',
+  'TTTTTTT......~~~~.......TTTTTT',
+  'TTTTTTT..bb..~~~~.......TTTTTT',
+  'TTTTTTTT.....~~~~......TTTTTTT',
+  'TTTTTTTTT....~~~~.....TTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'
+];
+
+// LA SAPINIÈRE : des sapins serrés, sombres, où la lumière tombe en aiguilles.
+// Ouverture au sud vers la forêt.
+const SAPINIERE = [
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'Tppp....ppp.....ppp.....pppppT',
+  'Tpp......pp......pp......ppppT',
+  'T....ss.....pp.......ss......T',
+  'T...........pp...............T',
+  'Tpp.....ppp......ppp.....pp..T',
+  'Tpp.....ppp......ppp.....pp..T',
+  'T............................T',
+  'T...bb.........ss.......bb...T',
+  'T............................T',
+  'Tppp......pp.......pp.....pppT',
+  'Tppp......pp.......pp.....pppT',
+  'T............................T',
+  'T......ss........~~~~........T',
+  'T...............~~~~~~.......T',
+  'T................~~~~........T',
+  'T............................T',
+  'Tpp....ppp....pp....ppp....ppT',
+  'Tpp....ppp....pp....ppp....ppT',
+  'T............................T',
+  'T....ss.......bb........ss...T',
+  'T............................T',
+  'Tppp.....pp......pp......pppTT',
+  'Tppp.....pp......pp......pppTT',
+  'T............................T',
+  'T........ss..........bb......T',
+  'T............................T',
+  'Tpp...ppp.....ppp.....ppp..ppT',
+  'Tpp...ppp.....ppp.....ppp..ppT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'
+];
+
 export const ZONES = {
   clairiere: {
     id: 'clairiere', name: 'La clairière', rows: expand(CLAIRIERE, ZOOM), start: [8 * ZOOM, 22 * ZOOM],
@@ -277,7 +407,7 @@ export const ZONES = {
   },
   foret: {
     id: 'foret', name: 'La forêt', rows: expand(FORET, ZOOM), start: [14 * ZOOM, 27 * ZOOM],
-    links: { south: 'clairiere', west: 'cascade' },
+    links: { south: 'clairiere', west: 'cascade', north: 'sapiniere' },
     find: { kind: 'champignon', count: 3 }, boost: 2
   },
   cascade: {
@@ -292,15 +422,34 @@ export const ZONES = {
   },
   lac: {
     id: 'lac', name: 'Le grand lac', rows: expand(LAC, ZOOM), start: [2 * ZOOM, 24 * ZOOM],
-    links: { west: 'clairiere' },
+    links: { west: 'clairiere', east: 'delta' },
     find: { kind: 'tresor', count: 2 }, boost: 3
   },
   vallon: {
     id: 'vallon', name: 'Le vallon', rows: expand(VALLON, ZOOM), start: [8 * ZOOM, 2 * ZOOM],
-    links: { north: 'clairiere' },
+    links: { north: 'clairiere', south: 'gorge' },
     find: { kind: 'fleur', count: 3 }, boost: 1
+  },
+  delta: {
+    id: 'delta', name: 'Le delta', rows: expand(CARTE_DELTA, ZOOM), start: [3 * ZOOM, 14 * ZOOM],
+    links: { west: 'lac' },
+    find: { kind: 'crabe', count: 3 }, boost: 5
+  },
+  gorge: {
+    id: 'gorge', name: 'La gorge', rows: expand(GORGE, ZOOM), start: [15 * ZOOM, 1 * ZOOM],
+    links: { north: 'vallon' },
+    find: { kind: 'silex', count: 3 }, boost: 3
+  },
+  sapiniere: {
+    id: 'sapiniere', name: 'La sapinière', rows: expand(SAPINIERE, ZOOM), start: [15 * ZOOM, 28 * ZOOM],
+    links: { south: 'foret' },
+    find: { kind: 'baie', count: 3 }, boost: 2
   }
 };
+// Chaque bord LIÉ est ouvert d'office : déclarer une liaison suffit désormais à
+// la rendre franchissable, sans dépendre d'une trouée taillée à la main.
+for (const z of Object.values(ZONES)) z.rows = ouvrirPassages(z.rows, z.links);
+
 
 /**
  * L'arrivée dans un lieu, la PREMIÈRE fois : une petite carte qui plante le
@@ -324,13 +473,23 @@ export const ZONE_INTRO = {
       'On raconte que le fond du lac cache des trésors.'] },
   vallon: { emoji: '🌼', title: 'Le vallon',
     lines: ['La vallée s\'adoucit en une prairie fleurie.',
-      'La rivière y coule sans se presser — un endroit pour souffler.'] }
+      'La rivière y coule sans se presser — un endroit pour souffler.'] },
+  delta: { emoji: '🌅', title: 'Le delta',
+    lines: ['La rivière se répand, hésite, se divise en mille bras.',
+      'Des bancs de sable, des crabes, et le vent qui sent déjà le sel.'] },
+  gorge: { emoji: '⛰️', title: 'La gorge',
+    lines: ['Deux parois se resserrent ; le torrent gronde tout au fond.',
+      'On avance à l\'étroit, entre la pierre et l\'eau vive.'] },
+  sapiniere: { emoji: '🌲', title: 'La sapinière',
+    lines: ['Les sapins montent droit et serrés, la lumière tombe en aiguilles.',
+      'Il fait frais ici, et l\'on n\'entend que ses propres pas.'] }
 };
 
 /** Ce que chaque trouvaille montre à l'écran. */
 export const FIND_ICON = {
   poisson: '🐟', champignon: '🍄', gemme: '💎',
-  coquillage: '🐚', tresor: '🎁', fleur: '🌼'
+  coquillage: '🐚', tresor: '🎁', fleur: '🌼',
+  crabe: '🦀', silex: '🪨', baie: '🫐'
 };
 
 /**
@@ -350,7 +509,13 @@ export const SPECIALITE = {
   lac: { icon: '🗝️', nom: 'Les fonds',
     effet: 'le seul endroit où l\'on remonte de vrais trésors' },
   vallon: { icon: '😌', nom: 'Le pré du repos',
-    effet: 'on s\'y délasse : l\'entrain et l\'énergie reviennent' }
+    effet: 'on s\'y délasse : l\'entrain et l\'énergie reviennent' },
+  delta: { icon: '🌅', nom: 'Le grand large',
+    effet: 'les crabes des bancs de sable valent cher, et remettent d\'aplomb' },
+  gorge: { icon: '⚒️', nom: 'La faille',
+    effet: 'les silex du torrent se monnaient bien — et forment le caractère' },
+  sapiniere: { icon: '🌲', nom: 'Les aiguilles',
+    effet: 'les baies y poussent en abondance : de quoi tenir longtemps' }
 };
 
 /**
@@ -369,6 +534,23 @@ export function findCount(zone, dayKey) {
   if (!z.find) return 0;
   return z.find.count + (zoneDuJour(dayKey) === z.id ? 2 : 0);
 }
+
+/**
+ * LA FAUNE d'ambiance : de petites bêtes qui vaquent, propres à chaque lieu.
+ * Purement décoratives — mais sans elles les zones restaient des prés vides où
+ * seuls trois PNJ attendaient, immobiles. Une vallée doit grouiller un peu.
+ */
+export const FAUNE = {
+  clairiere: ['🦋', '🐝', '🐞'],
+  foret:     ['🦋', '🐦', '🐌'],
+  cascade:   ['🐦', '🦋'],
+  roseaux:   ['🦗', '🐸', '🦆'],
+  lac:       ['🦆', '🐟', '🦢'],
+  vallon:    ['🦋', '🐝', '🐇'],
+  delta:     ['🦆', '🦀', '🐦'],
+  gorge:     ['🦇', '🦎'],
+  sapiniere: ['🐿️', '🐦', '🦉']
+};
 
 /**
  * L'HABITANT de chaque lieu. Une zone sans personne est un décor : celui-ci y
@@ -394,7 +576,16 @@ export const HABITANT = {
       'Le fond du lac rend ce qu\'on lui laisse le temps de rendre.'] },
   vallon: { emoji: '🦌', nom: 'Sylve', role: 'la calme du pré', don: 'repos',
     mots: ['Rien ne presse, dans le vallon. Rien.',
-      'Souffle un peu. Tu repartiras plus vive.'] }
+      'Souffle un peu. Tu repartiras plus vive.'] },
+  delta: { emoji: '🦆', nom: 'Colvert', role: 'le rebouteux des bancs', don: 'remede',
+    mots: ['J\'en ai vu, des bêtes amochées, remonter le courant.',
+      'Montre-moi ça. Deux herbes, et il n\'y paraîtra plus.'] },
+  gorge: { emoji: '🦇', nom: 'Vespertin', role: 'l\'ombre de la faille', don: 'lecon',
+    mots: ['Ici, on n\'y voit rien. Alors on apprend à écouter.',
+      'Retiens ceci, petite : le silence dit tout.'] },
+  sapiniere: { emoji: '🐿️', nom: 'Noisette', role: 'la guetteuse des cimes', don: 'guet',
+    mots: ['De là-haut, je vois toute la vallée. TOUTE.',
+      'Et je vois surtout ce qui porte un chapeau et un fusil.'] }
 };
 
 /**
@@ -404,7 +595,8 @@ export const HABITANT = {
  */
 export const COFFRE = {
   clairiere: 'trefle', foret: 'gland', cascade: 'bulle',
-  roseaux: 'plume', lac: 'perle', vallon: 'luciole'
+  roseaux: 'plume', lac: 'perle', vallon: 'luciole',
+  delta: 'amulette', gorge: 'caillou_lune', sapiniere: 'boussole'
 };
 
 /** Toutes les zones qui recèlent un coffre (pour compter la collection). */
@@ -429,7 +621,13 @@ export const EPREUVE = {
   lac: { nom: 'Abysse', titre: 'la gardienne des fonds', fur: 'neige', force: 1.3,
     defi: 'Le lac est profond. Toi, jusqu\'où descends-tu ?' },
   cascade: { nom: 'Écume', titre: 'l\'indomptée de la chute', fur: 'braise', force: 1.45,
-    defi: 'Je vis dans le fracas. Si tu tiens debout ici, tu tiendras partout.' }
+    defi: 'Je vis dans le fracas. Si tu tiens debout ici, tu tiendras partout.' },
+  sapiniere: { nom: 'Aiguille', titre: 'la sentinelle des sapins', fur: 'nuit', force: 1.20,
+    defi: 'Sous mes arbres, on avance à découvert. Toi la première.' },
+  gorge: { nom: 'Rocaille', titre: 'la dure de la faille', fur: 'choco', force: 1.30,
+    defi: 'La pierre ne cède pas. Moi non plus. Essaie donc.' },
+  delta: { nom: 'Marée', titre: 'la reine du grand large', fur: 'neige', force: 1.60,
+    defi: 'Au bout de la vallée, il n\'y a plus que moi. Et la mer.' }
 };
 
 export const EPREUVE_ZONES = Object.keys(EPREUVE);

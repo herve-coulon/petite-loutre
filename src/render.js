@@ -10,7 +10,7 @@ import { seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 import { WATER_Y, TELL_MS, COMBO_STEP as FISH_COMBO_STEP, GOBE_MS as FISH_GOBE_MS, fishProgress } from './minigame.js';
 import { itemById, RARITIES, ITEMS } from './items.js';
 import { LANE_X, SLIDE_OTTER_Y, COMBO_STEP, GOBE_MS, VIES_MAX, slideProgress } from './toboggan.js';
-import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, FIND_ICON, groundTile, decorTile, zoneGates } from './tilemap.js';
+import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, FIND_ICON, FAUNE, groundTile, decorTile, zoneGates } from './tilemap.js';
 import { otterArt, drawAnim, frameAt, animForMood, ANATOMY, ANIMS } from './otter-art.js';
 
 // Le kit de sprites dessinés (assets/otter/) : il remplace la grille de pixels
@@ -853,6 +853,25 @@ export function makeRenderer(cv) {
       const dx = g.dir === 'west' ? -puls : g.dir === 'east' ? puls : 0;
       ctx.fillText(fleche, Math.round(ax + dx), Math.round(ay + 4 + dy));
       ctx.textAlign = 'left';
+    }
+
+    // FAUNE d'ambiance : elle dérive lentement, sans état ni collision — sa
+    // position se déduit de l'horloge et du lieu. Décorative, mais c'est elle
+    // qui fait la différence entre une vallée et une suite de prés vides.
+    const faune = FAUNE[zone] || [];
+    for (let i = 0; i < faune.length * 2; i++) {
+      const g = (zone.charCodeAt(0) * 37 + i * 911) % 1000;
+      const t = frame / 60 + i * 1.7;
+      const bx = (g * 3.1 + Math.sin(t / 3) * 90) % WORLD_W;
+      const by = (g * 7.3 + Math.cos(t / 4) * 70) % WORLD_H;
+      const sx = bx - camX, sy = by - camY;
+      if (sx < -20 || sx > CANVAS_W + 20 || sy < -20 || sy > CANVAS_H + 20) continue;
+      figs.push({ y: by, fn: () => {
+        ctx.globalAlpha = 0.9;
+        ctx.font = '10px system-ui,sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(faune[i % faune.length], Math.round(sx), Math.round(sy + Math.sin(t * 2) * 2));
+        ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+      } });
     }
 
     // trouvailles au sol : elles flottent doucement pour attirer l'œil
