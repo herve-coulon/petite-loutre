@@ -9,7 +9,7 @@ import { dayKey } from './quests.js';
 import { seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 import { WATER_Y, TELL_MS, COMBO_STEP as FISH_COMBO_STEP, fishProgress } from './minigame.js';
 import { itemById, RARITIES, ITEMS } from './items.js';
-import { LANE_X, SLIDE_OTTER_Y, COMBO_STEP, slideProgress } from './toboggan.js';
+import { LANE_X, SLIDE_OTTER_Y, COMBO_STEP, GOBE_MS, slideProgress } from './toboggan.js';
 import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, FIND_ICON, groundTile, decorTile, zoneGates } from './tilemap.js';
 import { otterArt, drawAnim, frameAt, animForMood, ANATOMY, ANIMS } from './otter-art.js';
 
@@ -1550,9 +1550,49 @@ export function makeRenderer(cv) {
       for (const lx of LANE_X) ctx.fillRect(lx - 1, y, 2, 10 + speedP * 10);
     }
 
+    // Position de la loutre, calculée AVANT les items : les poissons gobés sont
+    // aspirés vers elle, il leur faut sa position de CETTE image.
+    const cible = LANE_X[mg.lane];
+    // nouvelle descente : on repart du couloir de départ, sans saut fantôme
+    if (slideMg !== mg) { slideMg = mg; slideLane = mg.lane; slideX = cible; slideHopAt = -999; }
+    if (slideLane !== mg.lane) { slideLane = mg.lane; slideHopAt = frame; }
+    slideX += (cible - slideX) * 0.28;                 // glisse vers son couloir
+
     // obstacles et poissons
     for (const it of mg.items) {
       const ix = LANE_X[it.lane];
+      // GOBÉ : happé vers la gueule de la loutre, il rétrécit et s'efface, et
+      // ses points s'envolent. Auparavant il poursuivait sa descente à
+      // l'identique — rien ne disait qu'il avait été pris.
+      if (it.got) {
+        const k = Math.min(1, (now - it.gotAt) / GOBE_MS);
+        const doux = k * k * (3 - 2 * k);              // départ et arrivée adoucis
+        const gx = ix + (slideX - ix) * doux;
+        const gy = it.y + (SLIDE_OTTER_Y - it.y) * doux;
+        const taille = 1 - doux;
+        ctx.save();
+        ctx.globalAlpha = 1 - doux * 0.85;
+        ctx.translate(gx, gy);
+        ctx.scale(Math.max(0.05, taille), Math.max(0.05, taille));
+        const pal = it.kind === 'gold' ? { B: '#ffd94a', D: '#c9922a', W: '#fff6cd' } : null;
+        drawSprite(SPRITES.fish, -5, -2, 1, pal);
+        ctx.restore();
+        // petites bulles de gorgée
+        ctx.globalAlpha = 1 - doux;
+        ctx.fillStyle = 'rgba(255,255,255,.8)';
+        ctx.fillRect(Math.round(gx - 4 - doux * 3), Math.round(gy - 4 - doux * 6), 2, 2);
+        ctx.fillRect(Math.round(gx + 3 + doux * 3), Math.round(gy - 2 - doux * 8), 1, 1);
+        ctx.globalAlpha = 1;
+        // les points gagnés, qui montent
+        if (it.pts) {
+          ctx.font = '8px monospace'; ctx.textAlign = 'center';
+          ctx.globalAlpha = 1 - doux;
+          ctx.fillStyle = it.kind === 'gold' ? '#ffd94a' : '#eaf7d8';
+          ctx.fillText('+' + it.pts, Math.round(gx), Math.round(gy - 8 - doux * 12));
+          ctx.globalAlpha = 1; ctx.textAlign = 'left';
+        }
+        continue;
+      }
       if (it.kind === 'rock') {
         ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(ix - 7, it.y + 5, 14, 3);
         ctx.fillStyle = '#6b6f78'; ctx.fillRect(ix - 6, it.y - 4, 12, 9);
@@ -1570,13 +1610,6 @@ export function makeRenderer(cv) {
       }
     }
 
-    // La loutre dans son couloir : sur le dos dans le courant, et un vrai saut
-    // quand on change de couloir (c'est le geste du joueur, il mérite d'être vu).
-    const cible = LANE_X[mg.lane];
-    // nouvelle descente : on repart du couloir de départ, sans saut fantôme
-    if (slideMg !== mg) { slideMg = mg; slideLane = mg.lane; slideX = cible; slideHopAt = -999; }
-    if (slideLane !== mg.lane) { slideLane = mg.lane; slideHopAt = frame; }
-    slideX += (cible - slideX) * 0.28;                 // glisse vers son couloir
     const saut = frame - slideHopAt;
     const enSaut = saut < HOP_FRAMES;
     const ox = Math.round(slideX) - 16;

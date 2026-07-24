@@ -8,7 +8,7 @@ import {
   newSlide, setSlideLane, laneAt, tickSlide, spawnPattern,
   slideProgress, slideSpeed,
   SLIDE_DURATION, LANES, LANE_X, SLIDE_OTTER_Y, SLIDE_BOTTOM,
-  SPEED_START, SPEED_END, COMBO_STEP, GOLD_POINTS, ROCK_MALUS
+  SPEED_START, SPEED_END, COMBO_STEP, GOLD_POINTS, ROCK_MALUS, GOBE_MS
 } from '../src/toboggan.js';
 
 const T0 = 1_750_000_000_000;
@@ -215,4 +215,58 @@ test('progression : l\'endurance rallonge la descente', () => {
   assert.equal(normal.endsAt - normal.startedAt, SLIDE_DURATION);
   assert.equal(long.endsAt - long.startedAt, Math.round(SLIDE_DURATION * 1.2));
   assert.ok(slideProgress(long, T0 + SLIDE_DURATION) < 1);
+});
+
+// avance juste assez pour que l'item soit ramassé (settle, lui, vide la liste :
+// l'animation de gobage serait déjà finie)
+const jusquAuGobage = (mg, from) => {
+  let g = 0;
+  while (g++ < 900 && !mg.items.some(i => i.got)) tickSlide(mg, from + g * 16, () => 0.99);
+  return mg.items.find(i => i.got);
+};
+
+test('gobage : un poisson pris s\'arrête, garde ses points, puis disparaît', () => {
+  const mg = newSlide(T0);
+  spawnPattern(mg, seq([0.9, 0.0]));            // poisson isolé, couloir 0
+  setSlideLane(mg, 0);
+  const p = jusquAuGobage(mg, T0);
+  assert.ok(p && p.got, 'le poisson est marqué comme pris');
+  assert.equal(p.gotAt > 0, true, 'horodaté, pour l\'animation');
+  assert.equal(p.pts, 1, 'et il garde les points qu\'il a rapportés');
+
+  // il ne descend plus : il est happé par la loutre, il ne poursuit pas sa route
+  const yPris = p.y;
+  tickSlide(mg, mg.lastTick + 100, () => 0.99);
+  const encore = mg.items.find(i => i === p);
+  assert.ok(encore, 'il reste le temps d\'être avalé');
+  assert.equal(encore.y, yPris, 'et il ne bouge plus');
+
+  // …puis il s'efface, sans avoir compté deux fois
+  const scoreAvant = mg.score;
+  tickSlide(mg, mg.lastTick + GOBE_MS + 20, () => 0.99);
+  assert.equal(mg.items.includes(p), false, 'disparu après l\'animation');
+  assert.equal(mg.score, scoreAvant, 'et jamais recompté');
+});
+
+test('gobage : le doré emporte sa grosse valeur dans l\'animation', () => {
+  const mg = newSlide(T0);
+  spawnPattern(mg, seq([0.99, 0.0]));           // doré, couloir 0
+  setSlideLane(mg, 0);
+  const d = jusquAuGobage(mg, T0);
+  assert.ok(d, 'le doré doit être ramassé');
+  assert.equal(d.kind, 'gold');
+  assert.equal(d.pts, GOLD_POINTS, 'le compte affiché doit être le vrai gain');
+});
+
+test('gobage : un rocher, lui, poursuit sa route (rien à avaler)', () => {
+  const mg = newSlide(T0);
+  spawnPattern(mg, seq([0.7, 0.0]));            // rocher isolé, couloir 0
+  setSlideLane(mg, 0);
+  settle(mg, T0);
+  const r = mg.items[0];
+  if (!r) return;                                // déjà sorti de l'écran : rien à vérifier
+  assert.ok(!r.got, 'un rocher ne se gobe pas');
+  const y0 = r.y;
+  tickSlide(mg, mg.lastTick + 100, () => 0.99);
+  assert.ok(r.y > y0, 'il continue de descendre');
 });

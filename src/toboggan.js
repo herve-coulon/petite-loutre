@@ -23,6 +23,7 @@ export const SPEED_END = 0.62;         // …et à la fin
 export const COMBO_STEP = 3;           // un point bonus tous les 3 poissons d'affilée
 export const GOLD_POINTS = 8;
 export const ROCK_MALUS = 2;           // un choc coûte des POINTS, pas seulement la série
+export const GOBE_MS = 260;            // durée pendant laquelle un poisson est « avalé »
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -126,7 +127,9 @@ export function tickSlide(mg, now = Date.now(), rnd = Math.random, opts = {}) {
   mg.lastTick = now;
 
   const speed = slideSpeed(mg, now);
-  for (const it of mg.items) it.y += speed * dt;
+  // un poisson attrapé ne descend plus : il est happé par la loutre. Sans cela
+  // il continuait sa route, identique, et rien ne disait qu'il avait été gobé.
+  for (const it of mg.items) if (!it.got) it.y += speed * dt;
 
   // collision quand un item franchit la ligne de la loutre (une seule fois)
   for (const it of mg.items) {
@@ -147,11 +150,16 @@ export function tickSlide(mg, now = Date.now(), rnd = Math.random, opts = {}) {
       mg.combo++;
       mg.bestCombo = Math.max(mg.bestCombo, mg.combo);
       it.got = true;
-      if (it.kind === 'gold') { mg.score += GOLD_POINTS; mg.goldAt = now; }
-      else mg.score += 1 + Math.floor(mg.combo / COMBO_STEP); // l'élan paie
+      it.gotAt = now;                                 // début de l'animation de gobage
+      if (it.kind === 'gold') { it.pts = GOLD_POINTS; mg.goldAt = now; }
+      else it.pts = 1 + Math.floor(mg.combo / COMBO_STEP);   // l'élan paie
+      mg.score += it.pts;
     }
   }
-  mg.items = mg.items.filter(it => it.y < SLIDE_BOTTOM);
+  // on garde un instant les poissons gobés, le temps de l'animation
+  mg.items = mg.items.filter(it => it.got
+    ? now - it.gotAt < GOBE_MS
+    : it.y < SLIDE_BOTTOM);
 
   // les motifs se resserrent avec la vitesse, sans voler le temps de réaction
   if (now >= mg.nextItem && now < mg.endsAt - 700) {
