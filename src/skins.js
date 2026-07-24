@@ -25,15 +25,15 @@ export const FURS = [
 // Petits décors dessinés sur la berge.
 export const DECORS = [
   { id: 'aucun', icon: '🌿', name: 'Berge nature', cond: 'Toujours disponible', test: () => true },
-  { id: 'nenuphars', icon: '🪷', name: 'Nénuphars', cond: 'Jouer 5 parties de pêche',
+  { id: 'nenuphars', bonus: { luck: 1.15 }, icon: '🪷', name: 'Nénuphars', cond: 'Jouer 5 parties de pêche',
     test: r => r.gamesTotal >= 5 },
-  { id: 'lanterne', icon: '🏮', name: 'Lanterne', cond: 'Rapporter un trésor de plongée',
+  { id: 'lanterne', bonus: { energy: 1.12 }, icon: '🏮', name: 'Lanterne', cond: 'Rapporter un trésor de plongée',
     test: r => r.treasures >= 1 },
-  { id: 'fanions', icon: '🎏', name: 'Fanions de combat', cond: 'Livrer 5 combats',
+  { id: 'fanions', bonus: { xp: 1.08 }, icon: '🎏', name: 'Fanions de combat', cond: 'Livrer 5 combats',
     test: r => r.battles >= 5 },
-  { id: 'baies', icon: '🫐', name: 'Bosquet à baies', cond: 'Vivre 5 jours',
+  { id: 'baies', bonus: { decay: 0.92 }, icon: '🫐', name: 'Bosquet à baies', cond: 'Vivre 5 jours',
     test: r => r.bestAge >= 5 * 24 * H },
-  { id: 'feu', icon: '🔥', name: 'Feu de camp', cond: 'Atteindre le niveau 3',
+  { id: 'feu', bonus: { coldResist: 0.5 }, icon: '🔥', name: 'Feu de camp', cond: 'Atteindre le niveau 3',
     test: r => levelFromXp(r.xp || 0).level >= 3 }
 ];
 
@@ -51,5 +51,9 @@ export function equipBonus(s) {
   if (!s) return {};
   const hat = hatById(s.hat);
   const fur = furById(s.fur);
-  return mergeBonus(bonusOf(s.gear), hat && hat.bonus, fur && fur.bonus);
+  // Le décor AMÉNAGE la berge : c'est un confort du foyer, pas un équipement
+  // porté — il ne suit donc pas la loutre quand elle part explorer la vallée.
+  const chezSoi = s.place !== 'monde';
+  const dec = chezSoi ? decorById(s.decor) : null;
+  return mergeBonus(bonusOf(s.gear), hat && hat.bonus, fur && fur.bonus, dec && dec.bonus);
 }

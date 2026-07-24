@@ -227,10 +227,10 @@ test('garde-robe : déblocage par records + équipement', () => {
 
   L.records.mealsTotal = 5; // débloque le nœud
   // chaque slot du profil est un raccourci vers SON onglet : plus de doublon
-  $('ps-tres').click();
+  $('ps-gear').click();
   assert.ok(!$('ovl-hats').classList.contains('hidden'));
   assert.equal($('hat-list').querySelectorAll('.row-item').length, ITEMS.length,
-    'le slot Trésors ouvre l\'onglet Trésors');
+    'le slot Trésor porté ouvre l\'onglet Trésors');
   $('btn-hats-close').click();
 
   $('ps-hat').click();   // le slot chapeau ouvre directement l'onglet Chapeaux

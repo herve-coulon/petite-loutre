@@ -150,15 +150,18 @@ export function renderProfile(s, rec, onTravel) {
 
   // Slots d'ÉQUIPEMENT : on affiche l'effet porté, pas seulement le nom —
   // sinon rien ne dit que ces objets servent à quelque chose.
+  // GAUCHE : ce que la loutre porte (la suit partout).
   const gearIt = itemById(s.gear);
   setTxt('ps-hat-v', hat ? (shortBonus(hat.bonus) || hat.name) : 'Sans chapeau');
   setTxt('ps-fur-v', shortBonus(fur.bonus) || fur.name);
-  setTxt('ps-decor-v', gearIt ? (shortBonus(gearIt.bonus) || gearIt.name) : 'Sans trésor');
+  setTxt('ps-gear-v', gearIt ? (shortBonus(gearIt.bonus) || gearIt.name) : 'Sans trésor');
   setTxt('ps-hat-ic', hat ? hat.icon : '🎩');
   setTxt('ps-fur-ic', fur.icon || '🎨');
-  setTxt('ps-decor-ic', gearIt ? gearIt.emoji : '💎');
+  setTxt('ps-gear-ic', gearIt ? gearIt.emoji : '💎');
+  // DROITE : le foyer et le palmarès. Le décor n'agit qu'à la berge : on le dit.
   setTxt('ps-ach-v', achN + ' succès');
-  setTxt('ps-tres-v', owned + '/' + ITEMS.length);
+  setTxt('ps-decor2-ic', decor.icon || '🌿');
+  setTxt('ps-decor2-v', shortBonus(decor.bonus) ? (shortBonus(decor.bonus) + ' (au foyer)') : decor.name);
   setTxt('ps-streak-v', streak + ' j');
 
   // Carte d'identité

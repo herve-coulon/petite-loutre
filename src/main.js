@@ -1573,7 +1573,7 @@ function boot() {
     ui.renderWardrobe(s, rec, wardrobeHandlers, tab);
     ui.showOverlay('ovl-hats');
   };
-  const SLOT_TAB = { 'ps-hat': 'hats', 'ps-fur': 'furs', 'ps-decor': 'decors', 'ps-tres': 'tresors' };
+  const SLOT_TAB = { 'ps-hat': 'hats', 'ps-fur': 'furs', 'ps-gear': 'tresors', 'ps-decor2': 'decors' };
   for (const [id, tab] of Object.entries(SLOT_TAB)) {
     const el = $(id); if (el) el.addEventListener('click', () => openWardrobe(tab));
   }

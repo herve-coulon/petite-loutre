@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { HATS } from '../src/accessories.js';
-import { FURS } from '../src/skins.js';
+import { FURS, DECORS, equipBonus } from '../src/skins.js';
 
 import {
   RARITIES, ITEMS, MILESTONES, itemById, milestoneItem, bonusOf, rollDrop, describeBonus, mergeBonus } from '../src/items.js';
@@ -162,4 +162,22 @@ test('équipement : chapeaux et pelages portent de vrais effets', () => {
       if (k.endsWith('Resist')) assert.ok(v > 0 && v <= 0.8, it.id + '.' + k);
     }
   }
+});
+
+test('décor : il aménage la BERGE, il ne suit pas la loutre en exploration', () => {
+  const base = { gear: 'cristal', hat: 'couronne', fur: 'doree', decor: 'feu' };
+  const foyer = equipBonus({ ...base, place: 'berge' });
+  const dehors = equipBonus({ ...base, place: 'monde' });
+  assert.ok(foyer.coldResist > 0, 'le feu de camp réchauffe au foyer');
+  assert.equal(dehors.coldResist, undefined, 'mais pas au milieu de la vallée');
+  // le reste de l'équipement, lui, est PORTÉ : il suit partout
+  assert.equal(foyer.xp, dehors.xp, 'trésor + chapeau + pelage suivent la loutre');
+  // la tanière fait partie du foyer
+  assert.ok(equipBonus({ ...base, place: 'taniere' }).coldResist > 0);
+});
+
+test('décor : chaque décor déblocable porte un effet (sauf le décor par défaut)', () => {
+  const avecEffet = DECORS.filter(d => d.bonus && Object.keys(d.bonus).length);
+  assert.equal(avecEffet.length, DECORS.length - 1, 'seul « Berge nature » reste neutre');
+  assert.deepEqual(DECORS[0].bonus, undefined, 'le décor par défaut ne donne rien');
 });
