@@ -13,6 +13,7 @@ import { ACHIEVEMENTS } from '../src/achievements.js';
 import { ITEMS } from '../src/items.js';
 import { HATS } from '../src/accessories.js';
 import { foeIntent } from '../src/battle.js';
+import { VIES_MAX, DEGATS_EJECTION } from '../src/toboggan.js';
 import { FURS, DECORS } from '../src/skins.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -754,4 +755,30 @@ test('maîtrise : boucler les DEUX collections octroie le légendaire, une seule
   L.records.chests = [...L.records.chests];
   $('btn-story-next').dispatchEvent(new window.Event('click', { bubbles: true }));
   assert.equal(L.records.gems, gems2, 'la maîtrise ne se gagne qu\'une fois');
+});
+
+test('toboggan : trois rochers éjectent la loutre, et ça lui coûte de la santé', async () => {
+  L.state.gameOver = false; L.state.away = false; L.state.divingUntil = 0; L.state.sleeping = false;
+  L.state.stage = 'adult'; L.state.hatchedAt = Date.now() - 5 * 24 * 3600 * 1000;
+  L.state.energy = 90; L.state.health = 100;
+  L.records.xp = 100000;
+  L.step(0);
+
+  L.actSlide();
+  assert.equal(L.minigame && L.minigame.mode, 'slide', 'descente lancée');
+  assert.equal(L.minigame.vies, VIES_MAX, 'avec toutes ses vies');
+
+  const santeAvant = L.state.health;
+  const descentesAvant = L.records.slidesTotal || 0;
+  L.minigame.score = 6;
+  L.minigame.ejectee = true;              // trois rochers encaissés
+  await degeler();
+  renderOnce();
+
+  assert.equal(L.minigame, null, 'la descente s\'arrête net');
+  assert.equal(L.state.health, santeAvant - DEGATS_EJECTION, 'la santé en pâtit');
+  assert.equal(L.records.slidesTotal, descentesAvant + 1, 'la descente compte quand même');
+  assert.match($('log').textContent, /éjectée/i, 'et le joueur sait pourquoi');
+  // une éjection n'est jamais une « descente parfaite »
+  assert.equal(L.records.perfectSlides || 0, 0, 'pas de descente parfaite sur une éjection');
 });

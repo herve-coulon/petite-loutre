@@ -21,7 +21,7 @@ import {
 } from './state.js';
 import { stepSim, simulateOffline, ageMs } from './sim.js';
 import { newGame, tickGame, clickGame } from './minigame.js';
-import { newSlide, tickSlide, setSlideLane, laneAt } from './toboggan.js';
+import { newSlide, tickSlide, setSlideLane, laneAt, DEGATS_EJECTION } from './toboggan.js';
 import { makeRenderer, FOOD_POS, BALL_HOME, denItemAt, CANVAS_W, CANVAS_H } from './render.js';
 import { sfx, vibrate, setMuted, setVolume, getVolume } from './audio.js';
 import * as ui from './ui.js';
@@ -368,20 +368,30 @@ function actSlide() {
 
 function endSlide(res) {
   const sc = res.score, bumps = res.bumps, best = res.bestCombo || 0;
-  s.fun = clamp(s.fun + 8 + sc * 4, 0, 100);
+  // Éjectée du torrent : la descente s'arrête net et la loutre en garde des
+  // bleus. C'est ce qui donne un enjeu à la prudence — jusqu'ici on encaissait
+  // les rochers sans fin, la descente n'était qu'un chronomètre.
+  const ejectee = !!res.ejectee;
+  if (ejectee) s.health = clamp(s.health - DEGATS_EJECTION, 0, 100);
+  s.fun = clamp(s.fun + (ejectee ? 2 : 8) + sc * 4, 0, 100);
   s.energy = clamp(s.energy - 10, 0, 100);
   s.hunger = clamp(s.hunger - 5, 0, 100);
   s.played++;
   rec.gamesTotal++;
   rec.slidesTotal = (rec.slidesTotal || 0) + 1;
   rec.slideBest = Math.max(rec.slideBest || 0, sc);
-  const clean = bumps === 0 && sc >= 5;
+  const clean = !ejectee && bumps === 0 && sc >= 5;
   if (clean) rec.perfectSlides = (rec.perfectSlides || 0) + 1;
   mg = null;
   if (clean) R.burst('confetti', 24, s.stage);
-  else if (sc > 0) R.burst('sparkle', 8, s.stage);
+  else if (!ejectee && sc > 0) R.burst('sparkle', 8, s.stage);
   const combo = best >= 3 ? ' Plus bel enchaînement : x' + best + ' !' : '';
-  if (clean) { sfx.happy(); ui.log('Descente parfaite : ' + sc + ' points sans un rocher ! 🛝🎉' + combo); }
+  if (ejectee) {
+    sfx.sad(); ui.shake(); vibrate([30, 60, 30]);
+    ui.log('🪨 Trois rochers… ' + (s.name || 'La loutre') +
+      ' est éjectée du torrent ! (-' + DEGATS_EJECTION + ' santé) — ' + sc + ' points tout de même.');
+  }
+  else if (clean) { sfx.happy(); ui.log('Descente parfaite : ' + sc + ' points sans un rocher ! 🛝🎉' + combo); }
   else if (sc > 0) {
     sfx.eat();
     ui.log(sc + ' point' + (sc > 1 ? 's' : '') + ' ramassé' + (sc > 1 ? 's' : '') +

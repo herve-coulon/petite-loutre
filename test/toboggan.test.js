@@ -8,7 +8,7 @@ import {
   newSlide, setSlideLane, laneAt, tickSlide, spawnPattern,
   slideProgress, slideSpeed,
   SLIDE_DURATION, LANES, LANE_X, SLIDE_OTTER_Y, SLIDE_BOTTOM,
-  SPEED_START, SPEED_END, COMBO_STEP, GOLD_POINTS, ROCK_MALUS, GOBE_MS
+  SPEED_START, SPEED_END, COMBO_STEP, GOLD_POINTS, ROCK_MALUS, GOBE_MS, VIES_MAX, DEGATS_EJECTION
 } from '../src/toboggan.js';
 
 const T0 = 1_750_000_000_000;
@@ -269,4 +269,59 @@ test('gobage : un rocher, lui, poursuit sa route (rien à avaler)', () => {
   const y0 = r.y;
   tickSlide(mg, mg.lastTick + 100, () => 0.99);
   assert.ok(r.y > y0, 'il continue de descendre');
+});
+
+/** Envoie un rocher dans le couloir de la loutre et le fait passer sur elle. */
+function unRocher(mg, from) {
+  spawnPattern(mg, seq([0.7, mg.lane / LANES + 0.01]));
+  let g = 0, res = null;
+  while (g++ < 900 && !res && mg.items.some(i => !i.done)) {
+    res = tickSlide(mg, from + g * 16, () => 0.99);
+  }
+  return res;
+}
+
+test('vies : trois rochers et la loutre est éjectée du torrent', () => {
+  const mg = newSlide(T0);
+  assert.equal(mg.vies, VIES_MAX, 'on part avec toutes ses vies');
+  assert.equal(mg.ejectee, false);
+
+  let t = T0;
+  assert.equal(unRocher(mg, t), null, 'un premier choc ne suffit pas');
+  assert.equal(mg.vies, VIES_MAX - 1);
+  t = mg.lastTick;
+  assert.equal(unRocher(mg, t), null, 'ni un deuxième');
+  assert.equal(mg.vies, VIES_MAX - 2);
+  t = mg.lastTick;
+  const fin = unRocher(mg, t);
+  assert.ok(fin, 'le troisième met fin à la descente');
+  assert.equal(fin.ejectee, true, 'et il est signalé comme une éjection');
+  assert.equal(mg.vies, 0);
+  // la partie s'arrête NET : bien avant la fin du chrono
+  assert.ok(mg.lastTick < mg.endsAt, 'éjectée avant l\'arrivée');
+  assert.equal(fin.score, mg.score, 'le score acquis est conservé');
+});
+
+test('vies : une descente propre va au bout, sans éjection', () => {
+  const mg = newSlide(T0);
+  let g = 0, res = null;
+  while (g++ < 3000 && !res) res = tickSlide(mg, T0 + g * 16, () => 0.99);
+  assert.ok(res, 'la descente se termine');
+  assert.ok(!res.ejectee, 'par le chrono, pas par éjection');
+  assert.equal(mg.vies, VIES_MAX, 'aucune vie perdue en restant dans un couloir libre');
+});
+
+test('vies : « pied marin » offre un choc, donc une vie de plus dans les faits', () => {
+  const mg = newSlide(T0, { amorti: true });
+  assert.equal(unRocher(mg, T0), null);
+  assert.equal(mg.vies, VIES_MAX, 'le choc absorbé ne coûte pas de vie');
+  assert.equal(mg.bumps, 0, 'ni ne compte comme un rocher pris');
+  // le suivant, lui, entame bien les vies
+  assert.equal(unRocher(mg, mg.lastTick), null);
+  assert.equal(mg.vies, VIES_MAX - 1);
+});
+
+test('vies : l\'éjection a un coût de santé annoncé, et non nul', () => {
+  assert.ok(DEGATS_EJECTION > 0 && DEGATS_EJECTION <= 25,
+    'assez pour compter, pas assez pour punir une seule descente ratée');
 });

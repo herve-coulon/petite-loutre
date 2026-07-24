@@ -24,6 +24,10 @@ export const COMBO_STEP = 3;           // un point bonus tous les 3 poissons d'a
 export const GOLD_POINTS = 8;
 export const ROCK_MALUS = 2;           // un choc coûte des POINTS, pas seulement la série
 export const GOBE_MS = 260;            // durée pendant laquelle un poisson est « avalé »
+// Une descente n'était qu'un chronomètre : on encaissait les rochers sans fin.
+// Trois chocs et la loutre est ÉJECTÉE du torrent — la descente a enfin un enjeu.
+export const VIES_MAX = 3;
+export const DEGATS_EJECTION = 12;     // ce que l'éjection coûte à sa santé
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -34,6 +38,8 @@ export function newSlide(now = Date.now(), opts = {}) {
     score: 0, bumps: 0, lane: 1,
     // « Pied marin » : le premier choc de la descente est absorbé
     amorti: opts.amorti ? 1 : 0,
+    vies: VIES_MAX,
+    ejectee: false,
     duree,
     combo: 0, bestCombo: 0,
     items: [],                 // {lane, y, kind:'fish'|'rock'|'gold', done, got, hit}
@@ -145,6 +151,8 @@ export function tickSlide(mg, now = Date.now(), rnd = Math.random, opts = {}) {
         // …et coûte des points : sans cela, foncer dans un rocher pour rafler
         // le poisson d'après ne coûtait rien, et la prudence gagnait toujours.
         mg.score = Math.max(0, mg.score - ROCK_MALUS);
+        mg.vies = Math.max(0, mg.vies - 1);
+        if (mg.vies === 0) mg.ejectee = true;         // sortie du torrent
       }
     } else {
       mg.combo++;
@@ -168,6 +176,11 @@ export function tickSlide(mg, now = Date.now(), rnd = Math.random, opts = {}) {
     mg.nextItem = now + (820 - 520 * p) + rnd() * 180;
   }
 
+  // Éjection : la descente s'arrête NET, sans attendre la fin du chrono.
+  if (mg.ejectee) {
+    return { type: 'end', score: mg.score, bumps: mg.bumps,
+      bestCombo: mg.bestCombo, ejectee: true };
+  }
   if (now >= mg.endsAt) {
     return { type: 'end', score: mg.score, bumps: mg.bumps, bestCombo: mg.bestCombo };
   }

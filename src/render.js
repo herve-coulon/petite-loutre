@@ -9,7 +9,7 @@ import { dayKey } from './quests.js';
 import { seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 import { WATER_Y, TELL_MS, COMBO_STEP as FISH_COMBO_STEP, GOBE_MS as FISH_GOBE_MS, fishProgress } from './minigame.js';
 import { itemById, RARITIES, ITEMS } from './items.js';
-import { LANE_X, SLIDE_OTTER_Y, COMBO_STEP, GOBE_MS, slideProgress } from './toboggan.js';
+import { LANE_X, SLIDE_OTTER_Y, COMBO_STEP, GOBE_MS, VIES_MAX, slideProgress } from './toboggan.js';
 import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, FIND_ICON, groundTile, decorTile, zoneGates } from './tilemap.js';
 import { otterArt, drawAnim, frameAt, animForMood, ANATOMY, ANIMS } from './otter-art.js';
 
@@ -1675,10 +1675,29 @@ export function makeRenderer(cv) {
     ctx.fillStyle = 'rgba(15,18,26,.8)'; ctx.fillRect(0, 0, CANVAS_W, 13);
     ctx.fillStyle = '#ffe9a8'; ctx.font = '8px monospace';
     ctx.fillText(left.toFixed(0) + 's', 6, 10);
-    ctx.fillText('score ' + mg.score, 34, 10);
+    ctx.fillText('score ' + mg.score, 30, 10);
+    // Les VIES restantes : sans elles à l'écran, l'éjection tomberait comme un
+    // couperet sans prévenir. Elles clignotent quand il n'en reste qu'une.
+    const vies = mg.vies != null ? mg.vies : VIES_MAX;
+    const criAlerte = vies === 1 && (frame >> 3) % 2 === 0;
+    for (let i = 0; i < VIES_MAX; i++) {
+      const hx = CANVAS_W - 46 + i * 10;
+      if (i < vies) {
+        ctx.fillStyle = criAlerte ? '#ff9a8f' : '#e5484d';
+        ctx.fillRect(hx + 1, 4, 2, 1); ctx.fillRect(hx + 5, 4, 2, 1);
+        ctx.fillRect(hx, 5, 8, 2);
+        ctx.fillRect(hx + 1, 7, 6, 1);
+        ctx.fillRect(hx + 2, 8, 4, 1);
+        ctx.fillRect(hx + 3, 9, 2, 1);
+      } else {
+        ctx.fillStyle = 'rgba(255,233,168,.28)';       // cœur perdu, en creux
+        ctx.fillRect(hx, 5, 8, 1); ctx.fillRect(hx + 3, 9, 2, 1);
+        ctx.fillRect(hx, 5, 1, 3); ctx.fillRect(hx + 7, 5, 1, 3);
+      }
+    }
     if (mg.combo >= 2) {
       ctx.fillStyle = mg.combo >= COMBO_STEP ? '#ffd94a' : '#cfe8ff';
-      ctx.fillText('x' + mg.combo, CANVAS_W - 28, 10);
+      ctx.fillText('x' + mg.combo, CANVAS_W - 78, 10);
     }
     // jauge de temps : elle se vide, on sent l'arrivée
     ctx.fillStyle = 'rgba(255,233,168,.75)';
