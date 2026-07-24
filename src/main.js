@@ -31,9 +31,10 @@ import { unlockedFurs, unlockedDecors, equipBonus, furById } from './skins.js';
 import { newAchievements } from './achievements.js';
 import { encodeCard, decodeCard, newBattle, playTurn, wildFoe, makeFighter } from './battle.js';
 import { combatBuffs, jeuBuffs, unlockedTechniques, techniqueById } from './skills.js';
+import { chasseurRode, newChasseur, stepChasseur, DEGATS_CAPTURE } from './chasseur.js';
 import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
 import {
-  TILE, WORLD_W, WORLD_H, START_ZONE, zoneById, zoneFinds, ZONE_INTRO,
+  TILE, MAP_W, MAP_H, WORLD_W, WORLD_H, START_ZONE, zoneById, zoneFinds, ZONE_INTRO, isSolid,
   SPECIALITE, zoneDuJour, HABITANT, COFFRE, COFFRE_ZONES, habitantAt, coffreAt,
   EPREUVE, EPREUVE_ZONES, epreuveAt,
   moveWithCollision, spawnPoint, zoneExit, safeEntry, nearestFree
@@ -481,6 +482,16 @@ function findsFor(zoneId) {
   return zoneFinds(zoneId, dayKey()).filter(f => !isFound(f.id));
 }
 
+/**
+ * Le chasseur qui rôde ici aujourd'hui, s'il y en a un. La clairière reste un
+ * refuge : sans lieu sûr, la vallée deviendrait invivable plutôt que tendue.
+ */
+function chasseurFor(zoneId) {
+  if (!chasseurRode(zoneId, dayKey(), START_ZONE)) return null;
+  return newChasseur(zoneId, dayKey(), MAP_W, MAP_H, TILE,
+    (cx, cy) => !isSolid(zoneId, cx, cy));
+}
+
 /** L'habitant du lieu, posté à sa place habituelle. */
 function habitantFor(zoneId) {
   const h = HABITANT[zoneId];
@@ -648,6 +659,31 @@ function verifierMaitriseVallee() {
   });
 }
 
+/**
+ * Prise par le chasseur. Le jeu ne tue pas (cf. v2.7 : l'irréversible faisait
+ * désinstaller) — mais il fallait que ça coûte VRAIMENT, sinon le prédateur ne
+ * serait qu'un décor mouvant. Elle s'échappe, blessée, et rentre à la berge.
+ */
+function capturee() {
+  s.health = clamp(s.health - DEGATS_CAPTURE, 0, 100);
+  s.fun = clamp(s.fun - 20, 0, 100);
+  rec.captures = (rec.captures || 0) + 1;
+  const nom = s.name || 'La loutre';
+  exitWorld();
+  sfx.sad(); vibrate([40, 80, 40, 80, 40]);
+  persist(); persistRec();
+  ui.showStory({
+    emoji: '🪤', title: 'Le chasseur !',
+    lines: [
+      'Une main se referme sur la peau du cou. ' + nom + ' se débat, mord, glisse — et file.',
+      'Elle rentre à la berge le souffle court, le flanc entamé.',
+      '❤️ −' + DEGATS_CAPTURE + ' santé · 😊 −20 entrain'
+    ],
+    cta: 'PLUS JAMAIS ÇA'
+  });
+  ui.updateHUD(s, mg, rec);
+}
+
 /** Ouvrir le coffre d'un lieu : un trésor garanti, une seule fois. */
 function ouvrirCoffre(c) {
   if (!rec || coffreOuvert(c.zone)) return;
@@ -771,6 +807,7 @@ function goToZone(zoneId, px, py) {
   world.pnj = habitantFor(zoneId);
   world.coffre = coffreFor(zoneId);
   world.epreuve = epreuveFor(zoneId);
+  world.chasseur = chasseurFor(zoneId);
   world.finds = findsFor(zoneId);
   sfx.press(); vibrate(8);
   // le passage se met en scène : rideau + nom du lieu (cf. R.flashZone)
@@ -799,7 +836,8 @@ function enterWorld(zoneId) {
   world = {
     zone, px: sp.x, py: sp.y, tx: sp.x, ty: sp.y,
     walking: false, facing: 1, otters: wildOttersFor(zone), finds: findsFor(zone),
-    pnj: habitantFor(zone), coffre: coffreFor(zone), epreuve: epreuveFor(zone)
+    pnj: habitantFor(zone), coffre: coffreFor(zone), epreuve: epreuveFor(zone),
+    chasseur: chasseurFor(zone)
   };
   s.worldZone = zone;
   s.place = 'monde';
@@ -850,6 +888,19 @@ function stepWorld() {
     const pd = Math.hypot(o.wx - world.px, o.y - world.py);
     if (pd < 16 && frame > (o.cooldown || 0)) openEncounter(o);
   }
+  // LE CHASSEUR : il patrouille, repère, puis fond sur la loutre.
+  if (world.chasseur && !encounterOtter) {
+    const evt = stepChasseur(world.chasseur, world.px, world.py, now(),
+      (x, y, dx, dy) => moveWithCollision(world.zone, x, y, dx, dy));
+    if (evt === 'repere') {
+      sfx.sad(); vibrate([25, 40, 25]); ui.shake();
+      messageImportant('❗ Un chasseur t\'a repérée — FUIS !');
+    } else if (evt === 'capture') {
+      capturee();
+      return;
+    }
+  }
+
   // le coffre : marcher dessus l'ouvre, et il disparaît du décor
   if (!encounterOtter && world.coffre) {
     const c = world.coffre;

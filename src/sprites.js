@@ -177,4 +177,25 @@ export const SPRITES = {
     '.DBBD....DBBDqqD',
     '..DD......DD.DD.'
   ],
+
+  // LE CHASSEUR : silhouette d'homme, chapeau à large bord et fusil en travers.
+  // Dessiné plutôt qu'emoji : à l'échelle des tuiles il doit se reconnaître de
+  // loin et faire peur, ce qu'aucun emoji ne rend.
+  chasseur: [
+    '......KKKK......',
+    '.....KKKKKK.....',
+    '...KKKKKKKKKK...',
+    '.....CCCCCC.....',
+    '.....CKCCKC.....',
+    '.....CCCCCC.....',
+    '....DDDDDDDD....',
+    '...DDDDDDDDDD...',
+    '...DDDDDDDDDDqq.',
+    '...DDDDDDDDDDq..',
+    '...DDDDDDDDDD...',
+    '....DDDDDDDD....',
+    '....DD....DD....',
+    '....DD....DD....',
+    '....KK....KK....'
+  ]
 };

@@ -882,6 +882,29 @@ export function makeRenderer(cv) {
         ctx.textAlign = 'left';
       } });
     }
+    // LE CHASSEUR. Il doit se voir venir : sa silhouette est haute et sombre,
+    // son alerte est marquée d'un « ! » rouge, et sa poursuite d'un halo. Une
+    // menace qu'on ne voit pas arriver n'est pas une menace, c'est une punition.
+    if (w.chasseur) {
+      const c = w.chasseur;
+      figs.push({ y: c.y, fn: () => {
+        const cx = c.x - camX, cy = c.y - camY;
+        if (c.etat === 'poursuite') {                 // halo d'alarme
+          ctx.fillStyle = 'rgba(229,72,77,' + (0.14 + 0.08 * Math.sin(frame / 6)).toFixed(2) + ')';
+          ctx.fillRect(Math.round(cx - 12), Math.round(cy - 20), 24, 24);
+        }
+        ctx.fillStyle = 'rgba(0,0,0,.22)';
+        ctx.fillRect(Math.round(cx - 5), Math.round(cy - 1), 10, 2);
+        drawSprite(SPRITES.chasseur, Math.round(cx - 8), Math.round(cy - 15), 1, null, c.facing < 0);
+        if (c.etat === 'alerte' || c.etat === 'poursuite') {
+          const bond = c.etat === 'alerte' ? (Math.sin(frame / 4) < 0 ? 1 : -1) : 0;
+          ctx.fillStyle = '#e5484d';
+          ctx.font = 'bold 13px system-ui,sans-serif'; ctx.textAlign = 'center';
+          ctx.fillText('!', Math.round(cx), Math.round(cy - 20 + bond));
+          ctx.textAlign = 'left';
+        }
+      } });
+    }
     // la championne du lieu : une vraie loutre, avec les épées au-dessus —
     // on doit voir de loin que celle-là, on ne l'aborde pas comme les autres
     if (w.epreuve) {
