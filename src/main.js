@@ -33,6 +33,7 @@ import { encodeCard, decodeCard, newBattle, playTurn, wildFoe, makeFighter } fro
 import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
 import {
   TILE, WORLD_W, WORLD_H, START_ZONE, zoneById, zoneFinds, ZONE_INTRO,
+  SPECIALITE, zoneDuJour,
   moveWithCollision, spawnPoint, zoneExit, safeEntry, nearestFree
 } from './tilemap.js';
 import { makeCard, CARD_URL } from './photocard.js';
@@ -467,30 +468,41 @@ function findsFor(zoneId) {
   return zoneFinds(zoneId, dayKey()).filter(f => !isFound(f.id));
 }
 
-/** Ramasser une trouvaille : chaque zone récompense à sa manière. */
+/**
+ * Ramasser une trouvaille. Chaque zone sert un besoin PRÉCIS du jeu — c'est ce
+ * qui la rend utile plutôt que décorative — et le lieu du jour paie double.
+ */
 function collectFind(f) {
   if (!rec) return;
   (rec.found = rec.found || []).push(f.id);
   const name = s.name || 'La loutre';
+  const honneur = zoneDuJour(dayKey()) === (s.worldZone || START_ZONE);
+  const x2 = honneur ? 2 : 1;
+  const bis = honneur ? ' (lieu du jour ×2 !)' : '';
   if (f.kind === 'poisson') {
-    rec.fishTotal = (rec.fishTotal || 0) + 1;
-    quest('fish', 1);
-    ui.log('🐟 ' + name + ' déniche un poisson frais !');
+    rec.fishTotal = (rec.fishTotal || 0) + x2;
+    quest('fish', x2);
+    s.hunger = clamp(s.hunger + 6 * x2, 0, 100);
+    ui.log('🐟 ' + name + ' déniche un poisson frais !' + bis);
   } else if (f.kind === 'champignon') {
-    gainXp(10);
-    ui.log('🍄 Un champignon rare sous les fougères ! +10 XP');
+    gainXp(10 * x2);
+    s.hunger = clamp(s.hunger + 8 * x2, 0, 100);   // le garde-manger de la vallée
+    ui.log('🍄 Un champignon rare sous les fougères — de quoi grandir !' + bis);
   } else if (f.kind === 'gemme') {
-    rec.gems = (rec.gems || 0) + 1;
-    ui.log('💎 Une gemme scintille dans l\'écume de la cascade !');
+    rec.gems = (rec.gems || 0) + x2;
+    s.clean = clamp(s.clean + 10 * x2, 0, 100);    // l'écume de la cascade décrasse
+    ui.log('💎 Une gemme dans l\'écume, et un bon rinçage au passage !' + bis);
   } else if (f.kind === 'coquillage') {
-    rec.treatsTotal = (rec.treatsTotal || 0) + 1;
-    ui.log('🐚 Un beau coquillage dans la vase des roseaux !');
+    rec.treatsTotal = (rec.treatsTotal || 0) + x2;
+    s.lastTreat = 0;                               // la réserve recharge la friandise
+    ui.log('🐚 Un beau coquillage : la friandise est de nouveau prête !' + bis);
   } else if (f.kind === 'tresor') {
-    ui.log('🎁 ' + name + ' plonge et remonte quelque chose du lac…');
-    tryDrop(2.5);                       // le lac est le meilleur endroit pour les trésors
+    ui.log('🎁 ' + name + ' plonge et remonte quelque chose du lac…' + bis);
+    tryDrop(2.5 * x2);                  // le lac est le meilleur endroit pour les trésors
   } else if (f.kind === 'fleur') {
-    s.fun = clamp(s.fun + 10, 0, 100);
-    ui.log('🌼 Une fleur du vallon — ' + name + ' est ravie !');
+    s.fun = clamp(s.fun + 10 * x2, 0, 100);
+    s.energy = clamp(s.energy + 6 * x2, 0, 100);   // le pré du repos
+    ui.log('🌼 Une fleur du vallon — ' + name + ' souffle un bon coup.' + bis);
   }
   R.spawn && R.spawn('sparkle', s.stage);
   sfx.eat(); vibrate(10);
@@ -508,8 +520,11 @@ function discoverZone(zoneId) {
   persistRec();
   const intro = ZONE_INTRO[zoneId];
   if (!intro) return false;
+  // on annonce à quoi sert le lieu : sans ça on découvre un décor, pas un usage
+  const sp = SPECIALITE[zoneId];
+  const lines = sp ? [...intro.lines, sp.icon + ' ' + sp.nom + ' — ' + sp.effet + '.'] : intro.lines;
   sfx.evolve(); vibrate([12, 40, 12]);
-  ui.showStory({ ...intro, cta: 'EXPLORER' });
+  ui.showStory({ ...intro, lines, cta: 'EXPLORER' });
   return true;
 }
 

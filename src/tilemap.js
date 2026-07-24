@@ -333,6 +333,43 @@ export const FIND_ICON = {
   coquillage: '🐚', tresor: '🎁', fleur: '🌼'
 };
 
+/**
+ * Ce que chaque lieu a de PROPRE. Sans cela la vallée n'était qu'une suite de
+ * prés : on ramassait trois objets et plus rien ne distinguait un lieu d'un
+ * autre. Chaque zone répond désormais à un besoin précis du jeu, et le dit.
+ */
+export const SPECIALITE = {
+  clairiere: { icon: '🤝', nom: 'Le carrefour',
+    effet: 'toutes les loutres de la vallée y passent : c\'est ici qu\'on recrute' },
+  foret: { icon: '🍽️', nom: 'Le garde-manger',
+    effet: 'les champignons des fougères nourrissent et font mûrir' },
+  cascade: { icon: '🚿', nom: 'La grande douche',
+    effet: 'l\'écume décrasse d\'un coup — et laisse des gemmes' },
+  roseaux: { icon: '🍬', nom: 'La réserve',
+    effet: 'la vase garde les coquillages dont on fait les friandises' },
+  lac: { icon: '🗝️', nom: 'Les fonds',
+    effet: 'le seul endroit où l\'on remonte de vrais trésors' },
+  vallon: { icon: '😌', nom: 'Le pré du repos',
+    effet: 'on s\'y délasse : l\'entrain et l\'énergie reviennent' }
+};
+
+/**
+ * Le lieu à l'honneur du jour : il porte plus de trouvailles, et elles
+ * rapportent double. C'est ce qui donne une raison d'aller QUELQUE PART
+ * aujourd'hui plutôt que de tourner en rond. PUR : déterminé par la date.
+ */
+export function zoneDuJour(dayKey) {
+  const ids = Object.keys(ZONES);
+  return ids[Math.floor(rngFrom('jour|' + dayKey)() * ids.length)];
+}
+
+/** Combien de trouvailles porte une zone ce jour-là (le lieu du jour en a plus). */
+export function findCount(zone, dayKey) {
+  const z = zoneById(zone);
+  if (!z.find) return 0;
+  return z.find.count + (zoneDuJour(dayKey) === z.id ? 2 : 0);
+}
+
 const DELTA = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
 
 /**
@@ -379,7 +416,8 @@ export function zoneFinds(zone, dayKey) {
   if (!z.find) return [];
   const rnd = rngFrom('find|' + z.id + '|' + dayKey);
   const out = [];
-  for (let guard = 0; out.length < z.find.count && guard < 600; guard++) {
+  const cible = findCount(z.id, dayKey);
+  for (let guard = 0; out.length < cible && guard < 900; guard++) {
     const cx = Math.floor(rnd() * MAP_W), cy = Math.floor(rnd() * MAP_H);
     if (isSolid(z, cx, cy)) continue;
     if (out.some(f => f.cx === cx && f.cy === cy)) continue;

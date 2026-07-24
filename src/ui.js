@@ -13,7 +13,7 @@ import { traitById, bondLevel } from './personality.js';
 import { gangPower, fighterPower, MAX_MEMBERS } from './gang.js';
 import { makeFighter, encodeCard } from './battle.js';
 import { paintOtter } from './render.js';
-import { ZONES, ZONE_INTRO, FIND_ICON, zoneLayout } from './tilemap.js';
+import { ZONES, ZONE_INTRO, FIND_ICON, SPECIALITE, zoneDuJour, zoneLayout } from './tilemap.js';
 
 const $ = id => document.getElementById(id);
 const setTxt = (id, v) => { const e = $(id); if (e) e.textContent = v; };
@@ -194,8 +194,12 @@ export function renderValleyMap(rec, currentZone, onTravel) {
   const ids = Object.keys(ZONES);
   const cols = Math.max(...Object.values(layout).map(p => p.col)) + 1;
   const rows = Math.max(...Object.values(layout).map(p => p.row)) + 1;
+  const jour = zoneDuJour(dayKey());
+  const jourConnu = vus.includes(jour);
   setTxt('pm-count', vus.length + '/' + ids.length);
-  setTxt('pm-hint', onTravel ? 'Touche un lieu connu pour t\'y rendre.' : '');
+  setTxt('pm-hint', jourConnu
+    ? '★ Aujourd\'hui, ' + ZONES[jour].name.toLowerCase() + ' : plus de trouvailles, et elles paient double.'
+    : (onTravel ? 'Touche un lieu connu pour t\'y rendre.' : ''));
   grid.innerHTML = '';
   grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
   for (let r = 0; r < rows; r++) {
@@ -226,11 +230,26 @@ export function renderValleyMap(rec, currentZone, onTravel) {
       const nm = document.createElement('span'); nm.className = 'pm-nm';
       nm.textContent = connu ? ZONES[id].name : '???';
       cell.appendChild(ic); cell.appendChild(nm);
+      // à quoi sert le lieu : c'est ICI qu'on choisit où aller, l'info doit y être
+      const sp = connu && SPECIALITE[id];
+      if (sp) {
+        const sub = document.createElement('span'); sub.className = 'pm-sp';
+        sub.textContent = sp.icon + ' ' + sp.nom;
+        cell.appendChild(sub);
+        if (jouable || ici) cell.title = sp.nom + ' — ' + sp.effet;
+      }
       // ce qu'on y trouve : aide à choisir où aller
       if (connu && ZONES[id].find) {
         const f = document.createElement('span'); f.className = 'pm-find';
         f.textContent = FIND_ICON[ZONES[id].find.kind] || '';
         cell.appendChild(f);
+      }
+      // le lieu à l'honneur : plus de trouvailles, et elles paient double
+      if (connu && id === jour) {
+        cell.classList.add('jour');
+        const et = document.createElement('span'); et.className = 'pm-jour';
+        et.textContent = '★ ×2';
+        cell.appendChild(et);
       }
       grid.appendChild(cell);
     }

@@ -6,7 +6,8 @@ import {
   TILE, ZONES, START_ZONE, zoneById, MAP_W, MAP_H, WORLD_W, WORLD_H, T,
   charAt, isWater, isSolid, waterTile, groundTile, decorTile,
   moveWithCollision, zoneExit, nearestFree, safeEntry, spawnPoint,
-  zoneFinds, FIND_ICON, zoneGates, ZOOM, zoneLayout, ZONE_INTRO
+  zoneFinds, FIND_ICON, zoneGates, ZOOM, zoneLayout, ZONE_INTRO,
+  SPECIALITE, zoneDuJour, findCount
 } from '../src/tilemap.js';
 
 const ids = Object.keys(ZONES);
@@ -200,7 +201,7 @@ test('chaque zone a sa récompense et son niveau de danger', () => {
 test('trouvailles : posées sur des cases praticables, jamais dans l\'eau ni dans un arbre', () => {
   for (const id of ids) {
     const finds = zoneFinds(id, '2026-07-24');
-    assert.equal(finds.length, ZONES[id].find.count, id + ' : compte inattendu');
+    assert.equal(finds.length, findCount(id, '2026-07-24'), id + ' : compte inattendu');
     for (const f of finds) {
       assert.equal(isSolid(id, f.cx, f.cy), false, id + ' : trouvaille inaccessible');
       assert.equal(f.kind, ZONES[id].find.kind);
@@ -209,6 +210,57 @@ test('trouvailles : posées sur des cases praticables, jamais dans l\'eau ni dan
     // pas deux trouvailles sur la même case
     const cases = finds.map(f => f.cx + ',' + f.cy);
     assert.equal(new Set(cases).size, cases.length, id + ' : trouvailles superposées');
+  }
+});
+
+test('spécialités : chaque lieu a la sienne, et aucune n\'est un doublon', () => {
+  const noms = new Set(), icones = new Set();
+  for (const id of ids) {
+    const sp = SPECIALITE[id];
+    assert.ok(sp, id + ' : pas de spécialité');
+    for (const champ of ['icon', 'nom', 'effet']) {
+      assert.ok(sp[champ] && sp[champ].length, id + ' : ' + champ + ' vide');
+    }
+    // deux lieux qui promettent la même chose n'ont pas d'intérêt propre
+    assert.equal(noms.has(sp.nom), false, 'spécialité en double : ' + sp.nom);
+    assert.equal(icones.has(sp.icon), false, 'icône en double : ' + sp.icon);
+    noms.add(sp.nom); icones.add(sp.icon);
+  }
+});
+
+test('spécialités : chaque lieu a aussi sa trouvaille propre', () => {
+  const kinds = ids.map(id => ZONES[id].find && ZONES[id].find.kind);
+  assert.equal(new Set(kinds).size, ids.length, 'deux lieux donnent la même trouvaille');
+  for (const k of kinds) assert.ok(FIND_ICON[k], 'trouvaille sans icône : ' + k);
+});
+
+test('spécialités : l\'icône ne redouble pas celle de la trouvaille', () => {
+  // sur la carte les deux se suivent : la même icône deux fois n'apprend rien
+  for (const id of ids) {
+    const trouvaille = FIND_ICON[ZONES[id].find.kind];
+    assert.notEqual(SPECIALITE[id].icon, trouvaille, id + ' : icône redondante');
+  }
+});
+
+test('lieu du jour : un seul, stable dans la journée, et il tourne', () => {
+  const j = zoneDuJour('2026-07-24');
+  assert.ok(ids.includes(j), 'le lieu du jour doit être une zone connue');
+  assert.equal(zoneDuJour('2026-07-24'), j, 'il doit être stable dans la journée');
+  // sur un mois, tous les lieux doivent avoir leur tour — sinon deux zones
+  // resteraient éternellement dans l'ombre
+  const vus = new Set();
+  for (let d = 1; d <= 31; d++) vus.add(zoneDuJour('2026-03-' + String(d).padStart(2, '0')));
+  assert.equal(vus.size, ids.length, 'des lieux ne sont jamais à l\'honneur : ' +
+    ids.filter(i => !vus.has(i)).join(', '));
+});
+
+test('lieu du jour : il porte plus de trouvailles que les autres', () => {
+  const jour = '2026-07-24';
+  const j = zoneDuJour(jour);
+  assert.equal(findCount(j, jour), ZONES[j].find.count + 2, 'le lieu du jour doit être plus riche');
+  for (const id of ids) {
+    if (id === j) continue;
+    assert.equal(findCount(id, jour), ZONES[id].find.count, id + ' : compte inchangé attendu');
   }
 });
 
