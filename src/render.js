@@ -729,7 +729,10 @@ export function makeRenderer(cv) {
 
   // Dessine une loutre (joueuse ou sauvage) à l'échelle des tuiles (16 px).
   function drawFigure(otterLike, px, py, frame, walking, flip) {
-    const spr = SPRITES[otterLike.stage] || SPRITES.adult;
+    const stage = otterLike.stage || 'adult';
+    // cycle de marche : on alterne la pose de repos et le pas
+    const pas = walking && (frame >> 3) % 2 === 1;
+    const spr = (pas && SPRITES[stage + 'Walk']) || SPRITES[stage] || SPRITES.adult;
     const fur = furById(otterLike.fur).map;
     const w = spr[0].length, h = spr.length;                 // échelle 1 = une tuile de large
     const bob = walking ? (Math.sin(frame / 5) < 0 ? 1 : 0) : 0;   // pas chaloupé
@@ -1120,7 +1123,9 @@ export function makeRenderer(cv) {
       ctx.translate(-cx, -cyf);
     }
 
-    drawSprite(spr, ox, oy, 2, s.stage === 'egg' ? null : fur);
+    // cycle de marche : la 2e image du pas quand elle se déplace vraiment
+    const marche = walking && SPRITES[s.stage + 'Walk'] && (frame >> 2) % 2 === 1;
+    drawSprite(marche ? SPRITES[s.stage + 'Walk'] : spr, ox, oy, 2, s.stage === 'egg' ? null : fur);
     // relief lumineux (jour : soleil chaud ; nuit : lune froide et discrète)
     drawRim(spr, ox, oy, 2,
       c.night ? 'rgba(200,214,255,.28)' : 'rgba(255,246,205,.5)',
