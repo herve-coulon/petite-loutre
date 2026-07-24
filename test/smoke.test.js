@@ -226,14 +226,19 @@ test('garde-robe : déblocage par records + équipement', () => {
   $('btn-name').click();
 
   L.records.mealsTotal = 5; // débloque le nœud
-  $('b-hats').click();
+  // chaque slot du profil est un raccourci vers SON onglet : plus de doublon
+  $('ps-tres').click();
   assert.ok(!$('ovl-hats').classList.contains('hidden'));
-  // garde-robe en onglets : la section Trésors s'affiche par défaut (26 objets)
-  assert.equal($('hat-list').querySelectorAll('.row-item').length, ITEMS.length, 'onglet Trésors');
+  assert.equal($('hat-list').querySelectorAll('.row-item').length, ITEMS.length,
+    'le slot Trésors ouvre l\'onglet Trésors');
+  $('btn-hats-close').click();
+
+  $('ps-hat').click();   // le slot chapeau ouvre directement l'onglet Chapeaux
+  assert.ok(!$('ovl-hats').classList.contains('hidden'));
   const tabs = [...$('hat-tabs').querySelectorAll('.tab')];
   assert.equal(tabs.length, 4, '4 onglets');
-  tabs[1].click(); // onglet Chapeaux 🎩
   const rows = [...$('hat-list').querySelectorAll('.row-item')];
+  assert.equal(rows.length, HATS.length, 'ouverture directe sur les chapeaux');
   assert.equal(rows.length, HATS.length, 'la section Chapeaux seule');
   const noeud = rows[0];
   assert.ok(!noeud.classList.contains('locked'), 'nœud débloqué');
@@ -426,7 +431,7 @@ test('menus : toucher à côté du contenu ferme aussi', () => {
   $('ovl-ach').click(); // clic sur le fond de l'overlay lui-même
   assert.ok($('ovl-ach').classList.contains('hidden'), 'fermé au toucher à côté');
   // mais un clic sur un élément INTERNE ne ferme pas
-  $('b-hats').click();
+  $('ps-hat').click();   // le slot chapeau ouvre la garde-robe
   assert.ok(!$('ovl-hats').classList.contains('hidden'));
   $('hat-list').click(); // la liste, pas le fond
   assert.ok(!$('ovl-hats').classList.contains('hidden'), 'clic interne inoffensif');

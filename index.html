@@ -32,7 +32,6 @@
   </div>
 
   <!-- Retour à la berge depuis la vallée (visible seulement dans le Monde) -->
-  <button id="b-world-back" aria-label="Retour à la berge">🌊</button>
   <div id="world-hint">🗺️ Touche le sol pour te déplacer · approche une loutre 💬</div>
 
   <!-- Rangée 1 : avatar + nom/XP · boutique · gemmes -->
@@ -72,6 +71,7 @@
       <div id="side-left" class="side">
         <button id="b-place" class="sidebtn"><span class="ic">🏠</span><span class="lbl">Tanière</span></button>
         <button id="b-world" class="sidebtn hidden"><span class="ic">🗺️</span><span class="lbl">Explorer</span></button>
+        <button id="b-world-back" class="sidebtn hidden" aria-label="Retour à la berge"><span class="ic">🌊</span><span class="lbl">Rentrer</span></button>
         <button id="b-gift" class="sidebtn"><span class="ic">🎁</span><span class="lbl">Cadeau</span><span class="badge">!</span></button>
       </div>
       <div id="side-right" class="side">
@@ -223,9 +223,9 @@
 
     <div class="prof-hero">
       <div class="prof-slots">
-        <button class="prof-slot" id="ps-hat"><span class="ps-ic">🎩</span><span class="ps-lbl" id="ps-hat-v">—</span></button>
-        <button class="prof-slot" id="ps-fur"><span class="ps-ic">🎨</span><span class="ps-lbl" id="ps-fur-v">—</span></button>
-        <button class="prof-slot" id="ps-decor"><span class="ps-ic">🪴</span><span class="ps-lbl" id="ps-decor-v">—</span></button>
+        <button class="prof-slot" id="ps-hat"><span class="ps-ic" id="ps-hat-ic">🎩</span><span class="ps-lbl" id="ps-hat-v">—</span></button>
+        <button class="prof-slot" id="ps-fur"><span class="ps-ic" id="ps-fur-ic">🎨</span><span class="ps-lbl" id="ps-fur-v">—</span></button>
+        <button class="prof-slot" id="ps-decor"><span class="ps-ic" id="ps-decor-ic">💎</span><span class="ps-lbl" id="ps-decor-v">—</span></button>
       </div>
       <div class="prof-otter">
         <span class="prof-hat" id="prof-hat" aria-hidden="true"></span>
@@ -262,7 +262,6 @@
     </div>
 
     <div class="prof-tabs">
-      <button class="prof-tab" id="b-hats"><span class="pt-ic">🎩</span>Garde-robe</button>
       <button class="prof-tab" id="b-ach"><span class="pt-ic">🏆</span>Succès<span class="badge count" id="ach-badge"></span></button>
       <button class="prof-tab" id="pt-gang"><span class="pt-ic">🦦</span>Escouade</button>
       <button class="prof-tab" id="m-gear"><span class="pt-ic">⚙️</span>Réglages</button>

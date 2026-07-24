@@ -216,12 +216,8 @@ button.pm-cell.go:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,5
 #app.in-world #quest,
 #app.in-world #side-right,
 #app.in-world #b-gift{display:none !important;}
-#b-world-back{
-  display:none; position:fixed; top:10px; left:10px; z-index:15;
-  width:46px; height:46px; font-size:22px; cursor:pointer; font-family:inherit;
-  background:var(--paper); border:2.5px solid var(--ink); border-radius:14px; box-shadow:var(--shadow);
-}
-#app.in-world #b-world-back{display:flex; align-items:center; justify-content:center;}
+/* Le retour au foyer vit dans la colonne de gauche, avec les autres commandes
+   de lieu : plus de bouton flottant posé sur l'avatar. */
 #world-hint{
   display:none; position:fixed; left:50%; top:calc(var(--hud-h, 132px) + 6px); transform:translateX(-50%);
   z-index:15; max-width:90%; text-align:center; font-size:12px; font-weight:700; color:var(--ink);

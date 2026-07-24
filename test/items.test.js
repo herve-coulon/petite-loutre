@@ -1,10 +1,11 @@
 // Tests v3.8 : trésors rares (raretés, paliers, drops, bonus). Pur + intégration moteur.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { HATS } from '../src/accessories.js';
+import { FURS } from '../src/skins.js';
 
 import {
-  RARITIES, ITEMS, MILESTONES, itemById, milestoneItem, bonusOf, rollDrop, describeBonus
-} from '../src/items.js';
+  RARITIES, ITEMS, MILESTONES, itemById, milestoneItem, bonusOf, rollDrop, describeBonus, mergeBonus } from '../src/items.js';
 import { stepSim } from '../src/sim.js';
 import { newState } from '../src/state.js';
 import { H } from '../src/constants.js';
@@ -128,4 +129,37 @@ test('bonus coldResist : un trésor atténue le risque de froid l\'hiver', () =>
   stepSim(warm, H, { simNow: WINTER, rnd });
   assert.equal(plain.sick, true, 'sans résistance : attrape froid');
   assert.equal(warm.sick, false, 'avec le Cœur de la rivière : résiste');
+});
+
+/* ---------------- Équipement : tout ce qu'on porte compte (v3.52) ---------------- */
+
+test('cumul : trésor + chapeau + pelage se multiplient', () => {
+  const b = mergeBonus({ xp: 1.15 }, { xp: 1.12, luck: 1.10 }, { xp: 1.10 });
+  assert.ok(Math.abs(b.xp - 1.15 * 1.12 * 1.10) < 1e-9, 'les XP se multiplient');
+  assert.equal(b.luck, 1.10);
+});
+
+test('cumul : les résistances s\'additionnent mais sont plafonnées', () => {
+  const b = mergeBonus({ coldResist: 0.5 }, { coldResist: 0.45 }, { coldResist: 0.6 });
+  assert.ok(b.coldResist <= 0.8, 'jamais au-delà de 0,8 : une saison doit rester sensible');
+  assert.ok(b.coldResist > 0.5, 'mais cumuler doit servir');
+});
+
+test('cumul : rien d\'équipé -> aucun bonus, et pas de plantage', () => {
+  assert.deepEqual(mergeBonus(), {});
+  assert.deepEqual(mergeBonus(null, undefined, {}), {});
+});
+
+test('équipement : chapeaux et pelages portent de vrais effets', () => {
+  const avecBonus = HATS.filter(h => h.bonus && Object.keys(h.bonus).length);
+  assert.ok(avecBonus.length >= 5, 'les chapeaux ne doivent plus être purement décoratifs');
+  const pelages = FURS.filter(f => f.bonus && Object.keys(f.bonus).length);
+  assert.ok(pelages.length >= 5, 'les pelages non plus');
+  // un bonus doit rester raisonnable : pas de multiplicateur délirant
+  for (const it of [...HATS, ...FURS]) {
+    for (const [k, v] of Object.entries(it.bonus || {})) {
+      if (['xp', 'luck', 'fun', 'energy'].includes(k)) assert.ok(v > 1 && v <= 1.5, it.id + '.' + k);
+      if (k.endsWith('Resist')) assert.ok(v > 0 && v <= 0.8, it.id + '.' + k);
+    }
+  }
 });

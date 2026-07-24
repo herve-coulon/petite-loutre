@@ -65,6 +65,27 @@ export function bonusOf(gearId) {
   return (it && it.bonus) || {};
 }
 
+/**
+ * Cumule les bonus de TOUT l'équipement porté : trésor, chapeau, pelage.
+ * Les multiplicateurs (xp, luck, fun, energy) se multiplient entre eux ;
+ * `decay` aussi (plus c'est bas, plus les jauges tiennent) ; les résistances
+ * s'additionnent et sont plafonnées à 0,8 pour ne jamais annuler une saison.
+ * PUR : on lui passe les bonus déjà résolus, il ne connaît ni chapeaux ni pelages.
+ */
+export function mergeBonus(...bonuses) {
+  const out = {};
+  const MULT = ['xp', 'luck', 'fun', 'energy'];
+  for (const b of bonuses) {
+    if (!b) continue;
+    for (const k of MULT) if (b[k]) out[k] = (out[k] || 1) * b[k];
+    if (b.decay) out.decay = (out.decay || 1) * b.decay;
+    for (const k of ['coldResist', 'heatResist']) {
+      if (b[k]) out[k] = Math.min(0.8, (out[k] || 0) + b[k]);
+    }
+  }
+  return out;
+}
+
 const DROPPABLE = ITEMS.filter(it => it.drop);
 
 /**

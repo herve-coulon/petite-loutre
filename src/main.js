@@ -27,7 +27,7 @@ import { sfx, vibrate, setMuted, setVolume, getVolume } from './audio.js';
 import * as ui from './ui.js';
 import { registerSW, setupInstall, requestPersistentStorage, isIOS, isStandalone } from './pwa.js';
 import { unlockedHats, hatById } from './accessories.js';
-import { unlockedFurs, unlockedDecors } from './skins.js';
+import { unlockedFurs, unlockedDecors, equipBonus } from './skins.js';
 import { newAchievements } from './achievements.js';
 import { encodeCard, decodeCard, newBattle, playTurn, wildFoe, makeFighter } from './battle.js';
 import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
@@ -409,9 +409,12 @@ function updatePlaceBtn() {
     b.textContent = inDen ? '🌊' : '🏠';
     b.title = inDen ? 'Retourner à la rivière' : 'Aller à la tanière';
   }
-  // 🗺️ Explorer : seulement depuis la berge, quand la loutre est là.
+  // Commandes de lieu, dans la colonne de gauche : « Explorer » depuis la berge,
+  // « Rentrer » depuis la vallée. Jamais les deux, jamais l'une sur l'avatar.
   const bw = $('b-world');
   if (bw) bw.classList.toggle('hidden', !(denAvailable() && !overlayOpen && s.place === 'berge'));
+  const bb = $('b-world-back');
+  if (bb) bb.classList.toggle('hidden', !(inWorld && !overlayOpen));
   // Séparation des écrans, pilotée en CSS (robuste face à updateHUD chaque frame) :
   //   • BERGE  = vie active   • TANIÈRE = repos/collection   • MONDE = balade/rencontres
   const app = $('app');
@@ -1051,7 +1054,7 @@ function checkUnlocks() {
 /** XP du soigneur : chaque geste compte. Montée de niveau = fête + friandise rechargée. */
 function gainXp(n) {
   if (!rec || !n) return;
-  n = Math.round(n * (bonusOf(s && s.gear).xp || 1)); // bonus d'XP du trésor équipé
+  n = Math.round(n * (equipBonus(s).xp || 1)); // bonus d'XP de tout l'équipement porté
   const before = levelFromXp(rec.xp || 0).level;
   rec.xp = (rec.xp || 0) + n;
   const L = levelFromXp(rec.xp);
@@ -1095,7 +1098,7 @@ function gainXp(n) {
 /** Tente un drop aléatoire (chance boostée par le trésor équipé + le contexte). */
 function tryDrop(boost = 1) {
   if (!s || s.gameOver || s.stage === 'egg') return;
-  const id = rollDrop(Math.random, (bonusOf(s.gear).luck || 1) * boost);
+  const id = rollDrop(Math.random, (equipBonus(s).luck || 1) * boost);
   if (!id) return;
   const it = itemById(id);
   if (rec.items.includes(id)) { // déjà possédé -> petit lot de consolation
@@ -1562,17 +1565,18 @@ function boot() {
       ui.renderWardrobe(s, rec, wardrobeHandlers);
     }
   };
-  const openWardrobe = () => {
+  // La garde-robe s'ouvre SUR L'ONGLET voulu : chaque slot du profil est un
+  // raccourci distinct (chapeau, pelage, décor, trésors) — plus un doublon.
+  const openWardrobe = (tab) => {
     sfx.press();
     ui.hideOverlay('ovl-menu');
-    ui.renderWardrobe(s, rec, wardrobeHandlers);
+    ui.renderWardrobe(s, rec, wardrobeHandlers, tab);
     ui.showOverlay('ovl-hats');
   };
-  $('b-hats').addEventListener('click', openWardrobe);
-  // Les slots cosmétiques du profil ouvrent aussi la garde-robe.
-  ['ps-hat', 'ps-fur', 'ps-decor'].forEach(id => {
-    const el = $(id); if (el) el.addEventListener('click', openWardrobe);
-  });
+  const SLOT_TAB = { 'ps-hat': 'hats', 'ps-fur': 'furs', 'ps-decor': 'decors', 'ps-tres': 'tresors' };
+  for (const [id, tab] of Object.entries(SLOT_TAB)) {
+    const el = $(id); if (el) el.addEventListener('click', () => openWardrobe(tab));
+  }
   $('btn-hats-close').addEventListener('click', () => ui.hideOverlay('ovl-hats'));
 
   // Carte photo (accessible depuis Succès)

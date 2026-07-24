@@ -8,7 +8,7 @@ import { ACHIEVEMENTS } from './achievements.js';
 import { dailyQuests, dayKey } from './quests.js';
 import { dailyEvent } from './events.js';
 import { seasonInfo } from './seasons.js';
-import { ITEMS, RARITIES, MILESTONES, describeBonus } from './items.js';
+import { ITEMS, RARITIES, MILESTONES, describeBonus, itemById } from './items.js';
 import { traitById, bondLevel } from './personality.js';
 import { gangPower, fighterPower, MAX_MEMBERS } from './gang.js';
 import { makeFighter, encodeCard } from './battle.js';
@@ -117,6 +117,22 @@ export function renderLevel(rec) {
   }
 }
 
+
+/** Résumé court d'un bonus, pour tenir dans un slot : « +12% XP · +10% chance ». */
+function shortBonus(b) {
+  if (!b) return '';
+  const out = [];
+  const pct = (v) => Math.round(Math.abs(v - 1) * 100);
+  if (b.xp) out.push('+' + pct(b.xp) + '% XP');
+  if (b.luck) out.push('+' + pct(b.luck) + '% chance');
+  if (b.fun) out.push('+' + pct(b.fun) + '% joie');
+  if (b.energy) out.push('+' + pct(b.energy) + '% énergie');
+  if (b.decay) out.push('jauges -' + pct(b.decay) + '%');
+  if (b.coldResist) out.push('froid -' + Math.round(b.coldResist * 100) + '%');
+  if (b.heatResist) out.push('chaud -' + Math.round(b.heatResist * 100) + '%');
+  return out.join(' · ');
+}
+
 /** Écran « Profil de la loutre » : portrait + slots, carte d'identité, onglets. */
 export function renderProfile(s, rec, onTravel) {
   s = s || {}; rec = rec || {};
@@ -132,10 +148,15 @@ export function renderProfile(s, rec, onTravel) {
   setTxt('prof-hat', hat ? hat.icon : '');
   setTxt('prof-title', 'Niv ' + L.level + ' · ' + titleFor(L.level));
 
-  // Slots autour (cosmétiques à gauche, palmarès à droite)
-  setTxt('ps-hat-v', hat ? hat.name : 'Sans chapeau');
-  setTxt('ps-fur-v', fur.name);
-  setTxt('ps-decor-v', decor.name);
+  // Slots d'ÉQUIPEMENT : on affiche l'effet porté, pas seulement le nom —
+  // sinon rien ne dit que ces objets servent à quelque chose.
+  const gearIt = itemById(s.gear);
+  setTxt('ps-hat-v', hat ? (shortBonus(hat.bonus) || hat.name) : 'Sans chapeau');
+  setTxt('ps-fur-v', shortBonus(fur.bonus) || fur.name);
+  setTxt('ps-decor-v', gearIt ? (shortBonus(gearIt.bonus) || gearIt.name) : 'Sans trésor');
+  setTxt('ps-hat-ic', hat ? hat.icon : '🎩');
+  setTxt('ps-fur-ic', fur.icon || '🎨');
+  setTxt('ps-decor-ic', gearIt ? gearIt.emoji : '💎');
   setTxt('ps-ach-v', achN + ' succès');
   setTxt('ps-tres-v', owned + '/' + ITEMS.length);
   setTxt('ps-streak-v', streak + ' j');
@@ -545,7 +566,8 @@ const WARDROBE_TABS = [
   { id: 'furs', label: '🦦' }, { id: 'decors', label: '🌿' }
 ];
 
-export function renderWardrobe(s, rec, h) {
+export function renderWardrobe(s, rec, h, tab) {
+  if (tab) wardrobeTab = tab;   // ouverture directe sur un onglet (depuis les slots du profil)
   const tabsEl = $('hat-tabs');
   const list = $('hat-list');
   tabsEl.innerHTML = '';

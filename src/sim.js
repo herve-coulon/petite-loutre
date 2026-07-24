@@ -2,7 +2,7 @@
 // Toute la vie de la loutre passe par ici — en direct comme en rattrapage hors-ligne.
 import { H, MIN, HATCH_MS, CHILD_AT, ADULT_AT, MAX_OFFLINE, R, RS, SEASON_FX, clamp } from './constants.js';
 import { seasonFor } from './seasons.js';
-import { bonusOf } from './items.js';
+import { equipBonus } from './skins.js';
 
 export function ageMs(s, now = Date.now()) {
   if (!s.hatchedAt) return 0;
@@ -57,7 +57,7 @@ export function stepSim(s, dt, opts = {}) {
   const season = seasonFor(new Date(simNow)); // saison réelle, déterministe
   const heat = season === 'ete';
   const cold = season === 'hiver';
-  const gear = bonusOf(s.gear);               // bonus du trésor équipé
+  const gear = equipBonus(s);                 // bonus de tout l'équipement porté
   const gd = gear.decay || 1;                 // jauges plus lentes (< 1)
 
   if (s.sleeping) {

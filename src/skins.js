@@ -1,22 +1,24 @@
 // Skins : pelages (palette swap) et décors de berge, débloqués via les records.
 import { H } from './constants.js';
+import { bonusOf, mergeBonus } from './items.js';
 import { levelFromXp } from './level.js';
+import { hatById } from './accessories.js';
 
 // Un pelage remplace des couleurs de la palette au dessin (B corps, C ventre, D contour).
 export const FURS = [
-  { id: 'roux', icon: '🦦', name: 'Rousse classique', cond: 'Toujours disponible',
+  { id: 'roux', bonus: { }, icon: '🦦', name: 'Rousse classique', cond: 'Toujours disponible',
     test: () => true, map: null },
-  { id: 'choco', icon: '🍫', name: 'Chocolat', cond: 'Servir 20 repas',
+  { id: 'choco', bonus: { fun: 1.08 }, icon: '🍫', name: 'Chocolat', cond: 'Servir 20 repas',
     test: r => r.mealsTotal >= 20, map: { B: '#5d3a22', C: '#c9a06b', D: '#2a1a0e' } },
-  { id: 'doree', icon: '✨', name: 'Dorée', cond: 'Attraper 50 poissons',
+  { id: 'doree', bonus: { xp: 1.10 }, icon: '✨', name: 'Dorée', cond: 'Attraper 50 poissons',
     test: r => r.fishTotal >= 50, map: { B: '#c99a3d', C: '#f4e3b2', D: '#6b4e1a' } },
-  { id: 'neige', icon: '❄️', name: 'Neige', cond: 'Donner 25 bains',
+  { id: 'neige', bonus: { coldResist: 0.45 }, icon: '❄️', name: 'Neige', cond: 'Donner 25 bains',
     test: r => r.bathsTotal >= 25, map: { B: '#d3dfe9', C: '#ffffff', D: '#4f6170' } },
-  { id: 'nuit', icon: '🌙', name: 'Bleu nuit', cond: 'Dormir 20 fois',
+  { id: 'nuit', bonus: { energy: 1.12 }, icon: '🌙', name: 'Bleu nuit', cond: 'Dormir 20 fois',
     test: r => r.sleepsTotal >= 20, map: { B: '#3d4c6e', C: '#9fb0d0', D: '#1c2438' } },
-  { id: 'bonbon', icon: '🍬', name: 'Rose bonbon', cond: 'Gagner 3 combats',
+  { id: 'bonbon', bonus: { luck: 1.18 }, icon: '🍬', name: 'Rose bonbon', cond: 'Gagner 3 combats',
     test: r => r.wins >= 3, map: { B: '#d97ba6', C: '#f7d4e3', D: '#7a3a58' } },
-  { id: 'braise', icon: '🔥', name: 'Braise', cond: 'Série de 7 jours d\'affilée',
+  { id: 'braise', bonus: { heatResist: 0.5 }, icon: '🔥', name: 'Braise', cond: 'Série de 7 jours d\'affilée',
     test: r => (r.streakBest || 0) >= 7, map: { B: '#b5502a', C: '#f2b28c', D: '#571d0c' } }
 ];
 
@@ -39,3 +41,15 @@ export const furById = id => FURS.find(f => f.id === id) || FURS[0];
 export const decorById = id => DECORS.find(d => d.id === id) || DECORS[0];
 export const unlockedFurs = rec => FURS.filter(f => f.test(rec)).map(f => f.id);
 export const unlockedDecors = rec => DECORS.filter(d => d.test(rec)).map(d => d.id);
+
+/**
+ * Tous les bonus portés par la loutre : trésor équipé + chapeau + pelage.
+ * Point d'entrée unique — le jeu ne doit interroger que celui-ci, sinon on
+ * oublie fatalement une pièce d'équipement quelque part.
+ */
+export function equipBonus(s) {
+  if (!s) return {};
+  const hat = hatById(s.hat);
+  const fur = furById(s.fur);
+  return mergeBonus(bonusOf(s.gear), hat && hat.bonus, fur && fur.bonus);
+}
