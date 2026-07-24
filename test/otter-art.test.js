@@ -3,9 +3,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  ANIMS, ART_SCALE, ANATOMY, FUR_REMAP, frameRect, frameAt, animForMood, loadOtterArt, drawAnim
+  ANIMS, ART_SCALE, ANATOMY, FUR_REMAP, STAGE_TRIM, ART_STAGES,
+  frameRect, frameAt, animForMood, loadOtterArt, drawAnim
 } from '../src/otter-art.js';
 import { FURS } from '../src/skins.js';
+import { STAGES } from '../src/constants.js';
 
 test('planches : chaque animation se découpe en images entières', () => {
   for (const [nom, a] of Object.entries(ANIMS)) {
@@ -76,6 +78,39 @@ test('humeur : seule « contente » déclenche la pose joyeuse', () => {
   assert.equal(animForMood('contente'), 'happy');
   for (const m of ['neutre', 'affamee', 'boudeuse', 'malade', 'dodo', null]) {
     assert.equal(animForMood(m), 'idle', 'humeur ' + m);
+  }
+});
+
+test('stades : tous les stades éclos ont leur gabarit, l\'œuf n\'en a pas', () => {
+  const eclos = Object.keys(STAGES).filter(k => k !== 'egg');
+  assert.deepEqual(ART_STAGES.slice().sort(), eclos.slice().sort());
+  assert.equal(STAGE_TRIM.adult, null, 'l\'adulte est la référence : rien à retirer');
+  for (const st of ART_STAGES) {
+    if (st === 'adult') continue;
+    const t = STAGE_TRIM[st];
+    assert.ok(t && t.face && t.profil, st + ' : gabarit incomplet');
+    for (const vue of ['face', 'profil']) {
+      assert.ok(t[vue].rows >= 0 && t[vue].cols >= 0, st + '/' + vue + ' : valeurs négatives');
+    }
+  }
+});
+
+test('stades : plus la loutre est jeune, plus on lui retire de corps', () => {
+  // sans cet ordre la croissance s'inverserait — le bébé serait plus grand
+  for (const vue of ['face', 'profil']) {
+    assert.ok(STAGE_TRIM.baby[vue].rows > STAGE_TRIM.child[vue].rows, vue + ' : lignes');
+    assert.ok(STAGE_TRIM.baby[vue].cols >= STAGE_TRIM.child[vue].cols, vue + ' : colonnes');
+  }
+});
+
+test('stades : le rognage reste dans ce que le sprite peut absorber', () => {
+  // au-delà, les coupes mordent dans les bras et le ventre : la loutre paraît
+  // écrasée au lieu de paraître jeune (constaté à l'écran)
+  const hFace = ANIMS.idle.h / ART_SCALE;
+  const wProfil = ANIMS.walk.w / ART_SCALE;
+  for (const st of ['baby', 'child']) {
+    assert.ok(STAGE_TRIM[st].face.rows <= hFace * 0.25, st + ' : trop de lignes de face');
+    assert.ok(STAGE_TRIM[st].profil.cols <= wProfil * 0.35, st + ' : torse trop raccourci');
   }
 });
 

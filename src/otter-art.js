@@ -125,6 +125,20 @@ export function loadOtterArt(base = './assets/otter/') {
     if (!art.tinted[k]) art.tinted[k] = tintedCanvas(img, remapTable(id), document);
     return art.tinted[k];
   };
+  /**
+   * Les images d'un stade JEUNE (bébé, jeune) : dérivées de l'adulte au premier
+   * appel puis gardées en cache. `null` pour l'adulte, qui se dessine
+   * directement depuis sa planche.
+   */
+  art.young = {};
+  art.stageFrames = (name, furId, stage) => {
+    if (!STAGE_TRIM[stage]) return null;                // adulte (ou stade inconnu)
+    const sheet = art.sheetFor(name, furId);
+    if (!sheet) return null;
+    const k = name + '|' + (furId || 'roux') + '|' + stage;
+    if (!art.young[k]) art.young[k] = deriveStage(sheet, name, stage, document);
+    return art.young[k];
+  };
   return art;
 }
 
@@ -164,6 +178,216 @@ export function animForMood(mood) {
   return mood === 'contente' ? 'happy' : 'idle';
 }
 
+/* ─────────────────────── Les stades jeunes ───────────────────────
+ * Le kit ne fournit qu'une morphologie : l'adulte. Plutôt que redessiner un
+ * bébé dans un autre style — l'écueil qui rendait la loutre incohérente — on
+ * le DÉRIVE de l'adulte, comme le fait le dessin animé : on garde la tête
+ * intacte et on raccourcit le corps. Grosse tête + petit corps = bébé.
+ *
+ * Le rétrécissement retire des LIGNES et des COLONNES entières, choisies parmi
+ * les plus redondantes (celles qui ressemblent le plus à leur voisine). C'est
+ * la façon dont on redimensionne du pixel art sans le flouter : aucun pixel
+ * n'est rééchantillonné, le contour et la palette restent intacts.
+ */
+
+/** Où couper tête et corps dans chaque pose, et de quel côté est la tête. */
+const SPLIT = {
+  idle:  { axis: 'y', at: 21 },   // de face : tête au-dessus, corps en dessous
+  happy: { axis: 'y', at: 21 },
+  walk:  { axis: 'x', at: 20 },   // de profil : corps à gauche, tête à droite
+  jump:  { axis: 'x', at: 20 },
+  swim:  { axis: 'x', at: 20 }
+};
+
+/**
+ * Combien retirer, par stade. `face` agit sur le corps sous la tête ; `profil`
+ * raccourcit les pattes (lignes) et la longueur du torse (colonnes). La tête
+ * n'est JAMAIS touchée : c'est elle qui donne l'air enfantin.
+ */
+export const STAGE_TRIM = {
+  adult: null,                          // la référence : rien à retirer
+  child: { face: { rows: 4, cols: 2 }, profil: { rows: 2, cols: 5 } },
+  baby:  { face: { rows: 9, cols: 5 }, profil: { rows: 5, cols: 11 } }
+};
+
+/** Les stades rendus avec le kit (l'œuf n'en fait pas partie). */
+export const ART_STAGES = ['baby', 'child', 'adult'];
+
+const px = (d, w, x, y) => {
+  const i = (y * w + x) * 4;
+  return (d[i + 3] << 24) | (d[i] << 16) | (d[i + 1] << 8) | d[i + 2];
+};
+
+/**
+ * Les `n` indices les plus redondants d'une bande : on compare chaque ligne (ou
+ * colonne) à sa voisine et on retire d'abord les plus semblables, en recalculant
+ * après chaque retrait pour ne pas creuser un trou au même endroit.
+ */
+function redundantIndices(data, w, h, axis, from, to, n) {
+  const alive = [];
+  for (let i = from; i < to; i++) alive.push(i);
+  const diff = (a, b) => {
+    let c = 0;
+    if (axis === 'y') { for (let x = 0; x < w; x++) if (px(data, w, x, a) !== px(data, w, x, b)) c++; }
+    else { for (let y = 0; y < h; y++) if (px(data, w, a, y) !== px(data, w, b, y)) c++; }
+    return c;
+  };
+  const out = [];
+  for (let k = 0; k < n && alive.length > 1; k++) {
+    let best = 0, bestCost = Infinity;
+    for (let i = 0; i < alive.length - 1; i++) {
+      const c = diff(alive[i], alive[i + 1]);
+      if (c < bestCost) { bestCost = c; best = i; }
+    }
+    out.push(alive[best]);
+    alive.splice(best, 1);
+  }
+  return new Set(out);
+}
+
+/**
+ * Recopie un morceau d'image en sautant les lignes et colonnes retirées
+ * (indices exprimés dans le repère de l'image ENTIÈRE).
+ */
+function cropCarve(src, x0, y0, w, h, dropRows, dropCols, doc) {
+  const keepY = [], keepX = [];
+  for (let y = y0; y < y0 + h; y++) if (!dropRows.has(y)) keepY.push(y);
+  for (let x = x0; x < x0 + w; x++) if (!dropCols.has(x)) keepX.push(x);
+  const c = doc.createElement('canvas');
+  c.width = Math.max(1, keepX.length); c.height = Math.max(1, keepY.length);
+  const g = c.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  for (let j = 0; j < keepY.length; j++) {
+    for (let i = 0; i < keepX.length; i++) {
+      g.drawImage(src, keepX[i], keepY[j], 1, 1, i, j, 1, 1);
+    }
+  }
+  return c;
+}
+
+/** Les bornes horizontales du contenu d'un canvas (ou null s'il est vide). */
+function spanX(canvas) {
+  const w = canvas.width, h = canvas.height;
+  const d = canvas.getContext('2d').getImageData(0, 0, w, h).data;
+  let min = w, max = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (d[(y * w + x) * 4 + 3] > 16) { if (x < min) min = x; if (x > max) max = x; }
+  }
+  return max < 0 ? null : { min, max, cx: (min + max) / 2 };
+}
+
+/** Empile la tête (intacte) sur le corps rétréci, centres alignés. */
+function stackHeadBody(head, body, doc) {
+  const hs = spanX(head), bs = spanX(body);
+  const hcx = hs ? hs.cx : head.width / 2, bcx = bs ? bs.cx : body.width / 2;
+  const hx = Math.max(0, Math.round(bcx - hcx)), bx = Math.max(0, Math.round(hcx - bcx));
+  const c = doc.createElement('canvas');
+  c.width = Math.max(hx + head.width, bx + body.width);
+  c.height = head.height + body.height;
+  const g = c.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.drawImage(head, hx, 0);
+  g.drawImage(body, bx, head.height);
+  return c;
+}
+
+/** Accole le torse rétréci et la tête intacte (pose de profil). */
+function joinBodyHead(body, head, doc) {
+  const c = doc.createElement('canvas');
+  c.width = body.width + head.width;
+  c.height = Math.max(body.height, head.height);
+  const g = c.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.drawImage(body, 0, 0);
+  g.drawImage(head, body.width, 0);
+  return c;
+}
+
+/** Une image d'animation, à sa taille native, dans un canvas neuf. */
+function nativeFrame(sheet, a, i, doc) {
+  const c = doc.createElement('canvas');
+  c.width = a.w / ART_SCALE; c.height = a.h / ART_SCALE;
+  const g = c.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.drawImage(sheet, i * a.w, 0, a.w, a.h, 0, 0, c.width, c.height);
+  return c;
+}
+
+/**
+ * Relève l'anatomie d'un sprite en lisant ses pixels : pieds (centre-bas du
+ * contenu), sommet et centre de la tête. Évite de tenir à jour des constantes
+ * à la main pour chaque stade dérivé.
+ */
+export function measureSprite(canvas) {
+  const w = canvas.width, h = canvas.height;
+  const d = canvas.getContext('2d').getImageData(0, 0, w, h).data;
+  let minX = w, maxX = -1, minY = h, maxY = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (d[(y * w + x) * 4 + 3] <= 16) continue;
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  }
+  if (maxX < 0) return { feet: { x: w >> 1, y: h }, headTop: 0, headCx: w >> 1, headW: 0 };
+  // la tête : les 8 lignes sous le sommet du contenu
+  let hMinX = w, hMaxX = -1;
+  for (let y = minY; y < Math.min(h, minY + 8); y++) for (let x = 0; x < w; x++) {
+    if (d[(y * w + x) * 4 + 3] <= 16) continue;
+    if (x < hMinX) hMinX = x; if (x > hMaxX) hMaxX = x;
+  }
+  return {
+    feet: { x: Math.round((minX + maxX) / 2), y: maxY + 1 },
+    headTop: minY,
+    headCx: Math.round((hMinX + hMaxX) / 2),
+    headW: hMaxX - hMinX + 1
+  };
+}
+
+/**
+ * Fabrique les images d'une animation pour un stade jeune. Les coupes sont
+ * choisies UNE fois sur la première image puis appliquées à toutes les autres :
+ * sans cela chaque image rétrécirait à sa façon et la loutre tremblerait en
+ * marchant.
+ */
+function deriveStage(sheet, name, stage, doc) {
+  const trim = STAGE_TRIM[stage];
+  const a = ANIMS[name];
+  const w = a.w / ART_SCALE, h = a.h / ART_SCALE;
+  const split = SPLIT[name] || { axis: 'y', at: Math.round(h * 0.4) };
+  const t = split.axis === 'y' ? trim.face : trim.profil;
+  const vide = new Set();
+
+  const ref = nativeFrame(sheet, a, 0, doc);
+  const data = ref.getContext('2d').getImageData(0, 0, w, h).data;
+
+  let dropRows, dropCols;
+  if (split.axis === 'y') {
+    // De face : on raccourcit et on affine le tronc, sous la tête.
+    dropRows = redundantIndices(data, w, h, 'y', split.at, h - 4, t.rows);
+    dropCols = redundantIndices(data, w, h, 'x', 0, w, t.cols);
+  } else {
+    // De profil : pattes plus courtes (lignes du bas, sur TOUTE la largeur pour
+    // que les deux paires restent alignées) et torse plus court (colonnes).
+    const hautDesPattes = Math.round(h * 0.62);
+    dropRows = redundantIndices(data, w, h, 'y', hautDesPattes, h - 2, t.rows);
+    dropCols = redundantIndices(data, w, h, 'x', 0, split.at, t.cols);
+  }
+
+  const frames = [];
+  for (let i = 0; i < a.frames; i++) {
+    const one = nativeFrame(sheet, a, i, doc);
+    if (split.axis === 'y') {
+      const tete = cropCarve(one, 0, 0, w, split.at, vide, vide, doc);
+      const corps = cropCarve(one, 0, split.at, w, h - split.at, dropRows, dropCols, doc);
+      frames.push(stackHeadBody(tete, corps, doc));
+    } else {
+      const corps = cropCarve(one, 0, 0, split.at, h, dropRows, dropCols, doc);
+      const tete = cropCarve(one, split.at, 0, w - split.at, h, dropRows, vide, doc);
+      frames.push(joinBodyHead(corps, tete, doc));
+    }
+  }
+  return { frames, anatomy: measureSprite(frames[0]) };
+}
+
 let shared = null;
 /** L'instance partagée du kit : chargée une seule fois pour toute l'appli. */
 export function otterArt() {
@@ -178,23 +402,33 @@ export function otterArt() {
  * @returns {{x:number,y:number,w:number,h:number}|null} la boîte dessinée,
  *          pour y accrocher chapeau et bulles.
  */
-export function drawAnim(ctx, art, name, frame, x, y, furId, flip) {
+export function drawAnim(ctx, art, name, frame, x, y, furId, flip, stage) {
   if (!ctx || !art) return null;
-  const sheet = art.sheetFor && art.sheetFor(name, furId);
   const r = frameRect(name, frame);
-  if (!sheet || !r) return null;
-  const an = ANATOMY[name] || { feet: { x: r.dw / 2, y: r.dh } };
-  const ox = Math.round(x - (flip ? r.dw - an.feet.x : an.feet.x));
+  if (!r) return null;
+
+  // Stade jeune : images dérivées, déjà découpées et à leur taille propre.
+  const young = art.stageFrames && art.stageFrames(name, furId, stage);
+  const src = young ? young.frames[((frame % young.frames.length) + young.frames.length) % young.frames.length] : null;
+  const sheet = src || (art.sheetFor && art.sheetFor(name, furId));
+  if (!sheet) return null;
+
+  const w = src ? src.width : r.dw, h = src ? src.height : r.dh;
+  const an = (young && young.anatomy) || ANATOMY[name] || { feet: { x: w / 2, y: h } };
+  const ox = Math.round(x - (flip ? w - an.feet.x : an.feet.x));
   const oy = Math.round(y - an.feet.y);
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   if (flip) {
-    ctx.translate(ox + r.dw, oy);
+    ctx.translate(ox + w, oy);
     ctx.scale(-1, 1);
-    ctx.drawImage(sheet, r.sx, r.sy, r.sw, r.sh, 0, 0, r.dw, r.dh);
+    if (src) ctx.drawImage(src, 0, 0);
+    else ctx.drawImage(sheet, r.sx, r.sy, r.sw, r.sh, 0, 0, w, h);
+  } else if (src) {
+    ctx.drawImage(src, ox, oy);
   } else {
-    ctx.drawImage(sheet, r.sx, r.sy, r.sw, r.sh, ox, oy, r.dw, r.dh);
+    ctx.drawImage(sheet, r.sx, r.sy, r.sw, r.sh, ox, oy, w, h);
   }
   ctx.restore();
-  return { x: ox, y: oy, w: r.dw, h: r.dh };
+  return { x: ox, y: oy, w, h, anatomy: an };
 }
