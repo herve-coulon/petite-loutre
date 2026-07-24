@@ -7,7 +7,7 @@ import {
   charAt, isWater, isSolid, waterTile, groundTile, decorTile,
   moveWithCollision, zoneExit, nearestFree, safeEntry, spawnPoint,
   zoneFinds, FIND_ICON, zoneGates, zoneLayout, ZONE_INTRO, findPath,
-  SPECIALITE, zoneDuJour, findCount, BORD_SORTIE,
+  SPECIALITE, zoneDuJour, findCount, BORD_SORTIE, zoneReq, zoneUnlocked,
   HABITANT, COFFRE, COFFRE_ZONES, habitantAt, coffreAt, HABITANT_PRES, COFFRE_LOIN,
   EPREUVE, EPREUVE_ZONES, epreuveAt, FAUNE
 } from '../src/tilemap.js';
@@ -68,14 +68,18 @@ test('zones : un bord SANS liaison est un mur, un bord AVEC liaison s\'ouvre', (
   // la clairière est le carrefour : elle ouvre des quatre côtés
   assert.equal(isSolid('clairiere', 5, -1), false, 'nord franchissable');
   assert.equal(isSolid('clairiere', 5, MAP_H), false, 'sud franchissable');
-  // le delta est un cul-de-sac : seul l'ouest s'ouvre (le lac, lui, mène
-  // désormais au delta — c'est ce qui a agrandi la vallée)
-  assert.deepEqual(Object.keys(ZONES.delta.links), ['west']);
+  // le delta est devenu un CARREFOUR vers les confins : ouest (lac) ET est (lagon)
+  assert.deepEqual(Object.keys(ZONES.delta.links).sort(), ['east', 'west']);
   assert.equal(isSolid('delta', -1, 5), false, 'le delta ouvre à l\'ouest');
-  assert.equal(isSolid('delta', 5, -1), true, 'le delta est fermé au nord');
-  assert.equal(isSolid('delta', MAP_W, 5), true, 'le delta est fermé à l\'est');
-  assert.equal(isSolid('delta', 5, MAP_H), true, 'le delta est fermé au sud');
-  assert.equal(isSolid('lac', MAP_W, 5), false, 'le lac ouvre maintenant à l\'est');
+  assert.equal(isSolid('delta', MAP_W, 5), false, 'le delta ouvre à l\'est vers le lagon');
+  assert.equal(isSolid('delta', 5, -1), true, 'le delta reste fermé au nord');
+  assert.equal(isSolid('delta', 5, MAP_H), true, 'le delta reste fermé au sud');
+  // le grand large est le vrai bout du monde : un seul bord ouvert
+  assert.deepEqual(Object.keys(ZONES.large.links), ['west']);
+  assert.equal(isSolid('large', -1, 5), false, 'le large ouvre vers le lagon');
+  assert.equal(isSolid('large', MAP_W, 5), true, 'au-delà du large, plus rien');
+  assert.equal(isSolid('large', 5, -1), true, 'le large est fermé au nord');
+  assert.equal(isSolid('large', 5, MAP_H), true, 'le large est fermé au sud');
 });
 
 test('passage : sortir par un bord lié amène dans la zone voisine, côté opposé', () => {
@@ -366,7 +370,11 @@ test('voyage : on ne peut viser que des lieux connus, et jamais celui où l\'on 
 });
 
 test('habitants : un par lieu, chacun avec son service', () => {
-  const dons = new Set(), emojis = new Set();
+  // les services connus de l'orchestrateur (parlerAuPnj). Un habitant dont le
+  // `don` n'y figure pas consommerait la visite du jour sans rien rendre.
+  const SERVICES = new Set(['piste', 'provisions', 'rincage', 'friandise',
+    'gemme', 'repos', 'remede', 'lecon', 'guet']);
+  const emojis = new Set();
   for (const id of ids) {
     const h = HABITANT[id];
     assert.ok(h, id + ' : lieu sans habitant');
@@ -374,10 +382,11 @@ test('habitants : un par lieu, chacun avec son service', () => {
       assert.ok(h[champ] && h[champ].length, id + ' : ' + champ + ' manquant');
     }
     assert.ok(Array.isArray(h.mots) && h.mots.length >= 1, id + ' : rien à dire');
-    // deux habitants qui rendent le même service, c'est une zone en double
-    assert.equal(dons.has(h.don), false, 'service en double : ' + h.don);
+    // un service inconnu ne serait jamais rendu : la visite serait gâchée
+    assert.ok(SERVICES.has(h.don), id + ' : service inconnu « ' + h.don + ' »');
+    // deux habitants au même visage se confondraient sur la carte
     assert.equal(emojis.has(h.emoji), false, 'habitant en double : ' + h.emoji);
-    dons.add(h.don); emojis.add(h.emoji);
+    emojis.add(h.emoji);
   }
 });
 
@@ -609,8 +618,8 @@ test('franchissement : on n\'est pas renvoyé aussitôt d\'où l\'on vient', () 
   }
 });
 
-test('agrandissement : la vallée compte neuf lieux, tous reliés et tous équipés', () => {
-  assert.ok(ids.length >= 9, 'la vallée doit avoir grandi : ' + ids.length + ' lieux');
+test('agrandissement : un vaste monde, tous les lieux reliés et tous équipés', () => {
+  assert.ok(ids.length >= 15, 'le monde doit être vaste : ' + ids.length + ' lieux');
   // chaque lieu, ancien comme nouveau, doit être complet — sinon un ajout
   // laisserait un trou silencieux (pas d'habitant, pas de coffre, pas d'épreuve)
   for (const id of ids) {
@@ -621,6 +630,60 @@ test('agrandissement : la vallée compte neuf lieux, tous reliés et tous équip
     assert.ok(EPREUVE[id], id + ' : pas de championne');
     assert.ok(FAUNE[id] && FAUNE[id].length, id + ' : pas de faune');
     assert.ok(ZONES[id].find && FIND_ICON[ZONES[id].find.kind], id + ' : trouvaille sans icône');
+  }
+});
+
+test('déblocage : le monde s\'ouvre par paliers, du foyer vers les confins', () => {
+  // le cœur est ouvert d'emblée, les confins réclament de l'expérience
+  assert.equal(zoneReq(START_ZONE), 1, 'le foyer doit être ouvert dès le départ');
+  for (const id of ids) {
+    const r = zoneReq(id);
+    assert.ok(Number.isInteger(r) && r >= 1, id + ' : palier de déblocage invalide (' + r + ')');
+    // le palier suit le danger : on ne débloque pas un lieu féroce trop tôt
+    assert.ok(zoneUnlocked(id, r), id + ' : son propre palier devrait l\'ouvrir');
+    assert.equal(zoneUnlocked(id, r - 1), r === 1, id + ' : un cran sous le palier ne doit PAS ouvrir');
+  }
+  // au niveau 1, seul un petit cœur est accessible ; il faut monter pour le reste
+  const ouverts1 = ids.filter(id => zoneUnlocked(id, 1));
+  assert.ok(ouverts1.length >= 2 && ouverts1.length < ids.length,
+    'au niveau 1 : quelques lieux, pas toute la vallée (' + ouverts1.length + '/' + ids.length + ')');
+  // et un niveau assez haut finit par tout ouvrir
+  const seuilMax = Math.max(...ids.map(zoneReq));
+  assert.ok(ids.every(id => zoneUnlocked(id, seuilMax)), 'tout doit finir par s\'ouvrir');
+});
+
+test('déblocage : les confins ne s\'ouvrent qu\'après tout le cœur de la vallée', () => {
+  // le vaste monde neuf (les confins) se mérite : chacun réclame un niveau
+  // strictement plus haut que le plus exigeant des lieux du cœur.
+  const CONFINS = ['lagon', 'large', 'caverne', 'mine', 'glacier', 'cimes'];
+  const COEUR = ids.filter(id => !CONFINS.includes(id));
+  const seuilCoeur = Math.max(...COEUR.map(zoneReq));
+  for (const id of CONFINS) {
+    assert.ok(ZONES[id], 'confin absent : ' + id);
+    assert.ok(zoneReq(id) > seuilCoeur,
+      id + ' (palier ' + zoneReq(id) + ') devrait s\'ouvrir après tout le cœur (palier ' + seuilCoeur + ')');
+  }
+  // et les bouts du monde (les plus profonds) sont les tout derniers
+  assert.ok(zoneReq('cimes') > zoneReq('glacier'), 'les cimes après le glacier');
+  assert.ok(zoneReq('large') > zoneReq('lagon'), 'le grand large après le lagon');
+  assert.ok(zoneReq('mine') > zoneReq('caverne'), 'la mine après la caverne');
+});
+
+test('déblocage : chaque confin verrouillé reste ATTEIGNABLE une fois le palier atteint', () => {
+  // un lieu qu'on débloque mais qu'on ne peut jamais rejoindre à pied serait pire
+  // que pas de lieu du tout : on vérifie qu'un chemin de liens y mène, en ne
+  // franchissant que des bords déjà ouverts au palier du lieu visé.
+  for (const cible of ids) {
+    const seuil = zoneReq(cible);
+    const vus = new Set([START_ZONE]);
+    const file = [START_ZONE];
+    while (file.length) {
+      for (const to of Object.values(ZONES[file.pop()].links)) {
+        if (!vus.has(to) && zoneUnlocked(to, seuil)) { vus.add(to); file.push(to); }
+      }
+    }
+    assert.ok(vus.has(cible),
+      cible + ' (palier ' + seuil + ') est injoignable à pied quand il se débloque');
   }
 });
 

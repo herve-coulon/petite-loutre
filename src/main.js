@@ -37,7 +37,8 @@ import {
   TILE, MAP_W, MAP_H, WORLD_W, WORLD_H, START_ZONE, ZONES, zoneById, zoneFinds, ZONE_INTRO, isSolid,
   SPECIALITE, zoneDuJour, HABITANT, COFFRE, COFFRE_ZONES, habitantAt, coffreAt,
   EPREUVE, EPREUVE_ZONES, epreuveAt,
-  moveWithCollision, spawnPoint, zoneExit, safeEntry, nearestFree, findPath, zoneGates
+  moveWithCollision, spawnPoint, zoneExit, safeEntry, nearestFree, findPath, zoneGates,
+  zoneUnlocked, zoneReq
 } from './tilemap.js';
 import { makeCard, CARD_URL } from './photocard.js';
 import { nextBeat, markSeen, coachStep } from './story.js';
@@ -467,7 +468,10 @@ function wildOttersFor(zoneId) {
     cascade: [[20, 12], [25, 20], [16, 26]], roseaux: [[6, 6], [22, 16], [10, 24]],
     lac: [[3, 24], [26, 3], [2, 12]], vallon: [[6, 10], [24, 18], [8, 25]],
     delta: [[6, 7], [22, 13], [10, 26]], gorge: [[8, 10], [22, 18], [6, 24]],
-    sapiniere: [[6, 8], [22, 12], [12, 24]]
+    sapiniere: [[6, 8], [22, 12], [12, 24]],
+    lagon: [[6, 6], [23, 8], [8, 23]], large: [[7, 7], [22, 22], [23, 7]],
+    caverne: [[6, 8], [23, 10], [9, 22]], mine: [[7, 6], [22, 9], [8, 24]],
+    glacier: [[6, 7], [23, 8], [10, 23]], cimes: [[7, 6], [22, 10], [9, 23]]
   };
   const spots = anchors[zoneId] || anchors.clairiere;
   const z = zoneById(zoneId);
@@ -618,14 +622,14 @@ function parlerAuPnj(pnj) {
     lignes.push('🍬 La friandise est de nouveau prête !');
   } else if (pnj.don === 'gemme') {
     rec.gems = (rec.gems || 0) + 3;
-    lignes.push('💎 Gaspard glisse trois gemmes dans la patte de ' + nom + '.');
+    lignes.push('💎 ' + pnj.nom + ' glisse trois gemmes dans la patte de ' + nom + '.');
   } else if (pnj.don === 'repos') {
     s.energy = clamp(s.energy + 25, 0, 100);
     s.fun = clamp(s.fun + 15, 0, 100);
     lignes.push('😌 ' + nom + ' souffle un bon coup. (+25 énergie, +15 entrain)');
   } else if (pnj.don === 'remede') {
     s.health = clamp(s.health + 30, 0, 100);
-    lignes.push('🩹 Colvert recoud, panse, tapote. ' + nom + ' repart d\'aplomb. (+30 santé)');
+    lignes.push('🩹 ' + pnj.nom + ' recoud, panse, tapote. ' + nom + ' repart d\'aplomb. (+30 santé)');
   } else if (pnj.don === 'lecon') {
     gainXp(60);
     lignes.push('📚 Une leçon d\'ombre et de silence. (+60 XP)');
@@ -809,7 +813,7 @@ function worldTravelHandler() {
   if (!denAvailable()) return null;                 // œuf, absence, mini-jeu : pas de départ
   if (s.place === 'monde' && world) return travelTo;
   return (zoneId) => {
-    if (!isVisited(zoneId)) return false;
+    if (!isVisited(zoneId) || !zoneUnlocked(zoneId, curLevel())) return false;
     enterWorld(zoneId);
     ui.hideOverlay('ovl-menu');
     return true;
@@ -818,10 +822,31 @@ function worldTravelHandler() {
 
 function travelTo(zoneId) {
   if (!world || !isVisited(zoneId) || zoneId === world.zone) return false;
+  if (!zoneUnlocked(zoneId, curLevel())) return false;
   const p = spawnPoint(zoneId);
   goToZone(zoneId, p.x, p.y);
   ui.hideOverlay('ovl-menu');
   return true;
+}
+
+/**
+ * Un bord vers un lieu encore VERROUILLÉ : la brume repousse la loutre à
+ * l'intérieur et lui dit à partir de quel niveau la voie s'ouvrira. C'est le
+ * cœur du déblocage progressif — le monde est là, mais il se mérite.
+ */
+function barrerPassage(zoneId) {
+  world.route = null; world.walking = false;
+  // on la recale de quelques pixels vers le centre, pour ne pas re-déclencher
+  const cx = WORLD_W / 2, cy = WORLD_H / 2;
+  const dx = cx - world.px, dy = cy - world.py, d = Math.hypot(dx, dy) || 1;
+  world.px += dx / d * (TILE + 2); world.py += dy / d * (TILE + 2);
+  world.tx = world.px; world.ty = world.py;
+  const req = zoneReq(zoneId);
+  if (frame > (world.brumeCooldown || 0)) {
+    world.brumeCooldown = frame + 180;
+    sfx.sad(); vibrate([15, 30, 15]);
+    messageImportant('🌫️ La brume te barre le passage — reviens niveau ' + req + '.');
+  }
 }
 
 /** Change de zone : nouvelle carte, nouvelles loutres, on entre par le bon bord. */
@@ -908,7 +933,11 @@ function stepWorld() {
       }
       // franchi un bord ouvert ? on bascule sur la zone voisine
       const out = zoneExit(world.zone, world.px, world.py);
-      if (out) { goToZone(out.to, out.x, out.y); return; }
+      if (out) {
+        if (!zoneUnlocked(out.to, curLevel())) { barrerPassage(out.to); return; }
+        goToZone(out.to, out.x, out.y);
+        return;
+      }
     } else if (world.route && world.route.length) {
       const p = world.route.shift();          // étape suivante de l'itinéraire
       world.tx = p.x; world.ty = p.y;
@@ -1768,6 +1797,7 @@ function loop() {
     dragFood,
     owned: rec ? rec.items : null,
     world: (s && s.place === 'monde') ? world : null,
+    level: curLevel(),
     hint: (s && activeHint) ? hintTargetFor(activeHint) : null
   });
   if (R.consumeFetch()) onFetchDone(); // la loutre vient de rapporter la balle

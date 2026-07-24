@@ -43,7 +43,14 @@ export const ITEMS = [
   { id: 'etoilefilante', emoji: '🌠', name: 'Étoile filante',       rarity: 'legendaire', drop: false, bonus: { atq: 1.15, xp: 1.25, luck: 1.5 } },
   { id: 'perle',        emoji: '⚪', name: 'Perle des profondeurs', rarity: 'legendaire', drop: true,  bonus: { pv: 1.10, xp: 1.2, decay: 0.92 } },
   { id: 'coeur',        emoji: '💠', name: 'Cœur de la rivière',    rarity: 'legendaire', drop: true,  bonus: { pv: 1.15, atq: 1.10, decay: 0.82, coldResist: 0.8, heatResist: 0.8 } },
-  { id: 'larme',        emoji: '💧', name: 'Larme de la rivière',   rarity: 'legendaire', drop: true,  bonus: { vit: 1.15, pv: 1.08, decay: 0.8, coldResist: 0.7, heatResist: 0.7 } }
+  { id: 'larme',        emoji: '💧', name: 'Larme de la rivière',   rarity: 'legendaire', drop: true,  bonus: { vit: 1.15, pv: 1.08, decay: 0.8, coldResist: 0.7, heatResist: 0.7 } },
+  // ---- Trésors des confins (coffres des lieux à débloquer) ----
+  { id: 'corail',       emoji: '🪸', name: 'Corail du lagon',       rarity: 'rare',       drop: true,  bonus: { vit: 1.08, luck: 1.2 } },
+  { id: 'stalactite',   emoji: '🧊', name: 'Stalactite de givre',   rarity: 'rare',       drop: true,  bonus: { coldResist: 0.65, decay: 0.9 } },
+  { id: 'nacre',        emoji: '🦪', name: 'Nacre du grand large',  rarity: 'epique',     drop: true,  bonus: { pv: 1.06, xp: 1.15 } },
+  { id: 'geode',        emoji: '🟣', name: 'Géode des galeries',    rarity: 'epique',     drop: true,  bonus: { atq: 1.07, xp: 1.12 } },
+  { id: 'pepite',       emoji: '🪙', name: 'Pépite du filon',       rarity: 'epique',     drop: true,  bonus: { xp: 1.18, luck: 1.3 } },
+  { id: 'comete',       emoji: '☄️', name: 'Éclat de comète',       rarity: 'legendaire', drop: true,  bonus: { atq: 1.13, xp: 1.22, luck: 1.4 } }
 ];
 
 // Paliers garantis : atteindre CE niveau octroie le trésor (étalés sur les 50

@@ -125,6 +125,8 @@ button{font-family:inherit;}
   background:rgba(201,162,75,.20);}
 .pm-cell.empty{border:none; background:none; min-height:0;}
 .pm-cell.unknown{background:rgba(38,54,78,.07); border-style:dashed; opacity:.75;}
+.pm-cell.locked{background:rgba(40,44,54,.12); border-style:dotted; border-color:#7a8090; opacity:.7;}
+.pm-cell.locked .pm-nm{color:#7a8090; font-weight:700;}
 .pm-cell.here{background:var(--gold); box-shadow:0 0 0 2px var(--ink) inset;}
 .pm-ic{font-size:17px; line-height:1;}
 .pm-nm{font-size:7.5px; font-weight:700; line-height:1.05; text-align:center; color:var(--ink);

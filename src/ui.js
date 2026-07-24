@@ -15,7 +15,7 @@ import { makeFighter, encodeCard, ELAN_MAX } from './battle.js';
 import { TECHNIQUES, unlockedTechniques } from './skills.js';
 import { equipBonus } from './skins.js';
 import { paintOtter } from './render.js';
-import { ZONES, ZONE_INTRO, FIND_ICON, SPECIALITE, COFFRE_ZONES, EPREUVE_ZONES, zoneDuJour, zoneLayout } from './tilemap.js';
+import { ZONES, ZONE_INTRO, FIND_ICON, SPECIALITE, COFFRE_ZONES, EPREUVE_ZONES, zoneDuJour, zoneLayout, zoneUnlocked, zoneReq } from './tilemap.js';
 
 const $ = id => document.getElementById(id);
 const setTxt = (id, v) => { const e = $(id); if (e) e.textContent = v; };
@@ -196,6 +196,7 @@ export function renderValleyMap(rec, currentZone, onTravel) {
   const grid = $('pm-grid'); if (!grid) return;
   const layout = zoneLayout();
   const vus = (rec && rec.visited) || [];
+  const niveau = levelFromXp((rec && rec.xp) || 0).level;
   const ids = Object.keys(ZONES);
   const cols = Math.max(...Object.values(layout).map(p => p.col)) + 1;
   const rows = Math.max(...Object.values(layout).map(p => p.row)) + 1;
@@ -218,11 +219,15 @@ export function renderValleyMap(rec, currentZone, onTravel) {
       }
       const connu = vus.includes(id);
       const ici = id === currentZone;
-      // un lieu connu (et pas celui où l'on est) devient un vrai bouton de voyage
-      const jouable = !!onTravel && connu && !ici;
+      // un lieu encore trop haut pour le niveau du joueur reste CADENASSÉ : on
+      // en montre le seuil, pas le contenu — c'est le fil du déblocage.
+      const verrou = !zoneUnlocked(id, niveau);
+      // un lieu connu, déverrouillé, et pas celui où l'on est : bouton de voyage
+      const jouable = !!onTravel && connu && !ici && !verrou;
       const cell = document.createElement(jouable ? 'button' : 'div');
       cell.className = 'pm-cell';
       if (!connu) cell.classList.add('unknown');
+      if (verrou) cell.classList.add('locked');
       if (ici) cell.classList.add('here');
       if (jouable) {
         cell.classList.add('go');
@@ -231,10 +236,11 @@ export function renderValleyMap(rec, currentZone, onTravel) {
         cell.addEventListener('click', () => onTravel(id));
       }
       const ic = document.createElement('span'); ic.className = 'pm-ic';
-      ic.textContent = connu ? ((ZONE_INTRO[id] && ZONE_INTRO[id].emoji) || '📍') : '❔';
+      ic.textContent = verrou ? '🔒' : connu ? ((ZONE_INTRO[id] && ZONE_INTRO[id].emoji) || '📍') : '❔';
       const nm = document.createElement('span'); nm.className = 'pm-nm';
-      nm.textContent = connu ? ZONES[id].name : '???';
+      nm.textContent = verrou ? ('Niv. ' + zoneReq(id)) : connu ? ZONES[id].name : '???';
       cell.appendChild(ic); cell.appendChild(nm);
+      if (verrou) { cell.title = 'Se débloque au niveau ' + zoneReq(id); grid.appendChild(cell); continue; }
       // à quoi sert le lieu : c'est ICI qu'on choisit où aller, l'info doit y être
       const sp = connu && SPECIALITE[id];
       if (sp) {

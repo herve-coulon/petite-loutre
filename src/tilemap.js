@@ -406,56 +406,150 @@ const SAPINIERE = [
   'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'
 ];
 
+/* ---------------- Les CONFINS : cartes engendrées ----------------
+ * La vallée du cœur est dessinée à la main. Ses confins — les terres qu'on ne
+ * débloque qu'en montant en niveau — sont ENGENDRÉS : une carte peinte à la
+ * main par confin, c'est trente lignes de labeur et autant d'occasions de
+ * murer un passage par mégarde. Le générateur, lui, est PUR et déterministe
+ * (graine = nom du lieu), et garantit deux choses par construction :
+ *   1. une CROIX centrale toujours dégagée (colonnes/lignes 12→17), si bien
+ *      que les quatre bords communiquent quoi qu'il arrive ;
+ *   2. l'eau et le décor tenus À L'ÉCART de cette croix.
+ * Couplé à ouvrirPassages (qui rouvre les bords liés), tout confin engendré est
+ * traversable — ce que la simulation de franchissement vérifie, zone à zone. */
+function engendrerCarte(graine, opts) {
+  const { mur = 'T', decor = ['b', 'f', 's'], eau = 'mare', densite = 0.11 } = opts || {};
+  const rnd = rngFrom('confin|' + graine);
+  const W = 30, H = 30;
+  const g = Array.from({ length: H }, () => Array(W).fill('.'));
+  const bordure = (x, y) => x === 0 || y === 0 || x === W - 1 || y === H - 1;
+  const croix = (x, y) => (x >= 12 && x <= 17) || (y >= 12 && y <= 17); // toujours libre
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (bordure(x, y)) g[y][x] = mur;
+
+  // une pièce d'eau, calée dans un quart et jamais sur la croix
+  if (eau !== 'aucune') {
+    if (eau === 'riviere') {
+      const col = rnd() < 0.5 ? 3 + ((rnd() * 4) | 0) : 22 + ((rnd() * 4) | 0);
+      for (let y = 2; y < H - 2; y++) for (let x = col; x < col + 3; x++)
+        if (!croix(x, y)) g[y][x] = '~';
+    } else {                                   // 'mare' : une flaque dans un coin
+      const ox = rnd() < 0.5 ? 3 : 20, oy = rnd() < 0.5 ? 3 : 20;
+      const w = 4 + ((rnd() * 3) | 0), h = 4 + ((rnd() * 3) | 0);
+      for (let y = oy; y < oy + h; y++) for (let x = ox; x < ox + w; x++)
+        if (x > 0 && y > 0 && x < W - 1 && y < H - 1 && !croix(x, y)) g[y][x] = '~';
+    }
+  }
+
+  // décor épars : jamais sur la croix, jamais dans l'eau, jamais collé au bord
+  for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) {
+    if (croix(x, y) || g[y][x] !== '.') continue;
+    if (rnd() < densite) g[y][x] = decor[(rnd() * decor.length) | 0];
+  }
+  return g.map(r => r.join(''));
+}
+
+// Les six confins, chacun avec son ambiance de tuiles.
+const LAGON      = engendrerCarte('lagon',      { mur: 'p', decor: ['b', 's'], eau: 'mare',    densite: 0.08 });
+const LARGE      = engendrerCarte('large',      { mur: 'T', decor: ['s'],      eau: 'mare',    densite: 0.05 });
+const CAVERNE    = engendrerCarte('caverne',    { mur: 'T', decor: ['b'],      eau: 'mare',    densite: 0.14 });
+const MINE       = engendrerCarte('mine',       { mur: 'T', decor: ['b', 's'], eau: 'riviere', densite: 0.12 });
+const GLACIER    = engendrerCarte('glacier',    { mur: 'p', decor: ['p', 's'], eau: 'mare',    densite: 0.10 });
+const CIMES      = engendrerCarte('cimes',      { mur: 'p', decor: ['p'],      eau: 'aucune',  densite: 0.16 });
+
 export const ZONES = {
+  // ── Le CŒUR de la vallée : ouvert d'emblée ou presque ──
   clairiere: {
     id: 'clairiere', name: 'La clairière', rows: expand(CLAIRIERE, ZOOM), start: [8 * ZOOM, 22 * ZOOM],
     links: { north: 'foret', east: 'lac', west: 'roseaux', south: 'vallon' },
-    find: { kind: 'poisson', count: 3 }, boost: 0
-  },
-  foret: {
-    id: 'foret', name: 'La forêt', rows: expand(FORET, ZOOM), start: [14 * ZOOM, 27 * ZOOM],
-    links: { south: 'clairiere', west: 'cascade', north: 'sapiniere' },
-    find: { kind: 'champignon', count: 3 }, boost: 2
-  },
-  cascade: {
-    id: 'cascade', name: 'La cascade', rows: expand(CASCADE, ZOOM), start: [20 * ZOOM, 5 * ZOOM],
-    links: { east: 'foret', south: 'roseaux' },
-    find: { kind: 'gemme', count: 2 }, boost: 4
+    find: { kind: 'poisson', count: 3 }, boost: 0, req: 1
   },
   roseaux: {
     id: 'roseaux', name: 'Les roseaux', rows: expand(ROSEAUX, ZOOM), start: [15 * ZOOM, 1 * ZOOM],
     links: { north: 'cascade', east: 'clairiere' },
-    find: { kind: 'coquillage', count: 3 }, boost: 1
-  },
-  lac: {
-    id: 'lac', name: 'Le grand lac', rows: expand(LAC, ZOOM), start: [2 * ZOOM, 24 * ZOOM],
-    links: { west: 'clairiere', east: 'delta' },
-    find: { kind: 'tresor', count: 2 }, boost: 3
+    find: { kind: 'coquillage', count: 3 }, boost: 1, req: 1
   },
   vallon: {
     id: 'vallon', name: 'Le vallon', rows: expand(VALLON, ZOOM), start: [8 * ZOOM, 2 * ZOOM],
     links: { north: 'clairiere', south: 'gorge' },
-    find: { kind: 'fleur', count: 3 }, boost: 1
+    find: { kind: 'fleur', count: 3 }, boost: 1, req: 2
   },
-  delta: {
-    id: 'delta', name: 'Le delta', rows: expand(CARTE_DELTA, ZOOM), start: [3 * ZOOM, 14 * ZOOM],
-    links: { west: 'lac' },
-    find: { kind: 'crabe', count: 3 }, boost: 5
+  lac: {
+    id: 'lac', name: 'Le grand lac', rows: expand(LAC, ZOOM), start: [2 * ZOOM, 24 * ZOOM],
+    links: { west: 'clairiere', east: 'delta' },
+    find: { kind: 'tresor', count: 2 }, boost: 3, req: 3
   },
-  gorge: {
-    id: 'gorge', name: 'La gorge', rows: expand(GORGE, ZOOM), start: [15 * ZOOM, 1 * ZOOM],
-    links: { north: 'vallon' },
-    find: { kind: 'silex', count: 3 }, boost: 3
+  foret: {
+    id: 'foret', name: 'La forêt', rows: expand(FORET, ZOOM), start: [14 * ZOOM, 27 * ZOOM],
+    links: { south: 'clairiere', west: 'cascade', north: 'sapiniere' },
+    find: { kind: 'champignon', count: 3 }, boost: 2, req: 3
+  },
+  // ── La CEINTURE : il faut déjà s'être aguerri ──
+  cascade: {
+    id: 'cascade', name: 'La cascade', rows: expand(CASCADE, ZOOM), start: [20 * ZOOM, 5 * ZOOM],
+    links: { east: 'foret', south: 'roseaux' },
+    find: { kind: 'gemme', count: 2 }, boost: 4, req: 6
   },
   sapiniere: {
     id: 'sapiniere', name: 'La sapinière', rows: expand(SAPINIERE, ZOOM), start: [15 * ZOOM, 28 * ZOOM],
-    links: { south: 'foret' },
-    find: { kind: 'baie', count: 3 }, boost: 2
+    links: { south: 'foret', north: 'glacier' },
+    find: { kind: 'baie', count: 3 }, boost: 2, req: 5
+  },
+  delta: {
+    id: 'delta', name: 'Le delta', rows: expand(CARTE_DELTA, ZOOM), start: [3 * ZOOM, 14 * ZOOM],
+    links: { west: 'lac', east: 'lagon' },
+    find: { kind: 'crabe', count: 3 }, boost: 5, req: 7
+  },
+  gorge: {
+    id: 'gorge', name: 'La gorge', rows: expand(GORGE, ZOOM), start: [15 * ZOOM, 1 * ZOOM],
+    links: { north: 'vallon', south: 'caverne' },
+    find: { kind: 'silex', count: 3 }, boost: 3, req: 6
+  },
+  // ── Les CONFINS : le grand large, les profondeurs, les hauteurs ──
+  lagon: {
+    id: 'lagon', name: 'Le lagon', rows: LAGON, start: [15, 15],
+    links: { west: 'delta', east: 'large' },
+    find: { kind: 'corail', count: 3 }, boost: 6, req: 9
+  },
+  large: {
+    id: 'large', name: 'Le grand large', rows: LARGE, start: [15, 15],
+    links: { west: 'lagon' },
+    find: { kind: 'nacre', count: 3 }, boost: 9, req: 13
+  },
+  caverne: {
+    id: 'caverne', name: 'La caverne', rows: CAVERNE, start: [15, 15],
+    links: { north: 'gorge', south: 'mine' },
+    find: { kind: 'cristal', count: 3 }, boost: 7, req: 10
+  },
+  mine: {
+    id: 'mine', name: 'La vieille mine', rows: MINE, start: [15, 15],
+    links: { north: 'caverne' },
+    find: { kind: 'pepite', count: 3 }, boost: 10, req: 15
+  },
+  glacier: {
+    id: 'glacier', name: 'Le glacier', rows: GLACIER, start: [15, 15],
+    links: { south: 'sapiniere', north: 'cimes' },
+    find: { kind: 'glacon', count: 3 }, boost: 8, req: 11
+  },
+  cimes: {
+    id: 'cimes', name: 'Les cimes', rows: CIMES, start: [15, 15],
+    links: { south: 'glacier' },
+    find: { kind: 'etoile', count: 3 }, boost: 11, req: 17
   }
 };
 // Chaque bord LIÉ est ouvert d'office : déclarer une liaison suffit désormais à
 // la rendre franchissable, sans dépendre d'une trouée taillée à la main.
 for (const z of Object.values(ZONES)) z.rows = ouvrirPassages(z.rows, z.links);
+
+/**
+ * DÉBLOCAGE PROGRESSIF. Le monde entier est là dès le départ, mais il ne
+ * s'OUVRE qu'à mesure qu'on grandit : chaque lieu réclame un niveau minimum
+ * (`req`). Franchir un bord vers un lieu encore verrouillé est refusé — la
+ * brume te repousse — et la carte le montre cadenassé. C'est ce qui fait
+ * qu'explorer se mérite : on ne tombe pas sur le grand large au deuxième pas.
+ * PUR : ne dépend que du niveau qu'on lui passe.
+ */
+export const zoneReq = (zone) => zoneById(zone).req || 1;
+export const zoneUnlocked = (zone, level) => (level || 1) >= zoneReq(zone);
 
 
 /**
@@ -489,14 +583,34 @@ export const ZONE_INTRO = {
       'On avance à l\'étroit, entre la pierre et l\'eau vive.'] },
   sapiniere: { emoji: '🌲', title: 'La sapinière',
     lines: ['Les sapins montent droit et serrés, la lumière tombe en aiguilles.',
-      'Il fait frais ici, et l\'on n\'entend que ses propres pas.'] }
+      'Il fait frais ici, et l\'on n\'entend que ses propres pas.'] },
+  lagon: { emoji: '🏝️', title: 'Le lagon',
+    lines: ['Passé le delta, l\'eau tourne au turquoise et se calme.',
+      'Des coraux affleurent sous la surface tiède.'] },
+  large: { emoji: '🌊', title: 'Le grand large',
+    lines: ['Plus de rive, plus de repère : rien que l\'horizon et le sel.',
+      'C\'est le bout du monde connu. Peu y sont venues.'] },
+  caverne: { emoji: '🕳️', title: 'La caverne',
+    lines: ['La gorge plonge sous la roche ; le jour s\'éteint d\'un coup.',
+      'Des cristaux luisent au fond, on avance à tâtons.'] },
+  mine: { emoji: '⛏️', title: 'La vieille mine',
+    lines: ['Des galeries étayées, oubliées depuis longtemps.',
+      'Dans la poussière, des pépites dorment encore.'] },
+  glacier: { emoji: '🧊', title: 'Le glacier',
+    lines: ['Au-dessus des sapins, tout devient blanc et coupant.',
+      'Le froid mord ; chaque pas crisse sur la glace.'] },
+  cimes: { emoji: '🏔️', title: 'Les cimes',
+    lines: ['Le toit de la vallée : la roche nue, le vent, le vide.',
+      'D\'ici, on touche presque les étoiles.'] }
 };
 
 /** Ce que chaque trouvaille montre à l'écran. */
 export const FIND_ICON = {
   poisson: '🐟', champignon: '🍄', gemme: '💎',
   coquillage: '🐚', tresor: '🎁', fleur: '🌼',
-  crabe: '🦀', silex: '🪨', baie: '🫐'
+  crabe: '🦀', silex: '🪨', baie: '🫐',
+  corail: '🪸', nacre: '🦪', cristal: '🔮',
+  pepite: '🪙', glacon: '🧊', etoile: '⭐'
 };
 
 /**
@@ -522,7 +636,19 @@ export const SPECIALITE = {
   gorge: { icon: '⚒️', nom: 'La faille',
     effet: 'les silex du torrent se monnaient bien — et forment le caractère' },
   sapiniere: { icon: '🌲', nom: 'Les aiguilles',
-    effet: 'les baies y poussent en abondance : de quoi tenir longtemps' }
+    effet: 'les baies y poussent en abondance : de quoi tenir longtemps' },
+  lagon: { icon: '🐢', nom: 'Le lagon tiède',
+    effet: 'les coraux valent cher, et l\'eau tiède délasse d\'un coup' },
+  large: { icon: '⚓', nom: 'Le bout du monde',
+    effet: 'la nacre du large vaut une fortune — pour qui ose venir jusqu\'ici' },
+  caverne: { icon: '🔦', nom: 'Les galeries',
+    effet: 'dans le noir, les cristaux affûtent l\'oreille et le regard' },
+  mine: { icon: '⛏️', nom: 'Le filon',
+    effet: 'les pépites de la mine paient plus que tout le reste de la vallée' },
+  glacier: { icon: '❄️', nom: 'La banquise',
+    effet: 'le froid trempe le caractère — et la glace garde ses trésors' },
+  cimes: { icon: '🔭', nom: 'L\'observatoire',
+    effet: 'du toit du monde, on cueille des étoiles et on voit venir de loin' }
 };
 
 /**
@@ -556,7 +682,13 @@ export const FAUNE = {
   vallon:    ['🦋', '🐝', '🐇'],
   delta:     ['🦆', '🦀', '🐦'],
   gorge:     ['🦇', '🦎'],
-  sapiniere: ['🐿️', '🐦', '🦉']
+  sapiniere: ['🐿️', '🐦', '🦉'],
+  lagon:     ['🐠', '🐢', '🦩'],
+  large:     ['🐋', '🐬', '🦈'],
+  caverne:   ['🦇', '🕷️', '🐛'],
+  mine:      ['🐀', '🦎', '🪲'],
+  glacier:   ['🐧', '🦭', '🐻‍❄️'],
+  cimes:     ['🦅', '🐐', '🦌']
 };
 
 /**
@@ -592,18 +724,39 @@ export const HABITANT = {
       'Retiens ceci, petite : le silence dit tout.'] },
   sapiniere: { emoji: '🐿️', nom: 'Noisette', role: 'la guetteuse des cimes', don: 'guet',
     mots: ['De là-haut, je vois toute la vallée. TOUTE.',
-      'Et je vois surtout ce qui porte un chapeau et un fusil.'] }
+      'Et je vois surtout ce qui porte un chapeau et un fusil.'] },
+  lagon: { emoji: '🐢', nom: 'Carapo', role: 'le sage du lagon', don: 'repos',
+    mots: ['Doucement, petite. Ici, même la mer prend son temps.',
+      'Laisse l\'eau tiède faire son œuvre. Tu repartiras neuve.'] },
+  large: { emoji: '🐋', nom: 'Léviane', role: 'la géante du large', don: 'gemme',
+    mots: ['Peu remontent jusqu\'ici. Tu as du cœur, petite loutre.',
+      'Tiens — de la nacre du large. Ça vaut son pesant, là d\'où tu viens.'] },
+  caverne: { emoji: '🦎', nom: 'Salamane', role: 'la salamandre des galeries', don: 'lecon',
+    mots: ['Ferme les yeux. De toute façon, ici, ils ne servent à rien.',
+      'Écoute la roche. Elle t\'apprendra plus que le jour.'] },
+  mine: { emoji: '🐀', nom: 'Grisou', role: 'le vieux mineur', don: 'gemme',
+    mots: ['Cinquante ans que je gratte ces galeries, petite.',
+      'Prends donc une pépite. Moi, j\'en ai plus l\'usage.'] },
+  glacier: { emoji: '🐧', nom: 'Banquise', role: 'la sentinelle des glaces', don: 'provisions',
+    mots: ['Ici, on prévoit. Le froid ne pardonne pas l\'imprudence.',
+      'J\'ai fait des réserves. Prends, tu tiendras la montée.'] },
+  cimes: { emoji: '🐐', nom: 'Altaïr', role: 'le guetteur des cimes', don: 'guet',
+    mots: ['D\'ici, la vallée entière tient dans un regard.',
+      'Et je vois tout ce qui bouge — surtout ce qui porte un fusil.'] }
 };
 
 /**
  * Le COFFRE de chaque lieu : un trésor unique, à l'écart, qu'on n'ouvre qu'une
  * fois. C'est ce qui donne une raison de fouiller une zone au-delà de ses
- * trouvailles du jour — six coffres, six trésors, une collection.
+ * trouvailles du jour — un coffre par lieu, autant de trésors, une collection
+ * qui s'étoffe à mesure que le monde s'ouvre.
  */
 export const COFFRE = {
   clairiere: 'trefle', foret: 'gland', cascade: 'bulle',
   roseaux: 'plume', lac: 'perle', vallon: 'luciole',
-  delta: 'amulette', gorge: 'caillou_lune', sapiniere: 'boussole'
+  delta: 'amulette', gorge: 'caillou_lune', sapiniere: 'boussole',
+  lagon: 'corail', large: 'nacre', caverne: 'geode',
+  mine: 'pepite', glacier: 'stalactite', cimes: 'comete'
 };
 
 /** Toutes les zones qui recèlent un coffre (pour compter la collection). */
@@ -633,8 +786,21 @@ export const EPREUVE = {
     defi: 'Sous mes arbres, on avance à découvert. Toi la première.' },
   gorge: { nom: 'Rocaille', titre: 'la dure de la faille', fur: 'choco', force: 1.30,
     defi: 'La pierre ne cède pas. Moi non plus. Essaie donc.' },
-  delta: { nom: 'Marée', titre: 'la reine du grand large', fur: 'neige', force: 1.60,
-    defi: 'Au bout de la vallée, il n\'y a plus que moi. Et la mer.' }
+  delta: { nom: 'Marée', titre: 'la reine des bancs de sable', fur: 'neige', force: 1.60,
+    defi: 'Le courant se divise, ici. Toi, tu sais encore où tu vas ?' },
+  // ── Les championnes des confins : de plus en plus redoutables ──
+  lagon: { nom: 'Coralie', titre: 'la reine du lagon', fur: 'neige', force: 1.75,
+    defi: 'L\'eau est tiède, mais ne t\'y trompe pas : je mords quand même.' },
+  caverne: { nom: 'Ombrine', titre: 'l\'aveugle des galeries', fur: 'nuit', force: 1.90,
+    defi: 'Dans le noir, c\'est moi qui vois. Avance, si tu l\'oses.' },
+  glacier: { nom: 'Givre', titre: 'la dure des glaces', fur: 'neige', force: 2.05,
+    defi: 'Ici, tout gèle. Ton courage aussi, si tu n\'y prends garde.' },
+  large: { nom: 'Houle', titre: 'la reine du grand large', fur: 'braise', force: 2.25,
+    defi: 'Au bout du monde connu, il n\'y a plus que moi. Et l\'horizon.' },
+  mine: { nom: 'Pyrite', titre: 'la gardienne du filon', fur: 'choco', force: 2.45,
+    defi: 'Tout brille, au fond de la mine. Peu en ressortent entières.' },
+  cimes: { nom: 'Altesse', titre: 'la souveraine des cimes', fur: 'braise', force: 2.70,
+    defi: 'Tu as gravi toute la vallée pour m\'affronter. Montre-moi.' }
 };
 
 export const EPREUVE_ZONES = Object.keys(EPREUVE);

@@ -806,7 +806,7 @@ test('vallée : un toucher vers le bord fait VRAIMENT changer de carte', async (
   L.state.gameOver = false; L.state.away = false; L.state.divingUntil = 0;
   L.state.sleeping = false; L.state.coach = false;
   L.state.stage = 'adult'; L.state.hatchedAt = Date.now() - 5 * 24 * 3600 * 1000;
-  L.records.visited = ['clairiere'];
+  L.records.visited = ['clairiere']; L.records.xp = 100000;   // haut niveau : tout est déverrouillé
   L.state.place = 'berge'; L.state.worldZone = 'clairiere';
   $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
   assert.equal(L.world.zone, 'clairiere');
@@ -850,4 +850,44 @@ test('vallée : un toucher vers le bord fait VRAIMENT changer de carte', async (
     assert.equal(L.world.zone, voisin, 'un toucher au ' + cote + ' mène chez le voisin');
     assert.ok(L.records.visited.includes(voisin), voisin + ' : le lieu est découvert');
   }
+});
+
+test('déblocage : un bord verrouillé repousse, le niveau requis l\'ouvre', async () => {
+  // Le monde entier est là, mais il ne s'OUVRE qu'à mesure qu'on grandit. Au
+  // niveau 1, le grand lac (palier 3) est encore fermé : la brume repousse la
+  // loutre. Une fois le niveau atteint, le même geste la fait traverser.
+  L.state.gameOver = false; L.state.away = false; L.state.divingUntil = 0;
+  L.state.sleeping = false; L.state.coach = false;
+  L.state.stage = 'adult'; L.state.hatchedAt = Date.now() - 5 * 24 * 3600 * 1000;
+  L.records.visited = ['clairiere'];
+  L.records.xp = 0;                                   // niveau 1 : le cœur, rien de plus
+  L.state.place = 'berge'; L.state.worldZone = 'clairiere';
+  $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
+
+  const cv = document.getElementById('cv');
+  cv.getBoundingClientRect = () => ({ left: 0, top: 0, width: cv.width, height: cv.height });
+  const seul = () => {
+    L.world.otters = []; L.world.chasseur = null; L.world.pnj = null;
+    L.world.epreuve = null; L.world.coffre = null; L.world.finds = [];
+  };
+  seul();
+
+  // à l'est : le grand lac, verrouillé au niveau 1 → on ne doit PAS traverser
+  cv.dispatchEvent(new window.MouseEvent('pointerdown',
+    { bubbles: true, clientX: cv.width - 1, clientY: cv.height / 2 }));
+  for (let f = 0; f < 500; f++) { renderOnce(); seul(); }
+  assert.equal(L.world.zone, 'clairiere', 'un lieu verrouillé doit repousser la loutre');
+  assert.ok(!L.records.visited.includes('lac'), 'et ne pas se laisser découvrir');
+
+  // on monte en niveau : le lac (palier 3) s'ouvre. Même geste, cette fois ça passe.
+  L.records.xp = 100000;
+  L.state.place = 'berge'; L.state.worldZone = 'clairiere';
+  $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
+  seul();
+  cv.dispatchEvent(new window.MouseEvent('pointerdown',
+    { bubbles: true, clientX: cv.width - 1, clientY: cv.height / 2 }));
+  let arrive = false;
+  for (let f = 0; f < 900 && !arrive; f++) { renderOnce(); seul(); arrive = L.world.zone !== 'clairiere'; }
+  assert.equal(L.world.zone, 'lac', 'une fois le palier atteint, le bord s\'ouvre');
+  assert.ok(L.records.visited.includes('lac'), 'et le lieu se découvre enfin');
 });

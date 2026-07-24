@@ -10,7 +10,7 @@ import { seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 import { WATER_Y, TELL_MS, COMBO_STEP as FISH_COMBO_STEP, GOBE_MS as FISH_GOBE_MS, fishProgress } from './minigame.js';
 import { itemById, RARITIES, ITEMS } from './items.js';
 import { LANE_X, SLIDE_OTTER_Y, COMBO_STEP, GOBE_MS, VIES_MAX, slideProgress } from './toboggan.js';
-import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, FIND_ICON, FAUNE, groundTile, decorTile, zoneGates } from './tilemap.js';
+import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, FIND_ICON, FAUNE, groundTile, decorTile, zoneGates, zoneUnlocked, zoneReq } from './tilemap.js';
 import { otterArt, drawAnim, frameAt, animForMood, ANATOMY, ANIMS } from './otter-art.js';
 
 // Le kit de sprites dessinés (assets/otter/) : il remplace la grille de pixels
@@ -832,26 +832,30 @@ export function makeRenderer(cv) {
       if (d) figs.push({ y: cy * TILE + TILE, fn: () => blit(d, cx * TILE - camX, cy * TILE - camY) });
     }
     // PASSAGES : une flèche et le nom du lieu voisin, pour qu'on sache
-    // qu'il y a un ailleurs — sans repère, la vallée paraît close.
+    // qu'il y a un ailleurs — sans repère, la vallée paraît close. Un voisin
+    // encore VERROUILLÉ se montre cadenassé, avec le niveau qui l'ouvrira.
+    const niveau = fx.level || 1;
     for (const g of zoneGates(zone)) {
       const gx = g.x - camX, gy = g.y - camY;
       if (gx < -30 || gx > CANVAS_W + 30 || gy < -30 || gy > CANVAS_H + 30) continue;
+      const ferme = !zoneUnlocked(g.to, niveau);
+      const label = ferme ? ('🔒 Niv. ' + zoneReq(g.to)) : g.name;
       const puls = Math.sin(frame / 16) * 2;
       const fleche = { north: '▲', south: '▼', east: '▶', west: '◀' }[g.dir];
       ctx.textAlign = 'center';
       ctx.font = '9px system-ui,sans-serif';
-      const w = ctx.measureText(g.name).width + 8;
+      const w = ctx.measureText(label).width + 8;
       // calé sur la largeur du libellé, sinon le nom déborde de l'écran
       const ax = Math.max(w / 2 + 2, Math.min(CANVAS_W - w / 2 - 2, gx));
       const ay = Math.max(20, Math.min(CANVAS_H - 8, gy));
-      ctx.fillStyle = 'rgba(20,30,50,.55)';
+      ctx.fillStyle = ferme ? 'rgba(40,44,54,.62)' : 'rgba(20,30,50,.55)';
       ctx.fillRect(Math.round(ax - w / 2), Math.round(ay - 15), Math.round(w), 10);
-      ctx.fillStyle = '#ffe9a8';
-      ctx.fillText(g.name, Math.round(ax), Math.round(ay - 7));
+      ctx.fillStyle = ferme ? '#c7ccd6' : '#ffe9a8';
+      ctx.fillText(label, Math.round(ax), Math.round(ay - 7));
       ctx.font = '10px system-ui,sans-serif';
       const dy = g.dir === 'north' ? -puls : g.dir === 'south' ? puls : 0;
       const dx = g.dir === 'west' ? -puls : g.dir === 'east' ? puls : 0;
-      ctx.fillText(fleche, Math.round(ax + dx), Math.round(ay + 4 + dy));
+      ctx.fillText(ferme ? '🔒' : fleche, Math.round(ax + dx), Math.round(ay + 4 + dy));
       ctx.textAlign = 'left';
     }
 
@@ -970,7 +974,10 @@ export function makeRenderer(cv) {
     // près du bord : sans ces étiquettes, on croit la carte close et l'on ne
     // découvre jamais qu'il y a un ailleurs.
     for (const g of zoneGates(zone)) {
-      const nom = g.name;
+      const ferme = !zoneUnlocked(g.to, niveau);
+      const nom = ferme ? ('🔒 Niv. ' + zoneReq(g.to)) : g.name;
+      const encre = ferme ? '#c7ccd6' : '#ffe9a8';
+      const fond = ferme ? 'rgba(40,44,54,.66)' : 'rgba(18,32,46,.62)';
       ctx.save();
       ctx.font = 'bold 8px system-ui,sans-serif';
       ctx.textAlign = 'center';
@@ -981,19 +988,19 @@ export function makeRenderer(cv) {
         // au ras du bord, les étiquettes passaient dessous et devenaient
         // illisibles. On les cale juste en deçà (cf. MONDE_HAUT dans main.js).
         const y = g.dir === 'north' ? 49 : CANVAS_H - 33;
-        ctx.fillStyle = 'rgba(18,32,46,.62)';
+        ctx.fillStyle = fond;
         ctx.fillRect(Math.round(CANVAS_W / 2 - larg / 2), y, Math.round(larg), 11);
-        ctx.fillStyle = '#ffe9a8';
-        ctx.fillText((g.dir === 'north' ? '▲ ' : '▼ ') + nom, CANVAS_W / 2, y + 8);
+        ctx.fillStyle = encre;
+        ctx.fillText((ferme ? '' : g.dir === 'north' ? '▲ ' : '▼ ') + nom, CANVAS_W / 2, y + 8);
       } else {
         // texte tourné, comme un panneau routier : la largeur de l'écran (160)
         // ne laisse pas la place d'écrire un nom à plat sur les côtés
         ctx.translate(g.dir === 'west' ? 8 : CANVAS_W - 8, CANVAS_H / 2);
         ctx.rotate(g.dir === 'west' ? -Math.PI / 2 : Math.PI / 2);
-        ctx.fillStyle = 'rgba(18,32,46,.62)';
+        ctx.fillStyle = fond;
         ctx.fillRect(Math.round(-larg / 2), -6, Math.round(larg), 11);
-        ctx.fillStyle = '#ffe9a8';
-        ctx.fillText('▲ ' + nom, 0, 2);
+        ctx.fillStyle = encre;
+        ctx.fillText((ferme ? '' : '▲ ') + nom, 0, 2);
       }
       ctx.restore();
     }
