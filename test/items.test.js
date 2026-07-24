@@ -5,7 +5,7 @@ import { HATS, unlockedHats } from '../src/accessories.js';
 import { FURS, DECORS, equipBonus, unlockedFurs, unlockedDecors } from '../src/skins.js';
 
 import {
-  RARITIES, ITEMS, MILESTONES, itemById, milestoneItem, bonusOf, rollDrop, describeBonus, mergeBonus, cosmeticPrice } from '../src/items.js';
+  RARITIES, ITEMS, MILESTONES, itemById, milestoneItem, bonusOf, rollDrop, describeBonus, mergeBonus, cosmeticPrice, treasurePrice } from '../src/items.js';
 import { stepSim } from '../src/sim.js';
 import { newState } from '../src/state.js';
 import { H } from '../src/constants.js';
@@ -218,3 +218,35 @@ test('déblocage : un cosmétique ACHETÉ compte comme débloqué (au même titr
   // le mérité marche toujours sans rien acheter
   assert.ok(unlockedFurs({ xp: 0, mealsTotal: 20 }).includes('choco'), 'chocolat encore mérité en servant 20 repas');
 });
+
+test('prix des trésors : socle par rareté, trouvables seulement, croissant du commun au légendaire', () => {
+  const rang = { commun: 0, rare: 1, epique: 2, legendaire: 3 };
+  const trouvables = ITEMS.filter(it => it.drop);
+  assert.ok(trouvables.length >= 10, 'assez de trésors achetables pour un vrai puits à gemmes');
+
+  // tout trésor trouvable a un prix fini, positif, arrondi à 5
+  const bornes = { 0: [1e9, 0], 1: [1e9, 0], 2: [1e9, 0], 3: [1e9, 0] };
+  for (const it of trouvables) {
+    const p = treasurePrice(it);
+    assert.ok(Number.isFinite(p) && p > 0, it.id + ' : prix aberrant (' + p + ')');
+    assert.equal(p % 5, 0, it.id + ' : prix non arrondi à 5 (' + p + ')');
+    const r = rang[it.rarity];
+    bornes[r][0] = Math.min(bornes[r][0], p);
+    bornes[r][1] = Math.max(bornes[r][1], p);
+  }
+  // les fourchettes de rareté ne se chevauchent pas : un légendaire coûte
+  // toujours plus qu'un épique, etc. — le prix REFLÈTE la rareté
+  assert.ok(bornes[0][1] < bornes[1][0], 'commun < rare');
+  assert.ok(bornes[1][1] < bornes[2][0], 'rare < épique');
+  assert.ok(bornes[2][1] < bornes[3][0], 'épique < légendaire');
+  // un trésor plus fort dans sa rareté coûte un peu plus (différenciation)
+  const rares = trouvables.filter(it => it.rarity === 'rare').map(treasurePrice);
+  assert.ok(Math.max(...rares) > Math.min(...rares), 'les prix se différencient dans une rareté');
+
+  // les trésors de PALIER (drop:false) ne sont pas à vendre — ils se gagnent au niveau
+  const paliers = ITEMS.filter(it => !it.drop).map(it => it.id);
+  for (const id of paliers) assert.ok(milestoneItem_hasId(id), id + ' : un drop:false devrait être un palier');
+});
+
+// petit utilitaire local : l'id figure-t-il dans les paliers ?
+function milestoneItem_hasId(id) { return Object.values(MILESTONES).includes(id); }

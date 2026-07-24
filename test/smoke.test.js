@@ -949,3 +949,36 @@ test('boutique : acheter un chapeau en gemmes le débloque et l\'équipe ; sans 
   assert.ok(!(L.records.bought || []).includes('laurier'), 'un trophée ne s\'achète pas');
   assert.equal(L.records.gems, gemsAvant, 'et aucune gemme n\'est prélevée');
 });
+
+test('boutique : acheter un trésor trouvable en gemmes ; palier et gemmes manquantes refusés', () => {
+  // Les trésors trouvables (drop:true) s'achètent aussi ; les exclusifs de
+  // palier (drop:false) restent réservés à la montée de niveau.
+  const trouvable = ITEMS.find(it => it.drop);           // ex. gland
+  const palier = ITEMS.find(it => !it.drop);             // ex. caillou (palier Niv 3)
+  assert.ok(trouvable && palier, 'catalogue attendu');
+
+  L.state.gameOver = false; L.state.away = false; L.state.stage = 'adult';
+  L.state.gear = null;
+  // on repart d'un sac vide pour ces deux trésors
+  L.records.items = (L.records.items || []).filter(id => id !== trouvable.id && id !== palier.id);
+  const handlers = L.__wardrobeHandlers;
+  assert.ok(handlers && handlers.onBuyTresor, 'le gestionnaire d\'achat de trésor existe');
+
+  // gemmes insuffisantes : refus
+  L.records.gems = 0;
+  handlers.onBuyTresor(trouvable.id);
+  assert.ok(!L.records.items.includes(trouvable.id), 'sans gemmes : pas d\'achat');
+
+  // assez de gemmes : achat, débit, possession, équipement
+  L.records.gems = 999;
+  handlers.onBuyTresor(trouvable.id);
+  assert.ok(L.records.items.includes(trouvable.id), 'le trésor est acquis');
+  assert.ok(L.records.gems < 999, 'les gemmes sont débitées');
+  assert.equal(L.state.gear, trouvable.id, 'et il est équipé aussitôt');
+
+  // un trésor de palier ne s'achète jamais, même riche
+  const gemsAvant = L.records.gems;
+  handlers.onBuyTresor(palier.id);
+  assert.ok(!L.records.items.includes(palier.id), 'un trésor de palier ne s\'achète pas');
+  assert.equal(L.records.gems, gemsAvant, 'et aucune gemme n\'est prélevée');
+});

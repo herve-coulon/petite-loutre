@@ -43,7 +43,7 @@ import {
 import { makeCard, CARD_URL } from './photocard.js';
 import { nextBeat, markSeen, coachStep } from './story.js';
 import { seasonFor, seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
-import { ITEMS, RARITIES, itemById, bonusOf, rollDrop, milestoneItem, describeBonus, cosmeticPrice } from './items.js';
+import { ITEMS, RARITIES, itemById, bonusOf, rollDrop, milestoneItem, describeBonus, cosmeticPrice, treasurePrice } from './items.js';
 import { pickTrait, traitById, isFavorite, favoriteLine, bondGain, bondLevel } from './personality.js';
 
 const $ = id => document.getElementById(id);
@@ -2069,6 +2069,28 @@ function boot() {
       if (!s || !rec.items.includes(id)) return;
       s.gear = (s.gear === id ? null : id); // touché à nouveau = retirer
       sfx.press(); vibrate(10); persist();
+      ui.renderWardrobe(s, rec, wardrobeHandlers);
+    },
+    // Acheter un TRÉSOR avec des gemmes. Réservé aux trouvables (drop:true) :
+    // les exclusifs de palier se gagnent en montant de niveau. On l'équipe.
+    onBuyTresor(id) {
+      const it = itemById(id);
+      if (!s || !rec || !it || !it.drop) return;         // milestone -> non vendable
+      if ((rec.items || []).includes(id)) return;        // déjà à toi
+      const prix = treasurePrice(it);
+      if (prix <= 0) return;
+      if ((rec.gems || 0) < prix) {
+        ui.toast('💎 Pas assez de gemmes — il en faut ' + prix + '.'); sfx.sad(); vibrate(20);
+        return;
+      }
+      rec.gems -= prix;
+      (rec.items = rec.items || []).push(id);
+      s.gear = id;                                        // satisfaction immédiate
+      persist(); persistRec();
+      sfx.levelup(); vibrate([20, 40, 20]);
+      if (s && !s.gameOver && s.stage !== 'egg') R.burst('confetti', 16, s.stage);
+      ui.toast(it.emoji + ' Acheté : ' + it.name + ' ! (−' + prix + ' 💎)');
+      ui.renderLevel(rec);
       ui.renderWardrobe(s, rec, wardrobeHandlers);
     },
     // Acheter un cosmétique avec des gemmes : la voie « impatiente », en plus de

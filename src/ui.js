@@ -8,7 +8,7 @@ import { ACHIEVEMENTS } from './achievements.js';
 import { dailyQuests, dayKey } from './quests.js';
 import { dailyEvent } from './events.js';
 import { seasonInfo } from './seasons.js';
-import { ITEMS, RARITIES, MILESTONES, describeBonus, itemById, cosmeticPrice } from './items.js';
+import { ITEMS, RARITIES, MILESTONES, describeBonus, itemById, cosmeticPrice, treasurePrice } from './items.js';
 import { traitById, bondLevel } from './personality.js';
 import { gangPower, fighterPower, MAX_MEMBERS } from './gang.js';
 import { makeFighter, encodeCard, ELAN_MAX } from './battle.js';
@@ -585,22 +585,34 @@ function milestoneLevelOf(id) {
   for (const [lv, mid] of Object.entries(MILESTONES)) if (mid === id) return +lv;
   return null;
 }
-function treasureRows(list, s, rec, onGear) {
+function treasureRows(list, s, rec, onGear, onBuy) {
   const owned = rec.items || [];
+  const gems = (rec && rec.gems) || 0;
   for (const it of ITEMS) {
     const ok = owned.includes(it.id);
     const on = s && s.gear === it.id;
     const rar = RARITIES[it.rarity];
+    // seuls les trésors qu'on peut TROUVER (drop:true) s'achètent aussi ;
+    // les exclusifs de palier se gagnent en montant de niveau, point.
+    const prix = (!ok && it.drop) ? treasurePrice(it) : 0;
+    const abordable = prix > 0 && gems >= prix;
+
     const btn = document.createElement('button');
-    btn.className = 'row-item' + (ok ? '' : ' locked') + (on ? ' equipped' : '');
+    btn.className = 'row-item' + (ok ? '' : ' locked') + (abordable ? ' buyable' : '') + (on ? ' equipped' : '');
     let sub;
     if (ok) sub = describeBonus(it.bonus) + (on ? ' · touché pour retirer' : ' · touché pour équiper');
-    else { const ml = milestoneLevelOf(it.id); sub = rar.label + ' — ' + (ml ? 'palier Niv ' + ml : 'à dénicher dans les activités'); }
+    else {
+      const ml = milestoneLevelOf(it.id);
+      if (ml) sub = rar.label + ' — palier Niv ' + ml;                    // exclusif de palier : pas à vendre
+      else sub = rar.label + ' — à dénicher, ou ' + (abordable ? 'touche pour acheter' : 'gemmes manquantes');
+    }
+    const tag = on ? '<span class="tag">✓</span>'
+      : prix > 0 ? '<span class="tag price' + (abordable ? '' : ' short') + '">💎 ' + prix + '</span>' : '';
     btn.innerHTML =
       '<span class="ic2">' + (ok ? it.emoji : '🔒') + '</span>' +
-      '<div><b style="color:' + rar.color + '">' + it.name + '</b><small>' + sub + '</small></div>' +
-      (on ? '<span class="tag">✓</span>' : '');
+      '<div><b style="color:' + rar.color + '">' + it.name + '</b><small>' + sub + '</small></div>' + tag;
     if (ok) btn.addEventListener('click', () => onGear(it.id));
+    else if (abordable && onBuy) btn.addEventListener('click', () => onBuy(it.id));
     list.appendChild(btn);
   }
 }
@@ -630,8 +642,8 @@ export function renderWardrobe(s, rec, h, tab) {
   };
   const solde = '   ·   💎 ' + ((rec && rec.gems) || 0);
   if (wardrobeTab === 'tresors') {
-    caption('Trésors trouvés : ' + ((rec.items || []).length) + ' / ' + ITEMS.length);
-    treasureRows(list, s, rec, h.onGear);
+    caption('Trésors : ' + ((rec.items || []).length) + ' / ' + ITEMS.length + solde);
+    treasureRows(list, s, rec, h.onGear, h.onBuyTresor);
   } else if (wardrobeTab === 'hats') {
     caption('Chapeaux — mérités par tes exploits, ou achetés en gemmes' + solde);
     sectionRows(list, HATS, unlockedHats(rec), s && s.hat, h.onHat, true, rec, h.onBuyHat);

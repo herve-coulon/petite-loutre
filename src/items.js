@@ -134,6 +134,22 @@ export function cosmeticPrice(bonus) {
   return Math.max(0, Math.min(150, Math.round(poids / 5) * 5));
 }
 
+/**
+ * PRIX D'UN TRÉSOR ÉQUIPABLE, en gemmes. Un trésor pèse plus lourd qu'un
+ * cosmétique (il agit sur le combat et les jauges), et il a une RARETÉ : le
+ * prix part donc d'un socle par rareté, puis s'ajuste à la force du bonus.
+ * N'a de sens que pour les trésors qu'on peut trouver (drop:true) — les
+ * exclusifs de palier (drop:false) se gagnent en montant de niveau, point,
+ * comme les trophées cosmétiques se méritent.
+ */
+const TRESOR_SOCLE = { commun: 20, rare: 55, epique: 110, legendaire: 200 };
+export function treasurePrice(item) {
+  if (!item) return 0;
+  const socle = TRESOR_SOCLE[item.rarity] || 20;
+  const bonus = Math.round(cosmeticPrice(item.bonus) * 0.6 / 5) * 5;   // différencie au sein d'une rareté
+  return socle + bonus;
+}
+
 /** Texte court du bonus, pour la garde-robe. */
 export function describeBonus(bonus) {
   const parts = [];
