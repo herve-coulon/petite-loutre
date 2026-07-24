@@ -1,7 +1,7 @@
 // Constantes de jeu — ajuster ici pour équilibrer.
 // ⚠️ GAME_VERSION : à incrémenter avec package.json et sw.js à chaque release
 // (affichée dans ⚙️ Réglages pour vérifier ce que le téléphone exécute).
-export const GAME_VERSION = '3.74.0';
+export const GAME_VERSION = '3.75.0';
 export const SEC = 1000;
 export const MIN = 60 * SEC;
 export const H = 60 * MIN;
@@ -36,6 +36,12 @@ export const SEASON_FX = {
 export const RS = { hunger: 2, fun: 0.5, energyGain: 40, clean: 1 };
 export const TREAT_CD = 45 * 60 * 1000;   // friandise : 45 min
 export const DIVE_MS = 15 * 60 * 1000;    // plongée : 15 min
+// Prix en gemmes des consommables « express ». La voie GRATUITE reste toujours
+// ouverte : la friandise revient toutes les 45 min, les soins guérissent la
+// maladie sans rien coûter, et la santé remonte d'elle-même quand la loutre va
+// bien. Les gemmes n'achètent qu'un RACCOURCI — jamais l'accès aux soins.
+export const GEM_TREAT = 4;               // une friandise tout de suite, sans attendre le délai
+export const GEM_HEAL = 10;               // une trousse de soins : santé au maximum, à tout moment
 export const GRUMPY_MS = 10 * MIN;        // bouderie après un réveil forcé
 export const WAKE_OK_ENERGY = 60;         // en-dessous : réveillée trop tôt -> elle boude
 

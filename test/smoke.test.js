@@ -982,3 +982,59 @@ test('boutique : acheter un trésor trouvable en gemmes ; palier et gemmes manqu
   assert.ok(!L.records.items.includes(palier.id), 'un trésor de palier ne s\'achète pas');
   assert.equal(L.records.gems, gemsAvant, 'et aucune gemme n\'est prélevée');
 });
+
+test('friandise express : en délai, on peut en offrir une en gemmes ; la voie gratuite reste', () => {
+  // La friandise revient toutes les 45 min GRATUITEMENT ; les gemmes n'achètent
+  // qu'un raccourci quand le délai court encore.
+  Object.assign(L.state, { gameOver: false, away: false, sleeping: false, stage: 'adult',
+    hatchedAt: Date.now() - 5 * 864e5, hunger: 40, fun: 40, lastTreat: Date.now() });  // en plein délai
+  L.records.xp = 100000;                       // niveau haut : friandise débloquée
+  L.records.gems = 20;
+
+  // sans confirmation, rien ne se passe
+  L.actTreat();
+  assert.ok(!$('ovl-confirm').classList.contains('hidden'), 'une confirmation d\'achat s\'affiche');
+  const gemsAvant = L.records.gems, hungerAvant = L.state.hunger;
+  $('btn-confirm-yes').click();
+  assert.equal(L.records.gems, gemsAvant - 4, 'la friandise express coûte 4 gemmes');
+  assert.ok(L.state.hunger > hungerAvant, 'et régale bel et bien la loutre');
+
+  // sans gemmes, pas d'offre payante — juste le message d'attente, aucun débit
+  L.state.lastTreat = Date.now(); L.records.gems = 0;
+  L.actTreat();
+  assert.ok($('ovl-confirm').classList.contains('hidden'), 'aucune confirmation sans gemmes');
+  assert.equal(L.records.gems, 0, 'et rien n\'est prélevé');
+
+  // hors délai : la friandise reste GRATUITE (aucune gemme dépensée)
+  L.state.lastTreat = 0; L.records.gems = 5;
+  L.actTreat();
+  assert.equal(L.records.gems, 5, 'la friandise du délai écoulé ne coûte rien');
+});
+
+test('trousse de soins : premium en gemmes quand pas malade ; la guérison reste gratuite', () => {
+  // Soigner la MALADIE est gratuit ; la trousse (gemmes) n'est qu'une remise à
+  // niveau immédiate de la santé quand la loutre n'est pas malade.
+  Object.assign(L.state, { gameOver: false, away: false, sleeping: false, stage: 'adult',
+    hatchedAt: Date.now() - 5 * 864e5, sick: true, health: 30 });
+  L.records.gems = 50;
+
+  // malade : la guérison est gratuite, aucune gemme touchée
+  const gemsAvant = L.records.gems;
+  L.actHeal();
+  assert.equal(L.state.sick, false, 'la maladie est soignée');
+  assert.equal(L.records.gems, gemsAvant, 'et gratuitement');
+
+  // pas malade, santé entamée, assez de gemmes : la trousse est proposée
+  L.state.sick = false; L.state.health = 40;
+  L.actHeal();
+  assert.ok(!$('ovl-confirm').classList.contains('hidden'), 'la trousse est proposée');
+  $('btn-confirm-yes').click();
+  assert.equal(L.state.health, 100, 'santé au maximum');
+  assert.equal(L.records.gems, gemsAvant - 10, 'la trousse coûte 10 gemmes');
+
+  // pleine forme : rien à soigner, aucune offre
+  L.state.health = 100; L.records.gems = 50;
+  L.actHeal();
+  assert.ok($('ovl-confirm').classList.contains('hidden'), 'aucune offre en pleine forme');
+  assert.equal(L.records.gems, 50, 'et aucune gemme dépensée');
+});

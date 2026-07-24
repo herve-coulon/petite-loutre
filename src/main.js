@@ -1,6 +1,6 @@
 // Orchestrateur : relie simulation, rendu, UI, audio et PWA.
 import {
-  SEC, MIN, clamp, TREAT_CD, DIVE_MS, GRUMPY_MS, WAKE_OK_ENERGY,
+  SEC, MIN, clamp, TREAT_CD, DIVE_MS, GRUMPY_MS, WAKE_OK_ENERGY, GEM_TREAT, GEM_HEAL,
   WARM_BOOST, WARM_CD, SHAKE_BOOST, SHAKE_CD, SHAKE_G,
   AWAY_CARE_NEEDED, AWAY_CARE_CD, SEASON_FX, UNLOCK_LEVEL, GAME_VERSION, STAGES
 } from './constants.js';
@@ -115,16 +115,8 @@ function featuresOpenedBetween(before, after) {
     .map(f => UNLOCK_LABEL[f]);
 }
 
-function actTreat() {
-  if (busy() || s.sleeping) return;
-  if (!unlocked('treat')) { ui.log('🍡 La friandise s\'ouvre au niveau ' + UNLOCK_LEVEL.treat + ' ! Occupe-toi bien d\'elle pour monter. ⭐'); return; }
-  const t = now();
-  const CD = TREAT_CD;
-  if (t - (s.lastTreat || 0) < CD) {
-    const left = Math.ceil((CD - (t - s.lastTreat)) / MIN);
-    ui.log('Plus de friandises pour l\'instant… (encore ' + left + ' min)');
-    return;
-  }
+/** L'effet d'une friandise (gratuite ou express) : redémarre le délai, régale. */
+function servirFriandise(t) {
   press();
   s.lastTreat = t;
   s.hunger = clamp(s.hunger + 10, 0, 100);
@@ -138,6 +130,29 @@ function actTreat() {
   afterAct();
   quest('treats');
   careBond('treat');
+}
+
+function actTreat() {
+  if (busy() || s.sleeping) return;
+  if (!unlocked('treat')) { ui.log('🍡 La friandise s\'ouvre au niveau ' + UNLOCK_LEVEL.treat + ' ! Occupe-toi bien d\'elle pour monter. ⭐'); return; }
+  const t = now();
+  const CD = TREAT_CD;
+  if (t - (s.lastTreat || 0) < CD) {
+    const left = Math.ceil((CD - (t - s.lastTreat)) / MIN);
+    // le délai gratuit court encore : on PEUT en offrir une tout de suite en gemmes
+    if ((rec.gems || 0) >= GEM_TREAT) {
+      ui.askConfirm('Plus de friandises avant ' + left + ' min.\nEn offrir une tout de suite pour 💎 ' + GEM_TREAT + ' ?', () => {
+        if ((rec.gems || 0) < GEM_TREAT) return;   // garde-fou : solde revérifié à la validation
+        rec.gems -= GEM_TREAT; persistRec(); ui.renderLevel(rec);
+        servirFriandise(now());
+        ui.toast('🍡 Friandise express ! (−' + GEM_TREAT + ' 💎)');
+      });
+    } else {
+      ui.log('Plus de friandises pour l\'instant… (encore ' + left + ' min)');
+    }
+    return;
+  }
+  servirFriandise(t);
 }
 
 function actDive() {
@@ -233,7 +248,7 @@ function actSleep() {
 
 function actHeal() {
   if (busy()) return;
-  if (!s.sick) { ui.log(s.name + ' n\'est pas malade.'); return; }
+  if (!s.sick) { offrirTrousse(); return; }   // pas malade : voie premium en gemmes
   press();
   s.sick = false;
   s.health = clamp(s.health + 20, 0, 100);
@@ -245,6 +260,31 @@ function actHeal() {
   ui.log('Le médicament fait effet. ' + s.name + ' va mieux ! 💊');
   afterAct();
   careBond('heal');
+}
+
+/**
+ * Loutre pas malade : soigner la maladie n'a pas lieu d'être (gratuit de toute
+ * façon), mais on peut acheter une TROUSSE DE SOINS qui remet la santé au
+ * maximum sur-le-champ — utile avant un duel ou une virée aux confins. La santé
+ * remonte aussi d'elle-même quand la loutre va bien : la trousse n'est qu'un
+ * raccourci payant, jamais la seule issue.
+ */
+function offrirTrousse() {
+  if (s.health >= 100) { ui.log(s.name + ' est déjà en pleine forme. 💪'); return; }
+  if ((rec.gems || 0) < GEM_HEAL) {
+    ui.log(s.name + ' n\'est pas malade — sa santé remonte doucement d\'elle-même.');
+    return;
+  }
+  ui.askConfirm('Une trousse de soins remet la santé au maximum tout de suite, pour 💎 ' + GEM_HEAL + ' ?', () => {
+    if ((rec.gems || 0) < GEM_HEAL || s.health >= 100) return;  // solde/état revérifiés à la validation
+    rec.gems -= GEM_HEAL;
+    s.health = 100;
+    persist(); persistRec(); ui.renderLevel(rec); ui.updateHUD(s, mg, rec);
+    R.spawn('heart', s.stage); R.burst('sparkle', 8, s.stage); R.ring(s.stage); R.squash();
+    sfx.heal(); feel('med'); vibrate([15, 30, 15]);
+    ui.toast('💊 Trousse de soins ! Santé au max. (−' + GEM_HEAL + ' 💎)');
+    ui.log(s.name + ' retrouve toute sa forme grâce à la trousse de soins. 💊');
+  });
 }
 
 function actWarm() {
