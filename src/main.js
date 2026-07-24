@@ -34,6 +34,7 @@ import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangB
 import {
   TILE, WORLD_W, WORLD_H, START_ZONE, zoneById, zoneFinds, ZONE_INTRO,
   SPECIALITE, zoneDuJour, HABITANT, COFFRE, COFFRE_ZONES, habitantAt, coffreAt,
+  EPREUVE, EPREUVE_ZONES, epreuveAt,
   moveWithCollision, spawnPoint, zoneExit, safeEntry, nearestFree
 } from './tilemap.js';
 import { makeCard, CARD_URL } from './photocard.js';
@@ -481,6 +482,72 @@ function coffreFor(zoneId) {
   return { zone: zoneId, item: COFFRE[zoneId], ...coffreAt(zoneId) };
 }
 
+/**
+ * La championne du lieu. Elle RESTE une fois vaincue : c'est le repère du lieu,
+ * et on doit pouvoir la redéfier. Seul le trophée ne se gagne qu'une fois.
+ */
+function epreuveFor(zoneId) {
+  const e = EPREUVE[zoneId];
+  if (!e) return null;
+  return { ...e, zone: zoneId, vaincue: epreuveGagnee(zoneId), ...epreuveAt(zoneId) };
+}
+
+const epreuveGagnee = (zoneId) => !!(rec && (rec.epreuves || []).includes(zoneId));
+/** Combien d'épreuves de la vallée sont remportées (pour le profil). */
+function epreuvesGagnees() {
+  return EPREUVE_ZONES.filter(epreuveGagnee).length;
+}
+
+/**
+ * La carte de la championne : on part d'une sauvage calée sur la forme réelle
+ * de la loutre (duels serrés), puis on la muscle de `force`. La graine ne
+ * contient PAS le jour : la championne d'un lieu est toujours la même.
+ */
+function carteGardienne(e) {
+  const base = wildFoe(curLevel(), 'gardienne|' + e.zone, makeFighter(s));
+  const up = (v) => Math.max(1, Math.min(100, Math.round(v * e.force)));
+  return { ...base, name: e.nom, fur: e.fur, hat: null,
+    health: up(base.health), fun: up(base.fun), energy: up(base.energy) };
+}
+
+/** Proposer l'épreuve : on ne l'impose pas, on peut passer son chemin. */
+function proposerEpreuve(e) {
+  const dejaVaincue = epreuveGagnee(e.zone);
+  const intro = '⚔️ ' + e.nom + ', ' + e.titre + '.\n« ' + e.defi + ' »\n' +
+    (dejaVaincue ? 'Tu l\'as déjà battue. La redéfier ?' : 'Relever le défi ?');
+  ui.askConfirm(intro, () => {
+    if (!battleStarter) return;
+    epreuveEnCours = e.zone;
+    ui.showOverlay('ovl-battle');
+    battleStarter(carteGardienne(e), 'gardienne|' + e.zone);
+  });
+}
+
+/** Victoire sur une championne : trophée (une fois) et récompense du lieu. */
+function gagnerEpreuve(zoneId) {
+  const e = EPREUVE[zoneId];
+  if (!e || !rec) return;
+  if (epreuveGagnee(zoneId)) {                    // redéfi : pas de second trophée
+    ui.toast('⚔️ ' + e.nom + ' s\'incline encore !');
+    return;
+  }
+  (rec.epreuves = rec.epreuves || []).push(zoneId);
+  // le repère passe à la médaille tout de suite : l'objet monde a été bâti
+  // AVANT le duel, sans quoi elle garderait ses épées après sa défaite
+  if (world && world.epreuve && world.epreuve.zone === zoneId) world.epreuve.vaincue = true;
+  const gemmes = Math.round(4 * e.force);
+  rec.gems = (rec.gems || 0) + gemmes;
+  gainXp(Math.round(60 * e.force));
+  persistRec();
+  ui.celebrate({
+    kicker: 'ÉPREUVE REMPORTÉE', big: epreuvesGagnees() + '/' + EPREUVE_ZONES.length,
+    title: e.nom + ' — ' + e.titre,
+    reward: '💎 +' + gemmes + ' gemmes'
+  });
+  ui.log('⚔️ ' + e.nom + ' est battue ! Épreuves de la vallée : ' +
+    epreuvesGagnees() + '/' + EPREUVE_ZONES.length + '.');
+}
+
 const coffreOuvert = (zoneId) => !!(rec && (rec.chests || []).includes(zoneId));
 /** Combien de coffres de la vallée ont été ouverts (pour le profil). */
 function coffresOuverts() {
@@ -654,6 +721,7 @@ function goToZone(zoneId, px, py) {
   world.otters = wildOttersFor(zoneId);
   world.pnj = habitantFor(zoneId);
   world.coffre = coffreFor(zoneId);
+  world.epreuve = epreuveFor(zoneId);
   world.finds = findsFor(zoneId);
   sfx.press(); vibrate(8);
   if (!discoverZone(zoneId)) {          // déjà connu : simple annonce
@@ -680,7 +748,7 @@ function enterWorld(zoneId) {
   world = {
     zone, px: sp.x, py: sp.y, tx: sp.x, ty: sp.y,
     walking: false, facing: 1, otters: wildOttersFor(zone), finds: findsFor(zone),
-    pnj: habitantFor(zone), coffre: coffreFor(zone)
+    pnj: habitantFor(zone), coffre: coffreFor(zone), epreuve: epreuveFor(zone)
   };
   s.worldZone = zone;
   s.place = 'monde';
@@ -740,6 +808,18 @@ function stepWorld() {
       return;
     }
   }
+  // la championne du lieu : elle propose son duel quand on l'approche
+  if (!encounterOtter && world.epreuve) {
+    const e = world.epreuve;
+    const pres = Math.hypot(e.x - world.px, e.y - world.py) < 16;
+    if (pres && frame > (world.epreuveCooldown || 0)) {
+      world.epreuveCooldown = frame + 320;
+      world.walking = false; world.tx = world.px; world.ty = world.py;
+      proposerEpreuve(e);
+      return;
+    }
+    if (!pres && (world.epreuveCooldown || 0) > frame + 140) world.epreuveCooldown = frame + 40;
+  }
   // l'habitant : on lui parle en s'approchant, avec un délai avant de le
   // relancer — sinon il babille en boucle tant qu'on lui tourne autour
   if (!encounterOtter && world.pnj) {
@@ -789,6 +869,7 @@ function closeEncounter(befriended) {
 }
 
 let battleStarter = null;   // pont vers le lanceur de combat (défini au boot)
+let epreuveEnCours = null;  // zone dont on affronte la championne, s'il y a lieu
 
 const encHandlers = {
   offer: () => {
@@ -1596,7 +1677,7 @@ function boot() {
   $('bt-wild').addEventListener('click', () => startBattle(rollWildFoe(), 'wild|' + dayKey() + '|' + wildRoll));
   $('bt-reroll').addEventListener('click', () => { wildRoll++; sfx.press(); ui.renderBattleSetup(rollWildFoe(), s); });
   $('bt-again').addEventListener('click', () => { wildRoll++; ui.renderBattleSetup(rollWildFoe(), s); });
-  $('bt-close').addEventListener('click', () => { battle = null; ui.hideOverlay('ovl-battle'); });
+  $('bt-close').addEventListener('click', () => { battle = null; epreuveEnCours = null; ui.hideOverlay('ovl-battle'); });
   $('bt-copy').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText($('bt-mycode').value); ui.toast('📋 Code copié !'); }
     catch (e) { try { $('bt-mycode').select(); document.execCommand('copy'); ui.toast('📋 Code copié !'); } catch (e2) {} }
@@ -1618,10 +1699,13 @@ function boot() {
         gainXp(XP.win);
         sfx.happy(); ui.toast('🏆 Victoire de ' + battle.me.name + ' !');
         tryDrop(1.5); // une victoire peut rapporter un trésor
+        if (epreuveEnCours) gagnerEpreuve(epreuveEnCours);
       } else {
         s.fun = clamp(s.fun + 2, 0, 100);
         sfx.sad(); ui.toast('💔 Défaite… ça se rejouera !');
+        if (epreuveEnCours) ui.log('⚔️ L\'épreuve reste à passer — reviens quand tu seras prête.');
       }
+      epreuveEnCours = null;
       persist(); persistRec(); checkUnlocks();
     }
   };
@@ -1926,7 +2010,7 @@ function boot() {
     'ovl-ach': () => ui.hideOverlay('ovl-ach'),
     'ovl-set': () => ui.hideOverlay('ovl-set'),
     'ovl-photo': () => { cardCv = null; ui.hideOverlay('ovl-photo'); },
-    'ovl-battle': () => { battle = null; ui.hideOverlay('ovl-battle'); }
+    'ovl-battle': () => { battle = null; epreuveEnCours = null; ui.hideOverlay('ovl-battle'); }
   };
   for (const [id, close] of Object.entries(overlayClosers)) {
     const el = $(id);

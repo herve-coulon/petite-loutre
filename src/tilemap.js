@@ -410,6 +410,38 @@ export const COFFRE = {
 /** Toutes les zones qui recèlent un coffre (pour compter la collection). */
 export const COFFRE_ZONES = Object.keys(COFFRE);
 
+/**
+ * L'ÉPREUVE de chaque lieu : une championne qui garde les lieux et qu'il faut
+ * battre en duel. C'est le seul contenu de la vallée qu'on puisse RATER — le
+ * reste se ramasse. `force` multiplie les statistiques de l'adversaire ; elle
+ * suit le `boost` de la zone, pour que la vallée se durcisse à mesure qu'on
+ * s'éloigne du carrefour.
+ */
+export const EPREUVE = {
+  clairiere: { nom: 'Ondine', titre: 'la vive du carrefour', fur: 'roux', force: 0.95,
+    defi: 'Personne ne traverse ma clairière sans me montrer ce qu\'il sait faire.' },
+  roseaux: { nom: 'Vasouille', titre: 'la reine des mares', fur: 'choco', force: 1.05,
+    defi: 'Dans mes roseaux, on avance à l\'oreille. Tu entends quoi, toi ?' },
+  vallon: { nom: 'Pâquerette', titre: 'la douce du pré', fur: 'bonbon', force: 1.1,
+    defi: 'On me dit tendre. On se trompe rarement deux fois.' },
+  foret: { nom: 'Fougère', titre: 'l\'ombre des sapins', fur: 'nuit', force: 1.2,
+    defi: 'Sous les arbres, je vois avant d\'être vue. À toi de jouer.' },
+  lac: { nom: 'Abysse', titre: 'la gardienne des fonds', fur: 'neige', force: 1.3,
+    defi: 'Le lac est profond. Toi, jusqu\'où descends-tu ?' },
+  cascade: { nom: 'Écume', titre: 'l\'indomptée de la chute', fur: 'braise', force: 1.45,
+    defi: 'Je vis dans le fracas. Si tu tiens debout ici, tu tiendras partout.' }
+};
+
+export const EPREUVE_ZONES = Object.keys(EPREUVE);
+
+/** Où la championne attend : entre l'habitant et le coffre — on ne la rate pas,
+ *  mais on ne lui tombe pas dessus en arrivant. */
+export function epreuveAt(zone) {
+  const p = pointStable(zone, 'epreuve', 9, 20);
+  const px = nearestFree(zone, p.cx, p.cy);
+  return { ...px, cx: p.cx, cy: p.cy };
+}
+
 /** Distances à l'arrivée, en cases : l'habitant se croise, le coffre se cherche. */
 export const HABITANT_PRES = 12;   // au plus, sinon on ne le rencontre jamais
 export const COFFRE_LOIN = 14;     // au moins, sinon on le ramasse en arrivant

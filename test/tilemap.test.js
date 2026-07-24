@@ -8,7 +8,8 @@ import {
   moveWithCollision, zoneExit, nearestFree, safeEntry, spawnPoint,
   zoneFinds, FIND_ICON, zoneGates, ZOOM, zoneLayout, ZONE_INTRO,
   SPECIALITE, zoneDuJour, findCount,
-  HABITANT, COFFRE, COFFRE_ZONES, habitantAt, coffreAt, HABITANT_PRES, COFFRE_LOIN
+  HABITANT, COFFRE, COFFRE_ZONES, habitantAt, coffreAt, HABITANT_PRES, COFFRE_LOIN,
+  EPREUVE, EPREUVE_ZONES, epreuveAt
 } from '../src/tilemap.js';
 import { ITEMS } from '../src/items.js';
 
@@ -416,5 +417,47 @@ test('coffre et habitant ne se marchent pas dessus', () => {
   for (const id of ids) {
     const h = habitantAt(id), c = coffreAt(id);
     assert.ok(Math.hypot(h.x - c.x, h.y - c.y) > 24, id + ' : coffre et habitant superposés');
+  }
+});
+
+test('épreuves : une championne par lieu, chacune avec son identité', () => {
+  assert.deepEqual(EPREUVE_ZONES.slice().sort(), ids.slice().sort());
+  const noms = new Set();
+  for (const id of ids) {
+    const e = EPREUVE[id];
+    for (const champ of ['nom', 'titre', 'fur', 'defi']) {
+      assert.ok(e[champ] && e[champ].length, id + ' : ' + champ + ' manquant');
+    }
+    assert.equal(noms.has(e.nom), false, 'championne en double : ' + e.nom);
+    noms.add(e.nom);
+    assert.ok(e.force > 0 && e.force < 3, id + ' : force aberrante (' + e.force + ')');
+  }
+});
+
+test('épreuves : la difficulté suit l\'éloignement du carrefour', () => {
+  // sans cet ordre, la vallée n'aurait pas de progression : on tomberait sur
+  // la plus dure au premier pas de côté
+  const parBoost = ids.slice().sort((a, b) => (ZONES[a].boost || 0) - (ZONES[b].boost || 0));
+  for (let i = 1; i < parBoost.length; i++) {
+    const av = parBoost[i - 1], ap = parBoost[i];
+    assert.ok(EPREUVE[ap].force >= EPREUVE[av].force,
+      ap + ' (boost ' + ZONES[ap].boost + ') doit être au moins aussi dure que ' + av);
+  }
+  assert.ok(EPREUVE[START_ZONE].force <= 1, 'la championne du départ ne doit pas surclasser le joueur');
+});
+
+test('épreuves : la championne se croise entre l\'habitant et le coffre', () => {
+  for (const id of ids) {
+    const e = epreuveAt(id);
+    assert.equal(isSolid(id, e.cx, e.cy), false, id + ' : championne inaccessible');
+    assert.deepEqual(epreuveAt(id), e, id + ' : la championne se déplace');
+    const [sx, sy] = ZONES[id].start;
+    const d = Math.hypot(e.cx - sx, e.cy - sy);
+    assert.ok(d >= HABITANT_PRES - 3, id + ' : championne trop près de l\'arrivée');
+    assert.ok(d <= 20, id + ' : championne trop loin pour être croisée');
+    // les trois repères du lieu ne doivent pas se confondre
+    const h = habitantAt(id), c = coffreAt(id);
+    assert.ok(Math.hypot(e.x - h.x, e.y - h.y) > 40, id + ' : championne collée à l\'habitant');
+    assert.ok(Math.hypot(e.x - c.x, e.y - c.y) > 40, id + ' : championne collée au coffre');
   }
 });

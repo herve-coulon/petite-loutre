@@ -668,3 +668,46 @@ test('habitant : rend son service une fois par jour, puis se contente de bavarde
   assert.equal(L.state.energy, 20, 'pas de second service dans la journée');
   assert.equal(L.state.fun, 20, 'ni pour l\'entrain');
 });
+
+test('épreuve : la championne propose son duel, et son trophée ne se gagne qu\'une fois', async () => {
+  L.state.gameOver = false; L.state.away = false; L.state.divingUntil = 0; L.state.sleeping = false;
+  L.state.stage = 'adult'; L.state.hatchedAt = Date.now() - 5 * 24 * 3600 * 1000;
+  L.records.visited = ['clairiere']; L.records.epreuves = []; L.records.xp = 100000;
+  L.state.place = 'berge'; L.state.worldZone = 'clairiere';
+
+  $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
+  const e = L.world.epreuve;
+  assert.ok(e && e.nom === 'Ondine', 'la clairière est gardée par Ondine');
+  assert.equal(e.vaincue, false, 'pas encore battue');
+
+  // on l'approche : elle propose, on n'est pas jeté dans l'arène sans avoir dit oui
+  L.world.px = e.x; L.world.py = e.y; L.world.tx = e.x; L.world.ty = e.y;
+  await degeler();
+  renderOnce();
+  assert.ok(!$('ovl-confirm').classList.contains('hidden'), 'le défi est proposé');
+  assert.equal(L.battle, null, 'aucun combat lancé avant d\'accepter');
+  assert.match($('confirm-text').textContent, /Ondine/);
+
+  $('btn-confirm-yes').dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.ok(L.battle, 'le duel démarre après acceptation');
+  assert.equal(L.battle.foe.name, 'Ondine', 'et c\'est bien contre elle');
+
+  const gemsAvant = L.records.gems || 0;
+  L.battle.foe.hp = 1;
+  $('bt-splash').dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(L.battle.winner, 'me', 'victoire');
+  assert.deepEqual(L.records.epreuves, ['clairiere'], 'épreuve inscrite au palmarès');
+  assert.ok(L.records.gems > gemsAvant, 'récompensée en gemmes');
+  assert.equal(L.world.epreuve.vaincue, true, 'son repère passe à la médaille aussitôt');
+
+  // on la redéfie : plus de trophée, plus de gemmes d'épreuve
+  const gemsApres = L.records.gems;
+  $('bt-close').dispatchEvent(new window.Event('click', { bubbles: true }));  // referme l'arène
+  L.world.epreuveCooldown = 0;
+  renderOnce();
+  $('btn-confirm-yes').dispatchEvent(new window.Event('click', { bubbles: true }));
+  L.battle.foe.hp = 1;
+  $('bt-splash').dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(L.records.epreuves.length, 1, 'le trophée ne se gagne pas deux fois');
+  assert.equal(L.records.gems, gemsApres, 'ni la prime de l\'épreuve');
+});

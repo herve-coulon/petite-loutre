@@ -878,6 +878,19 @@ export function makeRenderer(cv) {
         ctx.textAlign = 'left';
       } });
     }
+    // la championne du lieu : une vraie loutre, avec les épées au-dessus —
+    // on doit voir de loin que celle-là, on ne l'aborde pas comme les autres
+    if (w.epreuve) {
+      const e = w.epreuve;
+      figs.push({ y: e.y, fn: () => {
+        const ex = e.x - camX, ey = e.y - camY;
+        drawFigure({ stage: 'adult', fur: e.fur }, ex, ey, frame, false, true);
+        const by = ey - 22 + (Math.sin(frame / 12) < 0 ? 1 : 0);
+        ctx.font = '10px system-ui,sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(e.vaincue ? '🏅' : '⚔️', Math.round(ex), Math.round(by));
+        ctx.textAlign = 'left';
+      } });
+    }
     // l'habitant du lieu : posté chez lui, avec sa bulle de parole
     if (w.pnj) {
       const p = w.pnj;

@@ -199,6 +199,9 @@ button.pm-cell.go:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,5
 #app.in-game #actionbar,
 #app.in-game #side-left,
 #app.in-game #side-right{display:none !important;}
+/* Confirmation : les retours à la ligne du message doivent être respectés,
+   sinon un défi en trois phrases s'écrase en un seul pavé illisible. */
+#confirm-text{white-space:pre-line; text-align:center; max-width:30ch; margin:0 auto 4px;}
 /* Plongée : on dégage la rivière pour la voir nager (les actions sont bloquées). */
 #app.in-dive #quest,
 #app.in-dive #log{display:none !important;}
