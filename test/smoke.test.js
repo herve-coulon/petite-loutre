@@ -577,3 +577,42 @@ test('toboggan : verrouillé sous le niveau requis, sinon se lance, se termine e
   assert.equal(L.records.slidesTotal, slidesBefore + 1, 'descente comptée');
   assert.ok(L.records.slideBest >= 4, 'meilleur score enregistré');
 });
+
+test('carte : depuis la berge, toucher un lieu connu part directement là-bas', () => {
+  L.state.gameOver = false; L.state.away = false; L.state.divingUntil = 0;
+  L.state.stage = 'child'; L.state.hatchedAt = Date.now() - 25 * 3600 * 1000;
+  L.state.place = 'berge';
+  L.records.visited = ['clairiere', 'lac'];
+
+  $('lvl-badge').dispatchEvent(new window.Event('click', { bubbles: true }));
+  const cells = [...$('pm-grid').querySelectorAll('button.pm-cell')];
+  assert.ok(cells.length >= 2, 'les lieux connus sont des boutons de voyage depuis la berge');
+
+  const lac = cells.find(c => /grand lac/i.test(c.getAttribute('aria-label') || ''));
+  assert.ok(lac, 'le lac, déjà visité, doit être proposé');
+  lac.dispatchEvent(new window.Event('click', { bubbles: true }));
+
+  assert.equal(L.state.place, 'monde', 'on part en balade');
+  assert.equal(L.world && L.world.zone, 'lac', 'et directement dans le lieu touché');
+
+  // un lieu JAMAIS visité reste hors de portée : il se gagne à pied
+  const inconnus = [...$('pm-grid').querySelectorAll('.pm-cell.unknown')];
+  assert.ok(inconnus.every(c => c.tagName !== 'BUTTON'), 'les lieux inconnus ne sont pas cliquables');
+});
+
+test('balade : on repart du dernier lieu quitté, pas systématiquement de la clairière', () => {
+  L.records.visited = ['clairiere', 'lac'];
+  L.state.place = 'monde'; L.state.worldZone = 'lac';
+
+  $('b-world-back').dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(L.state.place, 'berge', 'rentrée à la berge');
+
+  $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(L.world && L.world.zone, 'lac', 'la balade reprend où elle s\'était arrêtée');
+
+  // sauvegarde citant un lieu inconnu (ou supprimé) : repli sur la clairière
+  L.state.place = 'berge';
+  L.state.worldZone = 'atlantide';
+  $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(L.world && L.world.zone, 'clairiere', 'repli sur le lieu de départ');
+});

@@ -530,12 +530,20 @@ function discoverZone(zoneId) {
 
 /**
  * Voyage depuis la carte du profil : on se rend directement dans un lieu déjà
- * découvert, au point d'entrée de la zone. Refusé si l'on n'est pas en balade
- * (la carte sert alors seulement à consulter) ou si le lieu est inconnu.
+ * découvert. Depuis la BERGE ou la TANIÈRE, toucher un lieu connu part
+ * directement là-bas — auparavant la carte n'y était que décorative, et il
+ * fallait passer par la clairière avant de pouvoir voyager.
+ * Les lieux inconnus restent inaccessibles : ils se gagnent à pied.
  */
-/** Le voyage n'est proposé que pendant une balade ; sinon la carte se consulte. */
 function worldTravelHandler() {
-  return (s && s.place === 'monde' && world) ? travelTo : null;
+  if (!denAvailable()) return null;                 // œuf, absence, mini-jeu : pas de départ
+  if (s.place === 'monde' && world) return travelTo;
+  return (zoneId) => {
+    if (!isVisited(zoneId)) return false;
+    enterWorld(zoneId);
+    ui.hideOverlay('ovl-menu');
+    return true;
+  };
 }
 
 function travelTo(zoneId) {
@@ -563,9 +571,19 @@ function goToZone(zoneId, px, py) {
 }
 
 /** Entre dans la vallée : engendre les loutres sauvages du jour et place tout le monde. */
-function enterWorld() {
+/**
+ * Partir en balade. Sans précision, on reprend LÀ OÙ L'ON S'ÉTAIT ARRÊTÉ
+ * (s.worldZone était sauvegardé mais jamais relu : on repartait toujours de la
+ * clairière, et il fallait retraverser la vallée à chaque sortie).
+ * Repli sur la clairière si le lieu est inconnu ou n'existe plus.
+ */
+function enterWorld(zoneId) {
   if (!denAvailable()) return;
-  const zone = START_ZONE;
+  const voulu = typeof zoneId === 'string' ? zoneId : s.worldZone;
+  // zoneById retombe sur la clairière pour un id inconnu : on compare donc l'id
+  // rendu, sinon une sauvegarde citant un lieu supprimé passerait pour valide
+  const connu = !!voulu && isVisited(voulu) && zoneById(voulu).id === voulu;
+  const zone = connu ? voulu : START_ZONE;
   const sp = spawnPoint(zone);
   world = {
     zone, px: sp.x, py: sp.y, tx: sp.x, ty: sp.y,
@@ -575,7 +593,13 @@ function enterWorld() {
   s.place = 'monde';
   sfx.press(); vibrate(8);
   updatePlaceBtn(); persist();
-  if (!discoverZone(zone)) ui.log('🗺️ ' + (s.name || 'La loutre') + ' part explorer la vallée…');
+  // on nomme la destination quand elle a été choisie ou retrouvée : « part
+  // explorer la vallée » n'apprenait rien à qui venait de toucher un lieu
+  if (!discoverZone(zone)) {
+    ui.log(connu
+      ? '🗺️ ' + (s.name || 'La loutre') + ' file vers ' + zoneById(zone).name.toLowerCase() + '…'
+      : '🗺️ ' + (s.name || 'La loutre') + ' part explorer la vallée…');
+  }
 }
 
 /** Quitte la vallée, retour à la berge. */
@@ -1601,7 +1625,8 @@ function boot() {
   // Carte photo (accessible depuis Succès)
   $('b-photo').addEventListener('click', openPhoto);
   $('b-place').addEventListener('click', togglePlace);
-  $('b-world').addEventListener('click', enterWorld);
+  // sans la lambda, l'événement du clic arriverait en guise de zone demandée
+  $('b-world').addEventListener('click', () => enterWorld());
   $('b-world-back').addEventListener('click', exitWorld);
   $('enc-fish').addEventListener('click', () => encHandlers.offer());
   $('enc-fight').addEventListener('click', () => encHandlers.fight());
