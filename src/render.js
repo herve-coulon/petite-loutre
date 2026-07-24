@@ -964,6 +964,40 @@ export function makeRenderer(cv) {
     figs.push({ y: w.py, fn: () => drawFigure(s, w.px - camX, w.py - camY, frame, w.walking, w.facing < 0) });
     figs.sort((a, b) => a.y - b.y).forEach(f => f.fn());
 
+    // LISIÈRES : sur chaque bord relié, une étiquette collée au bord de
+    // l'ÉCRAN — et la toucher suffit à partir (cf. sortieVisee dans main.js).
+    // Les repères plantés sur les passages ne se voient que si l'on est déjà
+    // près du bord : sans ces étiquettes, on croit la carte close et l'on ne
+    // découvre jamais qu'il y a un ailleurs.
+    for (const g of zoneGates(zone)) {
+      const nom = g.name;
+      ctx.save();
+      ctx.font = 'bold 8px system-ui,sans-serif';
+      ctx.textAlign = 'center';
+      const larg = Math.max(34, ctx.measureText(nom).width + 14);
+      ctx.globalAlpha = 0.72 + 0.14 * Math.sin(frame / 20);
+      if (g.dir === 'north' || g.dir === 'south') {
+        // en haut le bandeau de nom et les jauges, en bas le journal : posées
+        // au ras du bord, les étiquettes passaient dessous et devenaient
+        // illisibles. On les cale juste en deçà (cf. MONDE_HAUT dans main.js).
+        const y = g.dir === 'north' ? 49 : CANVAS_H - 33;
+        ctx.fillStyle = 'rgba(18,32,46,.62)';
+        ctx.fillRect(Math.round(CANVAS_W / 2 - larg / 2), y, Math.round(larg), 11);
+        ctx.fillStyle = '#ffe9a8';
+        ctx.fillText((g.dir === 'north' ? '▲ ' : '▼ ') + nom, CANVAS_W / 2, y + 8);
+      } else {
+        // texte tourné, comme un panneau routier : la largeur de l'écran (160)
+        // ne laisse pas la place d'écrire un nom à plat sur les côtés
+        ctx.translate(g.dir === 'west' ? 8 : CANVAS_W - 8, CANVAS_H / 2);
+        ctx.rotate(g.dir === 'west' ? -Math.PI / 2 : Math.PI / 2);
+        ctx.fillStyle = 'rgba(18,32,46,.62)';
+        ctx.fillRect(Math.round(-larg / 2), -6, Math.round(larg), 11);
+        ctx.fillStyle = '#ffe9a8';
+        ctx.fillText('▲ ' + nom, 0, 2);
+      }
+      ctx.restore();
+    }
+
     // RIDEAU DE PASSAGE : deux volets qui se referment puis s'ouvrent, avec le
     // nom du lieu. Le voyage se voit, au lieu de se produire entre deux images.
     const dt = Date.now() - passage.at;

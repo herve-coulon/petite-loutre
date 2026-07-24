@@ -46,6 +46,8 @@ before(async () => {
   global.document = document;
   Object.defineProperty(globalThis, 'navigator', { value: window.navigator, configurable: true });
   global.localStorage = window.localStorage;
+  // canvasXY consulte object-fit : sans ce global, le toucher lève dans jsdom
+  global.getComputedStyle = window.getComputedStyle.bind(window);
   global.requestAnimationFrame = cb => { rafCbs.push(cb); return rafCbs.length; };
   global.setInterval = (fn) => { tickFns.push(fn); return tickFns.length; };
 
@@ -794,4 +796,58 @@ test('toboggan : trois rochers éjectent la loutre, et ça lui coûte de la sant
   // protégerait aucune propriété durable. Ce qui compte est vérifié ci-dessus.
   // une éjection n'est jamais une « descente parfaite »
   assert.equal(L.records.perfectSlides || 0, 0, 'pas de descente parfaite sur une éjection');
+});
+
+test('vallée : un toucher vers le bord fait VRAIMENT changer de carte', async () => {
+  // Le geste réel du joueur, de bout en bout : il touche le canvas au bord de
+  // l'écran et la loutre doit rejoindre la zone voisine. Jusqu'ici elle partait
+  // en ligne droite et se collait au premier arbre — d'où « les cartes ne
+  // s'enchaînent pas, je n'en ai qu'une seule ».
+  L.state.gameOver = false; L.state.away = false; L.state.divingUntil = 0;
+  L.state.sleeping = false; L.state.coach = false;
+  L.state.stage = 'adult'; L.state.hatchedAt = Date.now() - 5 * 24 * 3600 * 1000;
+  L.records.visited = ['clairiere'];
+  L.state.place = 'berge'; L.state.worldZone = 'clairiere';
+  $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(L.world.zone, 'clairiere');
+
+  // jsdom ne met rien en page : on donne au canvas une taille plausible
+  const cv = document.getElementById('cv');
+  cv.getBoundingClientRect = () => ({ left: 0, top: 0, width: cv.width, height: cv.height });
+
+  // on écarte ce qui interromprait la marche : ce test-ci porte sur le trajet,
+  // les rencontres et le chasseur ont leurs propres tests
+  const seul = () => {
+    L.world.otters = []; L.world.chasseur = null; L.world.pnj = null;
+    L.world.epreuve = null; L.world.coffre = null; L.world.finds = [];
+  };
+
+  // la clairière est le carrefour : elle ouvre des quatre côtés
+  const sorties = [
+    ['ouest', 0, cv.height / 2, 'roseaux'],
+    ['est', cv.width - 1, cv.height / 2, 'lac'],
+    ['nord', cv.width / 2, 0, 'foret'],
+    ['sud', cv.width / 2, cv.height - 1, 'vallon']
+  ];
+  for (const [cote, cx, cy, voisin] of sorties) {
+    L.state.place = 'berge'; L.state.worldZone = 'clairiere';
+    $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
+    assert.equal(L.world.zone, 'clairiere', 'on repart du carrefour');
+    seul();
+
+    cv.dispatchEvent(new window.MouseEvent('pointerdown',
+      { bubbles: true, clientX: cx, clientY: cy }));
+    assert.ok(L.world.route && L.world.route.length,
+      cote + ' : aucun itinéraire calculé');
+
+    let arrive = false;
+    for (let f = 0; f < 900 && !arrive; f++) {
+      renderOnce(); seul();
+      arrive = L.world.zone !== 'clairiere';
+    }
+    assert.ok(arrive, cote + ' : la loutre est restée bloquée en ' +
+      L.world.px.toFixed(0) + ',' + L.world.py.toFixed(0));
+    assert.equal(L.world.zone, voisin, 'un toucher au ' + cote + ' mène chez le voisin');
+    assert.ok(L.records.visited.includes(voisin), voisin + ' : le lieu est découvert');
+  }
 });

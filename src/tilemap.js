@@ -248,12 +248,19 @@ const LAC = [
  * `start` = case d'arrivée par défaut (en coords de tuiles).
  */
 /**
- * Les cartes sont DESSINÉES en 30x30 (lisible à écrire et à relire), puis
- * agrandies : chaque case devient un carré de ZOOM x ZOOM tuiles. On double
- * ainsi le territoire sans doubler le travail d'écriture — et les sentiers
- * gagnent de la largeur au passage.
+ * Les cartes sont DESSINÉES en 30x30, puis éventuellement agrandies : chaque
+ * case devient un carré de ZOOM x ZOOM tuiles.
+ *
+ * ZOOM valait 2 : cela doublait le territoire SANS doubler son contenu. Une
+ * zone faisait alors 17 écrans pour neuf points d'intérêt — on traversait des
+ * écrans d'herbe vide et le lieu voisin était à trois écrans de marche. Pire,
+ * les points ancrés « en coordonnées de dessin » (les loutres sauvages) se
+ * tassaient tous dans le quart haut-gauche : on pouvait explorer la moitié
+ * d'une carte sans croiser âme qui vive. D'où « je n'ai qu'une seule carte,
+ * c'est peu peuplé, il n'y a rien à faire ». À 1, une zone tient en ~4 écrans
+ * et les ancrages retombent juste : on croise quelque chose sans cesse.
  */
-export const ZOOM = 2;
+export const ZOOM = 1;
 /**
  * Ouvre un couloir praticable sur chaque bord LIÉ. Les trouées étaient taillées
  * à la main dans les cartes : fragiles, faciles à refermer sans s'en rendre
@@ -268,7 +275,7 @@ function ouvrirPassages(rows, links) {
       for (let x = Math.max(0, x0); x <= Math.min(w - 1, x1); x++) grille[y][x] = '.';
     }
   };
-  const LARG = 6, PROF = 10;             // couloir large et assez profond pour rejoindre le terrain
+  const LARG = 4, PROF = 6;              // couloir large et assez profond pour rejoindre le terrain
   const cx = Math.floor(w / 2) - Math.floor(LARG / 2);
   const cy = Math.floor(h / 2) - Math.floor(LARG / 2);
   if (links.north) creuser(cx, 0, cx + LARG - 1, PROF - 1);
@@ -825,6 +832,83 @@ export function moveWithCollision(zone, px, py, dx, dy, r = 5) {
   if (dx && free(px + dx, py)) nx = px + dx;
   if (dy && free(nx, py + dy)) ny = py + dy;
   return { x: nx, y: ny };
+}
+
+/* ---------------- Itinéraire ---------------- */
+
+/** Le point de marche au centre-bas d'une case (même repère que nearestFree). */
+const casePx = (cx, cy) => ({ x: cx * TILE + TILE / 2, y: cy * TILE + TILE - 2 });
+
+/**
+ * L'ITINÉRAIRE d'un point à un autre, en points de passage (pixels monde).
+ *
+ * La marche allait TOUT DROIT et renonçait au premier obstacle. Un arbre entre
+ * la loutre et le bord suffisait donc à rendre une zone voisine inatteignable :
+ * on tapait, elle se collait au tronc, on retapait, elle s'y recollait. Quatre
+ * passages sur dix-huit étaient ainsi bouchés depuis le point d'arrivée — d'où
+ * « les cartes ne s'enchaînent pas ». On calcule désormais un vrai chemin
+ * (parcours en largeur sur les cases libres, 900 cases : instantané).
+ *
+ * Si la cible est inatteignable (dans l'eau, derrière un rocher), on retient la
+ * case atteinte la PLUS PROCHE : la loutre s'approche au mieux au lieu de
+ * refuser de bouger. Un point visé hors carte (c'est ainsi qu'on sort d'une
+ * zone) est conservé en bout de chemin, pour que le bord soit bien franchi.
+ */
+export function findPath(zone, fromX, fromY, toX, toY) {
+  const z = zoneById(zone);
+  const dansCarte = (x, y) => x >= 0 && y >= 0 && x < MAP_W && y < MAP_H;
+  const borne = (v, max) => Math.max(0, Math.min(max - 1, v));
+  const sx = borne(Math.floor(fromX / TILE), MAP_W), sy = borne(Math.floor(fromY / TILE), MAP_H);
+  const gx = borne(Math.floor(toX / TILE), MAP_W), gy = borne(Math.floor(toY / TILE), MAP_H);
+  const dehors = !dansCarte(Math.floor(toX / TILE), Math.floor(toY / TILE));
+  const fin = () => (dehors ? [{ x: toX, y: toY }] : []);
+  if (sx === gx && sy === gy) return fin();
+
+  const N = MAP_W * MAP_H;
+  const prev = new Int32Array(N).fill(-1);
+  const vu = new Uint8Array(N);
+  const file = new Int32Array(N);
+  let tete = 0, queue = 0;
+  const depart = sy * MAP_W + sx;
+  vu[depart] = 1; file[queue++] = depart;
+  let atteint = -1, meilleur = depart, meilleurD = (gx - sx) ** 2 + (gy - sy) ** 2;
+
+  while (tete < queue) {
+    const cur = file[tete++];
+    const cx = cur % MAP_W, cy = (cur / MAP_W) | 0;
+    if (cx === gx && cy === gy) { atteint = cur; break; }
+    const d = (gx - cx) ** 2 + (gy - cy) ** 2;
+    if (d < meilleurD) { meilleurD = d; meilleur = cur; }
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = cx + dx, ny = cy + dy;
+      if (!dansCarte(nx, ny)) continue;
+      const n = ny * MAP_W + nx;
+      if (vu[n] || isSolid(z, nx, ny)) continue;
+      vu[n] = 1; prev[n] = cur; file[queue++] = n;
+    }
+  }
+
+  // on remonte la piste jusqu'au départ, puis on la remet à l'endroit
+  const cases = [];
+  for (let c = atteint >= 0 ? atteint : meilleur; c !== depart && c >= 0; c = prev[c]) {
+    cases.push(c);
+  }
+  cases.reverse();
+
+  // on ne garde que les VIRAGES : marcher case par case saccadait l'allure
+  const pts = [];
+  for (let i = 0; i < cases.length; i++) {
+    const cx = cases[i] % MAP_W, cy = (cases[i] / MAP_W) | 0;
+    const suiv = cases[i + 1];
+    if (suiv !== undefined) {
+      const nx = suiv % MAP_W, ny = (suiv / MAP_W) | 0;
+      const px = i > 0 ? cases[i - 1] % MAP_W : cx - (nx - cx);
+      const py = i > 0 ? (cases[i - 1] / MAP_W) | 0 : cy - (ny - cy);
+      if ((nx - cx) === (cx - px) && (ny - cy) === (cy - py)) continue;  // tout droit
+    }
+    pts.push(casePx(cx, cy));
+  }
+  return pts.concat(fin());
 }
 
 /**

@@ -6,7 +6,7 @@ import {
   TILE, ZONES, START_ZONE, zoneById, MAP_W, MAP_H, WORLD_W, WORLD_H, T,
   charAt, isWater, isSolid, waterTile, groundTile, decorTile,
   moveWithCollision, zoneExit, nearestFree, safeEntry, spawnPoint,
-  zoneFinds, FIND_ICON, zoneGates, ZOOM, zoneLayout, ZONE_INTRO,
+  zoneFinds, FIND_ICON, zoneGates, zoneLayout, ZONE_INTRO, findPath,
   SPECIALITE, zoneDuJour, findCount, BORD_SORTIE,
   HABITANT, COFFRE, COFFRE_ZONES, habitantAt, coffreAt, HABITANT_PRES, COFFRE_LOIN,
   EPREUVE, EPREUVE_ZONES, epreuveAt, FAUNE
@@ -303,12 +303,15 @@ test('passages : chaque bord ouvert a un repère, posé sur une case praticable'
   }
 });
 
-test('agrandissement : la vallée est assez vaste pour qu\'on s\'y promène', () => {
-  assert.ok(ZOOM >= 2, 'les cartes dessinées sont agrandies');
-  assert.ok(MAP_W >= 60 && MAP_H >= 60, 'zone de ' + MAP_W + 'x' + MAP_H + ' tuiles');
-  // l'écran (10 x 21 tuiles) ne doit jamais montrer la zone entière
+test('gabarit : une zone se parcourt, mais ne se traverse pas en désert', () => {
+  // l'écran (10 x 21 tuiles) ne doit jamais montrer la zone entière : sinon
+  // plus rien à explorer
   assert.ok(MAP_W > 10 * 2, 'on doit voir moins de la moitié de la largeur');
-  assert.ok(MAP_H > 21 * 1.5, 'on doit voir moins des deux tiers de la hauteur');
+  assert.ok(MAP_H > 21, 'on doit voir moins de la hauteur entière');
+  // …mais pas l'inverse non plus : à ZOOM 2 une zone faisait 17 écrans pour
+  // neuf points d'intérêt, et le bord voisin était à trois écrans de marche.
+  const ecrans = (WORLD_W / 160) * (WORLD_H / 346);
+  assert.ok(ecrans <= 6, 'zone de ' + ecrans.toFixed(1) + ' écrans : trop vide à peupler');
 });
 
 /* ---------------- Carte de la vallée & arrivées mises en scène ---------------- */
@@ -532,6 +535,61 @@ test('franchissement : chaque liaison de chaque zone est réellement praticable'
       assert.ok(r.franchi, id + ' → ' + dir + ' (' + to + ') : bord inatteignable');
       assert.equal(r.franchi.to, to);
     }
+  }
+});
+
+test('itinéraire : depuis l\'arrivée, UN SEUL toucher mène à chaque zone voisine', () => {
+  // LE bug qui donnait « je n'ai qu'une seule carte » : la marche allait tout
+  // droit et renonçait au premier tronc. Quatre passages sur dix-huit étaient
+  // ainsi bouchés depuis le point d'arrivée. On rejoue ici le geste du joueur :
+  // il touche au-delà du bord voulu, une fois, et n'y revient plus.
+  for (const id of ids) {
+    for (const g of zoneGates(id)) {
+      const depart = spawnPoint(id);
+      const cible = {
+        x: g.dir === 'west' ? -TILE : g.dir === 'east' ? WORLD_W + TILE : g.x,
+        y: g.dir === 'north' ? -TILE : g.dir === 'south' ? WORLD_H + TILE : g.y
+      };
+      const route = findPath(id, depart.x, depart.y, cible.x, cible.y);
+      assert.ok(route.length, id + ' → ' + g.dir + ' : aucun itinéraire');
+      let px = depart.x, py = depart.y, etape = route.shift(), franchi = null;
+      for (let f = 0; f < 9000 && !franchi; f++) {
+        const dx = etape.x - px, dy = etape.y - py, d = Math.hypot(dx, dy);
+        if (d <= 1.5) { if (!route.length) break; etape = route.shift(); continue; }
+        const st = Math.min(1.4, d);
+        const r = moveWithCollision(id, px, py, dx / d * st, dy / d * st);
+        assert.ok(r.x !== px || r.y !== py,
+          id + ' → ' + g.to + ' : coincée en ' + px.toFixed(0) + ',' + py.toFixed(0));
+        px = r.x; py = r.y;
+        franchi = zoneExit(id, px, py);
+      }
+      assert.ok(franchi, id + ' → ' + g.to + ' (' + g.dir + ') : jamais atteint');
+      assert.equal(franchi.to, g.to);
+    }
+  }
+});
+
+test('itinéraire : une cible inatteignable rapproche au lieu de bloquer', () => {
+  // viser le milieu d'un étang ne doit pas figer la loutre : elle s'avance
+  // jusqu'à la rive la plus proche
+  const depart = spawnPoint('clairiere');
+  let eau = null;
+  for (let cy = 0; cy < MAP_H && !eau; cy++) {
+    for (let cx = 0; cx < MAP_W; cx++) {
+      if (isWater('clairiere', cx, cy)) { eau = { cx, cy }; break; }
+    }
+  }
+  assert.ok(eau, 'la clairière a bien une rivière');
+  const route = findPath('clairiere', depart.x, depart.y,
+    eau.cx * TILE + TILE / 2, eau.cy * TILE + TILE - 2);
+  assert.ok(route.length, 'on doit tout de même s\'approcher');
+  const bout = route[route.length - 1];
+  const avant = Math.hypot(depart.x - eau.cx * TILE, depart.y - eau.cy * TILE);
+  const apres = Math.hypot(bout.x - eau.cx * TILE, bout.y - eau.cy * TILE);
+  assert.ok(apres < avant, 'l\'itinéraire doit rapprocher de la cible');
+  for (const p of route) {
+    assert.ok(!isSolid('clairiere', Math.floor(p.x / TILE), Math.floor(p.y / TILE)),
+      'point de passage dans un obstacle');
   }
 });
 

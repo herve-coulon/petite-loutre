@@ -37,7 +37,7 @@ import {
   TILE, MAP_W, MAP_H, WORLD_W, WORLD_H, START_ZONE, ZONES, zoneById, zoneFinds, ZONE_INTRO, isSolid,
   SPECIALITE, zoneDuJour, HABITANT, COFFRE, COFFRE_ZONES, habitantAt, coffreAt,
   EPREUVE, EPREUVE_ZONES, epreuveAt,
-  moveWithCollision, spawnPoint, zoneExit, safeEntry, nearestFree
+  moveWithCollision, spawnPoint, zoneExit, safeEntry, nearestFree, findPath, zoneGates
 } from './tilemap.js';
 import { makeCard, CARD_URL } from './photocard.js';
 import { nextBeat, markSeen, coachStep } from './story.js';
@@ -830,7 +830,7 @@ function goToZone(zoneId, px, py) {
   world.zone = zoneId;
   s.worldZone = zoneId;                 // pour que le profil sache où l'on est
   world.px = p.x; world.py = p.y; world.tx = p.x; world.ty = p.y;
-  world.walking = false;
+  world.walking = false; world.route = null;
   world.otters = wildOttersFor(zoneId);
   world.pnj = habitantFor(zoneId);
   world.coffre = coffreFor(zoneId);
@@ -899,7 +899,9 @@ function stepWorld() {
       const step = Math.min(1.4, d);   // ~11 frames par tuile : marche posée
       const res = moveWithCollision(world.zone, world.px, world.py, dx / d * step, dy / d * step);
       if (res.x === world.px && res.y === world.py) {
-        world.tx = world.px; world.ty = world.py; world.walking = false;  // bloquée : on renonce
+        // vraiment coincée : on abandonne l'itinéraire entier, pas seulement l'étape
+        world.route = null;
+        world.tx = world.px; world.ty = world.py; world.walking = false;
       } else {
         world.px = res.x; world.py = res.y;
         world.facing = dx < 0 ? -1 : 1; world.walking = true;
@@ -907,6 +909,9 @@ function stepWorld() {
       // franchi un bord ouvert ? on bascule sur la zone voisine
       const out = zoneExit(world.zone, world.px, world.py);
       if (out) { goToZone(out.to, out.x, out.y); return; }
+    } else if (world.route && world.route.length) {
+      const p = world.route.shift();          // étape suivante de l'itinéraire
+      world.tx = p.x; world.ty = p.y;
     } else world.walking = false;
   }
   for (const o of world.otters) {
@@ -944,7 +949,7 @@ function stepWorld() {
     const pres = Math.hypot(e.x - world.px, e.y - world.py) < 16;
     if (pres && frame > (world.epreuveCooldown || 0)) {
       world.epreuveCooldown = frame + 320;
-      world.walking = false; world.tx = world.px; world.ty = world.py;
+      world.walking = false; world.route = null; world.tx = world.px; world.ty = world.py;
       proposerEpreuve(e);
       return;
     }
@@ -972,6 +977,34 @@ function stepWorld() {
       }
     }
   }
+}
+
+/** Largeur de la lisière d'écran qui veut dire « je pars par là ». */
+const BORD_ECRAN = 20;
+/**
+ * Haut de la zone de jeu réellement touchable : le bandeau de nom (3-28) et les
+ * jauges (32-46) sont du DOM posé PAR-DESSUS le canevas et avalent le toucher.
+ * Une lisière nord calée sur y=0 aurait donc été impossible à toucher.
+ */
+const MONDE_HAUT = 47;
+
+/**
+ * Le toucher vise-t-il une SORTIE ? Toucher la lisière de l'écran, du côté d'un
+ * bord lié, vise le passage de ce côté puis un pas au-delà — la loutre traverse
+ * la zone et change de carte d'un seul geste. Sinon null : toucher ordinaire.
+ */
+function sortieVisee(x, y) {
+  const dir = x <= BORD_ECRAN ? 'west'
+    : x >= CANVAS_W - BORD_ECRAN ? 'east'
+      : y <= MONDE_HAUT + BORD_ECRAN ? 'north'
+        : y >= CANVAS_H - BORD_ECRAN ? 'south' : null;
+  if (!dir) return null;
+  const g = zoneGates(world.zone).find(p => p.dir === dir);
+  if (!g) return null;
+  return {
+    x: dir === 'west' ? -TILE : dir === 'east' ? WORLD_W + TILE : g.x,
+    y: dir === 'north' ? -TILE : dir === 'south' ? WORLD_H + TILE : g.y
+  };
 }
 
 /** Coin haut-gauche de la caméra (mêmes bornes que le rendu). */
@@ -1052,8 +1085,21 @@ function onCanvasPointer(e) {
       if (world && !encounterOtter) {
         const cam = worldCam();
         // on peut viser un peu au-delà du bord : c'est ainsi qu'on quitte la zone
-        world.tx = clampN(x + cam.x, -TILE, WORLD_W + TILE);
-        world.ty = clampN(y + cam.y, -TILE, WORLD_H + TILE);
+        let bx = clampN(x + cam.x, -TILE, WORLD_W + TILE);
+        let by = clampN(y + cam.y, -TILE, WORLD_H + TILE);
+        // TOUCHER LE BORD DE L'ÉCRAN, C'EST PARTIR. Un toucher ne visait qu'un
+        // point de l'écran : pour gagner le bord de la CARTE il fallait une
+        // dizaine de touchers d'affilée, et l'on croyait la zone close. Toucher
+        // la lisière de l'écran vise désormais le passage lui-même — un geste,
+        // une zone. (Sans liaison de ce côté, le toucher reste ordinaire.)
+        const sortie = sortieVisee(x, y);
+        if (sortie) { bx = sortie.x; by = sortie.y; }
+        // on CONTOURNE les obstacles : aller tout droit collait la loutre au
+        // premier tronc venu, et certaines sorties devenaient inatteignables
+        const route = findPath(world.zone, world.px, world.py, bx, by);
+        world.route = route;
+        const p = route.length ? route.shift() : { x: bx, y: by };
+        world.tx = p.x; world.ty = p.y;
       }
       return;
     }
