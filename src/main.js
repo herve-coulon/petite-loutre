@@ -773,9 +773,11 @@ function goToZone(zoneId, px, py) {
   world.epreuve = epreuveFor(zoneId);
   world.finds = findsFor(zoneId);
   sfx.press(); vibrate(8);
+  // le passage se met en scène : rideau + nom du lieu (cf. R.flashZone)
+  const z = zoneById(zoneId), intro = ZONE_INTRO[zoneId];
+  R.flashZone && R.flashZone(z.name, intro && intro.emoji);
   if (!discoverZone(zoneId)) {          // déjà connu : simple annonce
-    ui.log('🗺️ ' + zoneById(zoneId).name);
-    ui.toast('🗺️ ' + zoneById(zoneId).name);
+    ui.log('🗺️ ' + z.name);
   }
 }
 

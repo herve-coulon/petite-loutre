@@ -633,13 +633,24 @@ export function moveWithCollision(zone, px, py, dx, dy, r = 5) {
  * A-t-on franchi un bord vers une zone voisine ? Retourne la zone d'arrivée et
  * la position d'entrée (on ressort du côté opposé), ou null.
  */
+/**
+ * Marge de franchissement. Il FALLAIT sortir de la carte (px < 0) pour changer
+ * de zone… ce qui était impossible : la caméra est bornée aux limites du monde,
+ * donc un toucher ne peut jamais désigner un point hors carte, et la loutre
+ * s'arrêtait à x≈0,6. Résultat : cinq zones sur six étaient inatteignables, et
+ * la carte ne proposait que les lieux DÉJÀ visités — qu'on ne pouvait donc
+ * jamais découvrir. On franchit désormais en ATTEIGNANT le bord.
+ */
+export const BORD_SORTIE = 5;
+
 export function zoneExit(zone, px, py) {
   const z = zoneById(zone);
   const M = TILE;                       // on entre d'une tuile dans la zone
-  if (px < 0 && z.links.west) return { to: z.links.west, x: WORLD_W - M, y: py };
-  if (px > WORLD_W && z.links.east) return { to: z.links.east, x: M, y: py };
-  if (py < 0 && z.links.north) return { to: z.links.north, x: px, y: WORLD_H - M };
-  if (py > WORLD_H && z.links.south) return { to: z.links.south, x: px, y: M };
+  const B = BORD_SORTIE;
+  if (px <= B && z.links.west) return { to: z.links.west, x: WORLD_W - M, y: py };
+  if (px >= WORLD_W - B && z.links.east) return { to: z.links.east, x: M, y: py };
+  if (py <= B && z.links.north) return { to: z.links.north, x: px, y: WORLD_H - M };
+  if (py >= WORLD_H - B && z.links.south) return { to: z.links.south, x: px, y: M };
   return null;
 }
 
@@ -685,10 +696,22 @@ export function zoneGates(zone) {
 }
 
 /** Position d'arrivée sûre dans une zone, au plus près du point visé. */
+/**
+ * Point d'arrivée dans une zone. Il est ensuite ÉCARTÉ des marges de sortie :
+ * nearestFree cale sur le bas de la tuile (cy*TILE + TILE - 2), si bien qu'une
+ * arrivée sur la dernière rangée tombait à y=958 — dans la marge du bord sud,
+ * et l'on repartait aussitôt d'où l'on venait, en boucle.
+ * Le recadrage vaut quelques pixels : on reste dans la même tuile, donc libre.
+ */
 export function safeEntry(zone, px, py) {
   const cx = Math.max(0, Math.min(MAP_W - 1, Math.floor(px / TILE)));
   const cy = Math.max(0, Math.min(MAP_H - 1, Math.floor(py / TILE)));
-  return nearestFree(zone, cx, cy);
+  const p = nearestFree(zone, cx, cy);
+  const marge = BORD_SORTIE + 3;
+  return {
+    x: Math.max(marge, Math.min(WORLD_W - marge, p.x)),
+    y: Math.max(marge, Math.min(WORLD_H - marge, p.y))
+  };
 }
 
 /** Le point de départ d'une zone (sa clairière d'entrée). */

@@ -173,6 +173,10 @@ export function makeRenderer(cv) {
   const FOULEE = 4.5;         // pixels parcourus par image du cycle de marche
   // toboggan : couloir courant, et le saut joué au changement de couloir
   let slideMg = null, slideLane = null, slideX = LANE_X[1], slideHopAt = -999;
+  // Passage d'une zone à l'autre : rideau + nom du lieu. Sans lui on se
+  // retrouvait ailleurs d'une image à l'autre, sans transition ni repère.
+  let passage = { at: -99999, nom: '', emoji: '' };
+  const PASSAGE_MS = 900;
   const HOP_FRAMES = 15;
   let wanderSeed = 1;         // avance à chaque nouvelle cible (choix pseudo-aléatoire stable)
   let lastFrame = 0;          // dernier numéro de frame vu (pour les appels externes)
@@ -917,6 +921,30 @@ export function makeRenderer(cv) {
     }
     figs.push({ y: w.py, fn: () => drawFigure(s, w.px - camX, w.py - camY, frame, w.walking, w.facing < 0) });
     figs.sort((a, b) => a.y - b.y).forEach(f => f.fn());
+
+    // RIDEAU DE PASSAGE : deux volets qui se referment puis s'ouvrent, avec le
+    // nom du lieu. Le voyage se voit, au lieu de se produire entre deux images.
+    const dt = Date.now() - passage.at;
+    if (dt >= 0 && dt < PASSAGE_MS) {
+      const k = dt / PASSAGE_MS;
+      // 0 -> 1 : fermeture jusqu'à mi-course, puis ouverture
+      const couvre = k < 0.5 ? (k / 0.5) : (1 - (k - 0.5) / 0.5);
+      const h = Math.round(CANVAS_H / 2 * Math.min(1, couvre * 1.25));
+      ctx.fillStyle = '#12202e';
+      ctx.fillRect(0, 0, CANVAS_W, h);
+      ctx.fillRect(0, CANVAS_H - h, CANVAS_W, h);
+      if (couvre > 0.55) {
+        ctx.globalAlpha = Math.min(1, (couvre - 0.55) / 0.3);
+        ctx.textAlign = 'center';
+        ctx.font = '18px system-ui,sans-serif';
+        ctx.fillText(passage.emoji, CANVAS_W / 2, CANVAS_H / 2 - 8);
+        ctx.fillStyle = '#ffe9a8';
+        ctx.font = 'bold 11px system-ui,sans-serif';
+        ctx.fillText(passage.nom, CANVAS_W / 2, CANVAS_H / 2 + 12);
+        ctx.textAlign = 'left';
+        ctx.globalAlpha = 1;
+      }
+    }
   }
 
   function render(s, mg, frame, fx) {
@@ -1794,8 +1822,14 @@ export function makeRenderer(cv) {
   /** Vrai une seule fois quand la loutre vient de rapporter la balle (récompense). */
   function consumeFetch() { if (fetchDone > 0) { fetchDone--; return true; } return false; }
 
+  /** Annonce le passage dans un lieu : rideau, nom, puis on rend la main. */
+  function flashZone(nom, emoji) {
+    if (reduced) return;                 // mouvement réduit : pas de rideau
+    passage = { at: Date.now(), nom: nom || '', emoji: emoji || '🗺️' };
+  }
+
   return {
     render, spawn, splashAt, burst, squash, xpText, pop, ring, setReduced, otterBox, callTo,
-    ballGrabbable, grabBall, dragBall, throwBall, consumeFetch
+    ballGrabbable, grabBall, dragBall, throwBall, consumeFetch, flashZone
   };
 }

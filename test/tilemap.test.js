@@ -7,7 +7,7 @@ import {
   charAt, isWater, isSolid, waterTile, groundTile, decorTile,
   moveWithCollision, zoneExit, nearestFree, safeEntry, spawnPoint,
   zoneFinds, FIND_ICON, zoneGates, ZOOM, zoneLayout, ZONE_INTRO,
-  SPECIALITE, zoneDuJour, findCount,
+  SPECIALITE, zoneDuJour, findCount, BORD_SORTIE,
   HABITANT, COFFRE, COFFRE_ZONES, habitantAt, coffreAt, HABITANT_PRES, COFFRE_LOIN,
   EPREUVE, EPREUVE_ZONES, epreuveAt
 } from '../src/tilemap.js';
@@ -459,5 +459,93 @@ test('épreuves : la championne se croise entre l\'habitant et le coffre', () =>
     const h = habitantAt(id), c = coffreAt(id);
     assert.ok(Math.hypot(e.x - h.x, e.y - h.y) > 40, id + ' : championne collée à l\'habitant');
     assert.ok(Math.hypot(e.x - c.x, e.y - c.y) > 40, id + ' : championne collée au coffre');
+  }
+});
+
+/**
+ * LE test qui manquait. Les tests de zoneExit passaient tous — mais en lui
+ * FOURNISSANT une position hors carte. Personne ne vérifiait qu'un joueur peut
+ * réellement l'atteindre. Il ne le pouvait pas : la caméra est bornée aux
+ * limites du monde, donc un toucher ne désigne jamais un point hors carte, et
+ * la loutre s'arrêtait à x≈0,6 quand il fallait px < 0. Cinq zones sur six
+ * étaient inatteignables.
+ */
+function marcheVers(zone, px, py, tx, ty) {
+  for (let i = 0; i < 6000; i++) {
+    const dx = tx - px, dy = ty - py, d = Math.hypot(dx, dy);
+    if (d <= 1.5) break;
+    const step = Math.min(1.4, d);
+    const r = moveWithCollision(zone, px, py, dx / d * step, dy / d * step);
+    if (r.x === px && r.y === py) break;          // bloquée
+    px = r.x; py = r.y;
+    const out = zoneExit(zone, px, py);
+    if (out) return { franchi: out, px, py };
+  }
+  return { franchi: null, px, py };
+}
+
+/** Une voie libre vers le bord `dir` : le marcheur va tout droit, il ne contourne pas. */
+function voieVers(zone, dir) {
+  const libre = (cx, cy) => !isSolid(zone, cx, cy);
+  if (dir === 'north' || dir === 'south') {
+    const bord = dir === 'north' ? 0 : MAP_H - 1;
+    const pas = dir === 'north' ? 1 : -1;
+    for (let cx = 0; cx < MAP_W; cx++) {
+      let ok = true;
+      for (let k = 0; k < 5; k++) if (!libre(cx, bord + pas * k)) { ok = false; break; }
+      if (ok) return { from: { x: cx * TILE + 8, y: (bord + pas * 4) * TILE + 8 },
+        to: { x: cx * TILE + 8, y: dir === 'north' ? 0 : WORLD_H } };
+    }
+  } else {
+    const bord = dir === 'west' ? 0 : MAP_W - 1;
+    const pas = dir === 'west' ? 1 : -1;
+    for (let cy = 0; cy < MAP_H; cy++) {
+      let ok = true;
+      for (let k = 0; k < 5; k++) if (!libre(bord + pas * k, cy)) { ok = false; break; }
+      if (ok) return { from: { x: (bord + pas * 4) * TILE + 8, y: cy * TILE + 8 },
+        to: { x: dir === 'west' ? 0 : WORLD_W, y: cy * TILE + 8 } };
+    }
+  }
+  return null;
+}
+
+test('franchissement : on peut VRAIMENT quitter une zone en marchant vers le bord', () => {
+  // la cible la plus extrême qu'un toucher puisse produire est le bord lui-même
+  for (const dir of ['west', 'north']) {
+    const v = voieVers('clairiere', dir);
+    assert.ok(v, 'la clairière doit offrir une voie vers le ' + dir);
+    const r = marcheVers('clairiere', v.from.x, v.from.y, v.to.x, v.to.y);
+    assert.ok(r.franchi, 'bord ' + dir + ' infranchissable (arrêtée en ' +
+      r.px.toFixed(0) + ',' + r.py.toFixed(0) + ')');
+    assert.equal(r.franchi.to, ZONES.clairiere.links[dir]);
+  }
+});
+
+test('franchissement : chaque liaison de chaque zone est réellement praticable', () => {
+  // sans quoi une zone pourrait rester inatteignable sans que rien ne le dise
+  for (const id of ids) {
+    for (const [dir, to] of Object.entries(ZONES[id].links)) {
+      const v = voieVers(id, dir);
+      assert.ok(v, id + ' : aucune voie libre vers le ' + dir);
+      const r = marcheVers(id, v.from.x, v.from.y, v.to.x, v.to.y);
+      assert.ok(r.franchi, id + ' → ' + dir + ' (' + to + ') : bord inatteignable');
+      assert.equal(r.franchi.to, to);
+    }
+  }
+});
+
+test('franchissement : on n\'est pas renvoyé aussitôt d\'où l\'on vient', () => {
+  // le point d'arrivée doit être HORS de la marge de sortie du bord opposé,
+  // sinon on ferait des allers-retours en boucle
+  for (const id of ids) {
+    for (const [dir, to] of Object.entries(ZONES[id].links)) {
+      const px = dir === 'west' ? 0 : dir === 'east' ? WORLD_W : WORLD_W / 2;
+      const py = dir === 'north' ? 0 : dir === 'south' ? WORLD_H : WORLD_H / 2;
+      const out = zoneExit(id, px, py);
+      assert.ok(out);
+      const entry = safeEntry(out.to, out.x, out.y);
+      assert.equal(zoneExit(out.to, entry.x, entry.y), null,
+        'arrivée en ' + to + ' depuis ' + id + ' : on repart aussitôt !');
+    }
   }
 });
