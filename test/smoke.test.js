@@ -891,3 +891,27 @@ test('déblocage : un bord verrouillé repousse, le niveau requis l\'ouvre', asy
   assert.equal(L.world.zone, 'lac', 'une fois le palier atteint, le bord s\'ouvre');
   assert.ok(L.records.visited.includes('lac'), 'et le lieu se découvre enfin');
 });
+
+test('confins : chaque trouvaille lointaine paie vraiment (pas de ramassage à vide)', () => {
+  // Les six trouvailles des confins n'avaient AUCUN effet : on traversait le
+  // monde le plus dur pour ramasser du vide. Chacune doit rendre quelque chose.
+  L.state.gameOver = false; L.state.away = false; L.state.divingUntil = 0;
+  L.state.sleeping = false; L.state.coach = false;
+  L.state.stage = 'adult'; L.state.hatchedAt = Date.now() - 5 * 24 * 3600 * 1000;
+  L.records.visited = ['clairiere'];
+  L.records.xp = 200000;                       // haut niveau : rien ne bloque
+  const KINDS = ['corail', 'cristal', 'glacon', 'nacre', 'pepite', 'etoile'];
+  for (const kind of KINDS) {
+    L.state.place = 'berge'; L.state.worldZone = 'clairiere';
+    $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
+    L.world.otters = []; L.world.chasseur = null; L.world.pnj = null;
+    L.world.epreuve = null; L.world.coffre = null;
+    const gAvant = L.records.gems || 0, xAvant = L.records.xp || 0;
+    const id = 'test|' + kind;
+    L.world.finds = [{ id, kind, x: L.world.px, y: L.world.py, cx: 0, cy: 0 }];
+    renderOnce();                              // stepWorld ramasse la trouvaille sous les pattes
+    assert.ok((L.records.found || []).includes(id), kind + ' : trouvaille jamais ramassée');
+    const gain = ((L.records.gems || 0) - gAvant) + ((L.records.xp || 0) - xAvant);
+    assert.ok(gain > 0, kind + ' : ramassage à vide — ni gemme ni XP');
+  }
+});

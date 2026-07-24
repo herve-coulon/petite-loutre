@@ -415,6 +415,33 @@ test('coffres : un trésor réel par lieu, et jamais deux fois le même', () => 
   }
 });
 
+test('récompenses : les confins paient de mieux en mieux à mesure qu\'on s\'enfonce', () => {
+  // le sens même du déblocage : plus un confin s'ouvre tard, plus sa récompense
+  // vaut le détour. On vérifie le butin RARE (coffre + championne), qui doit
+  // croître avec le palier — sinon aller au bout du monde ne servirait à rien.
+  const CONFINS = ['lagon', 'caverne', 'glacier', 'large', 'mine', 'cimes'];
+  const rang = { commun: 0, rare: 1, epique: 2, legendaire: 3 };
+  // triés par palier de déblocage croissant
+  const ordre = CONFINS.slice().sort((a, b) => zoneReq(a) - zoneReq(b));
+  let rarPrec = -1, gemPrec = -1, xpPrec = -1;
+  for (const id of ordre) {
+    const it = ITEMS.find(i => i.id === COFFRE[id]);
+    assert.ok(it, id + ' : coffre inconnu');
+    const rar = rang[it.rarity];
+    assert.ok(rar >= rarPrec, id + ' : coffre MOINS rare qu\'un confin plus proche');
+    rarPrec = rar;
+    // la championne : gemmes et XP suivent sa force, qui grimpe avec la profondeur
+    const e = EPREUVE[id];
+    const gem = Math.round(4 * e.force), xp = Math.round(60 * e.force);
+    assert.ok(gem >= gemPrec && xp >= xpPrec,
+      id + ' : championne moins généreuse qu\'un confin plus proche');
+    gemPrec = gem; xpPrec = xp;
+  }
+  // et le tout dernier lieu offre le nec plus ultra : un légendaire
+  assert.equal(ITEMS.find(i => i.id === COFFRE['cimes']).rarity, 'legendaire',
+    'le bout du monde doit offrir un trésor légendaire');
+});
+
 test('coffres : atteignables, stables, et à l\'écart de l\'arrivée', () => {
   for (const id of ids) {
     const c = coffreAt(id);

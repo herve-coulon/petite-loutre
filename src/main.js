@@ -777,6 +777,34 @@ function collectFind(f) {
     s.hunger = clamp(s.hunger + 10 * x2, 0, 100);
     s.energy = clamp(s.energy + 5 * x2, 0, 100);
     ui.log('🫐 Des baies sous les aiguilles — de quoi tenir longtemps.' + bis);
+  // ── Les CONFINS : gated haut, dangereux, loin de la tanière — donc les
+  //    trouvailles y paient nettement plus, et de plus en plus au fil du chemin.
+  //    Sans quoi ces lieux ne valaient pas le détour (ils ne rendaient RIEN). ──
+  } else if (f.kind === 'corail') {
+    rec.gems = (rec.gems || 0) + 2 * x2;               // le lagon : coraux monnayables
+    s.fun = clamp(s.fun + 10 * x2, 0, 100);
+    s.energy = clamp(s.energy + 8 * x2, 0, 100);       // …et l'eau tiède ravigote
+    ui.log('🪸 Un corail du lagon — ça vaut cher, et l\'eau tiède délasse.' + bis);
+  } else if (f.kind === 'cristal') {
+    gainXp(18 * x2);                                   // la caverne : ça affûte l'esprit
+    rec.gems = (rec.gems || 0) + 2 * x2;
+    ui.log('🔮 Un cristal des galeries — il aiguise l\'œil et la bourse.' + bis);
+  } else if (f.kind === 'glacon') {
+    rec.gems = (rec.gems || 0) + 2 * x2;
+    tryDrop(2.5 * x2);                                 // la glace garde des trésors
+    ui.log('🧊 Pris dans la glace du glacier, quelque chose brille…' + bis);
+  } else if (f.kind === 'nacre') {
+    rec.gems = (rec.gems || 0) + 4 * x2;               // le grand large : une fortune
+    gainXp(14 * x2);
+    ui.log('🦪 De la nacre du grand large — une petite fortune ramenée de loin.' + bis);
+  } else if (f.kind === 'pepite') {
+    rec.gems = (rec.gems || 0) + 6 * x2;               // la mine : le meilleur butin en gemmes
+    ui.log('🪙 Une pépite du filon — le plus beau butin de toute la vallée !' + bis);
+  } else if (f.kind === 'etoile') {
+    gainXp(25 * x2);                                   // les cimes : le pinacle
+    rec.gems = (rec.gems || 0) + 3 * x2;
+    tryDrop(3.5 * x2);                                 // …et les meilleures chances de trésor
+    ui.log('⭐ ' + name + ' cueille une étoile au toit du monde !' + bis);
   }
   R.spawn && R.spawn('sparkle', s.stage);
   sfx.eat(); vibrate(10);
