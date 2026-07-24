@@ -7,6 +7,9 @@ import { newState, newRecords, exportSave, importSave, loadState, loadRecords, s
 import { HATS, hatById, unlockedHats } from '../src/accessories.js';
 import { ACHIEVEMENTS, newAchievements } from '../src/achievements.js';
 import { PAL } from '../src/sprites.js';
+import { unlockedFurs } from '../src/skins.js';
+import { FUR_REMAP } from '../src/otter-art.js';
+import { COFFRE_ZONES, EPREUVE_ZONES } from '../src/tilemap.js';
 
 const T0 = 1_750_000_000_000;
 
@@ -25,6 +28,7 @@ test('chapeaux : verrouillés au départ, débloqués par les records', () => {
   rec.sleepsTotal = 10;
   rec.wins = 5;
   rec.xp = 100000; // v2.6 : l'étoile dorée et l'auréole sont des paliers de niveau
+  rec.epreuves = [...EPREUVE_ZONES]; // v3.61 : le laurier récompense les épreuves
   assert.equal(unlockedHats(rec).length, HATS.length, 'tout débloqué');
 });
 
@@ -60,6 +64,7 @@ test('succès : fashionista exige tous les chapeaux (paliers de niveau compris)'
   const rec = newRecords();
   rec.mealsTotal = 5; rec.gamesTotal = 10; rec.bathsTotal = 10;
   rec.sleepsTotal = 10; rec.wins = 5; rec.xp = 100000;
+  rec.epreuves = [...EPREUVE_ZONES];
   newAchievements(null, rec);
   assert.ok(!rec.achievements.includes('fashion'), 'couronne manquante : pas fashionista');
   rec.bestAge = 72 * H;
@@ -147,4 +152,45 @@ test('records : sauvegarde/lecture avec valeurs par défaut', () => {
   assert.equal(back.gang.name, 'Les Griffes', 'le gang survit à la sauvegarde');
   assert.equal(back.gang.wins, 2);
   assert.equal(back.seasonGifts['ete-2026'], true, 'les cadeaux réclamés persistent');
+});
+
+test('complétion : les coffres donnent un pelage, les épreuves un chapeau', () => {
+  const rec = newRecords();
+  assert.ok(!unlockedFurs(rec).includes('tresor'), 'pelage verrouillé au départ');
+  assert.ok(!unlockedHats(rec).includes('laurier'), 'laurier verrouillé au départ');
+
+  // une collection presque finie ne suffit pas : c'est tout ou rien
+  rec.chests = COFFRE_ZONES.slice(0, -1);
+  rec.epreuves = EPREUVE_ZONES.slice(0, -1);
+  assert.ok(!unlockedFurs(rec).includes('tresor'), 'il manque un coffre');
+  assert.ok(!unlockedHats(rec).includes('laurier'), 'il manque une championne');
+
+  rec.chests = [...COFFRE_ZONES];
+  assert.ok(unlockedFurs(rec).includes('tresor'), 'les 6 coffres donnent le pelage');
+  assert.ok(!unlockedHats(rec).includes('laurier'), 'mais pas le chapeau');
+
+  rec.epreuves = [...EPREUVE_ZONES];
+  assert.ok(unlockedHats(rec).includes('laurier'), 'les 6 épreuves donnent le laurier');
+});
+
+test('complétion : le pelage de trésor existe aussi pour la loutre dessinée', () => {
+  // sans son remap, la récompense s'afficherait en roux : une récompense
+  // invisible n'en est pas une
+  assert.ok('tresor' in FUR_REMAP, 'pelage sans déclinaison pour le kit');
+  assert.equal(FUR_REMAP.tresor.fur.length, 5);
+  assert.equal(FUR_REMAP.tresor.belly.length, 4);
+});
+
+test('complétion : trois succès, dont un qui exige les DEUX collections', () => {
+  const rec = newRecords();
+  rec.chests = [...COFFRE_ZONES];
+  newAchievements(null, rec);
+  assert.ok(rec.achievements.includes('coffres'), 'succès des coffres');
+  assert.ok(!rec.achievements.includes('championne'), 'pas encore les championnes');
+  assert.ok(!rec.achievements.includes('maitresse'), 'ni la maîtrise');
+
+  rec.epreuves = [...EPREUVE_ZONES];
+  newAchievements(null, rec);
+  assert.ok(rec.achievements.includes('championne'), 'succès des championnes');
+  assert.ok(rec.achievements.includes('maitresse'), 'et la maîtrise, une fois les deux');
 });

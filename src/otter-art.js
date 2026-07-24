@@ -54,6 +54,12 @@ export const FUR_REMAP = {
   braise: {
     fur: ['#6d2410', '#8c3414', '#b04c1c', '#cf6d2c', '#e79a4e'],
     belly: ['#efc19a', '#fbdcbb', '#fff0d9', '#fdead0']
+  },
+  // « Reflet de trésor » : la récompense des six coffres. Turquoise patiné,
+  // comme un coffre resté trop longtemps au fond de l'eau.
+  tresor: {
+    fur: ['#12454c', '#1c5f68', '#2f7f86', '#4aa5a6', '#7fcfc6'],
+    belly: ['#a9dcd4', '#cdefe7', '#e6faf5', '#dff5ef']
   }
 };
 

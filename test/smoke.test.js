@@ -711,3 +711,39 @@ test('épreuve : la championne propose son duel, et son trophée ne se gagne qu\
   assert.equal(L.records.epreuves.length, 1, 'le trophée ne se gagne pas deux fois');
   assert.equal(L.records.gems, gemsApres, 'ni la prime de l\'épreuve');
 });
+
+test('maîtrise : boucler les DEUX collections octroie le légendaire, une seule fois', async () => {
+  L.state.gameOver = false; L.state.away = false; L.state.stage = 'adult';
+  L.state.hatchedAt = Date.now() - 5 * 24 * 3600 * 1000;
+  L.records.xp = 100000; L.records.maitrise = false;
+  L.records.items = L.records.items.filter(i => i !== 'coeur');
+  L.records.chests = ['clairiere', 'foret', 'cascade', 'roseaux', 'lac'];   // il en manque un
+  L.records.epreuves = ['clairiere', 'foret', 'cascade', 'roseaux', 'lac', 'vallon'];
+  L.records.visited = ['vallon'];
+  L.state.place = 'berge'; L.state.worldZone = 'vallon';
+
+  $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
+  const c = L.world.coffre;
+  assert.ok(c, 'le dernier coffre est encore à ouvrir');
+  assert.equal(L.records.maitrise, false, 'pas encore maîtresse');
+
+  const gemsAvant = L.records.gems || 0;
+  L.world.px = c.x; L.world.py = c.y; L.world.tx = c.x; L.world.ty = c.y;
+  await degeler();
+  renderOnce();
+  // le coffre s'annonce d'abord ; la maîtrise s'enchaîne à la fermeture
+  assert.ok(!$('ovl-story').classList.contains('hidden'), 'le coffre s\'annonce');
+  assert.equal(L.records.maitrise, false, 'la maîtrise attend qu\'on ait lu');
+  $('btn-story-next').dispatchEvent(new window.Event('click', { bubbles: true }));
+
+  assert.equal(L.records.maitrise, true, 'maîtrise acquise');
+  assert.ok(L.records.items.includes('coeur'), 'le légendaire est octroyé');
+  assert.equal(L.records.gems, gemsAvant + 25, 'et la prime de gemmes');
+  assert.match($('story-title').textContent, /Maîtresse/);
+
+  // rejouer le déclencheur ne doit rien redonner
+  const gems2 = L.records.gems;
+  L.records.chests = [...L.records.chests];
+  $('btn-story-next').dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(L.records.gems, gems2, 'la maîtrise ne se gagne qu\'une fois');
+});

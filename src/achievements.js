@@ -3,6 +3,7 @@ import { H } from './constants.js';
 import { HATS, unlockedHats } from './accessories.js';
 import { FURS, unlockedFurs } from './skins.js';
 import { levelFromXp } from './level.js';
+import { COFFRE_ZONES, EPREUVE_ZONES } from './tilemap.js';
 
 export const ACHIEVEMENTS = [
   { id: 'naissance', icon: '🥚', name: 'Première éclosion', desc: 'Faire éclore un œuf',
@@ -38,7 +39,19 @@ export const ACHIEVEMENTS = [
   { id: 'fidele', icon: '🔥', name: 'Fidèle au poste', desc: 'Revenir 7 jours d\'affilée',
     test: (s, r) => (r.streakBest || 0) >= 7 },
   { id: 'inseparables', icon: '💛', name: 'Inséparables', desc: 'Revenir 30 jours d\'affilée',
-    test: (s, r) => (r.streakBest || 0) >= 30 }
+    test: (s, r) => (r.streakBest || 0) >= 30 },
+  // Les deux collections de la vallée, puis les deux ensemble : c'est le bout
+  // du chemin d'exploration, il fallait qu'il se voie au palmarès.
+  { id: 'coffres', icon: '🧰', name: 'Vide-coffres',
+    desc: 'Ouvrir les ' + COFFRE_ZONES.length + ' coffres de la vallée',
+    test: (s, r) => (r.chests || []).length >= COFFRE_ZONES.length },
+  { id: 'championne', icon: '🥇', name: 'Championne de la vallée',
+    desc: 'Battre les ' + EPREUVE_ZONES.length + ' championnes',
+    test: (s, r) => (r.epreuves || []).length >= EPREUVE_ZONES.length },
+  { id: 'maitresse', icon: '🏞️', name: 'Maîtresse de la vallée',
+    desc: 'Tous les coffres ET toutes les championnes',
+    test: (s, r) => (r.chests || []).length >= COFFRE_ZONES.length
+      && (r.epreuves || []).length >= EPREUVE_ZONES.length }
 ];
 
 /** Marque les succès nouvellement obtenus dans rec et les retourne. */

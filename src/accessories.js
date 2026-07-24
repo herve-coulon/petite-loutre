@@ -2,6 +2,7 @@
 // donc un chapeau gagné reste acquis même après avoir recommencé avec un nouvel œuf.
 import { H } from './constants.js';
 import { levelFromXp } from './level.js';
+import { EPREUVE_ZONES } from './tilemap.js';
 
 export const HATS = [
   {
@@ -35,6 +36,23 @@ export const HATS = [
       '..W.W...........',
       '.WYYYW..........',
       '..WYW...........'
+    ]
+  },
+  {
+    // Récompense de collection : on ne l'obtient qu'en battant les six
+    // championnes de la vallée. Le laurier se voit sur la tête, partout —
+    // c'est le trophée qu'on porte plutôt qu'on range.
+    id: 'laurier', bonus: { xp: 1.18, fun: 1.10 }, icon: '🥇', name: 'Laurier des épreuves',
+    cond: 'Battre les ' + EPREUVE_ZONES.length + ' championnes de la vallée',
+    test: r => (r.epreuves || []).length >= EPREUVE_ZONES.length,
+    // laurier DORÉ : la palette des sprites n'a pas de vert (G y est un gris
+    // bleuté), et un laurier grisâtre n'aurait rien d'un trophée
+    // Couronne BASSE et large : deux branches montantes se lisaient comme des
+    // bois de cerf. Les feuilles restent près du bandeau, qui ceint la tête.
+    rows: [
+      '..Y.Y......Y.Y..',
+      '.YOYOY....YOYOY.',
+      '..YYYYYYYYYYYY..'
     ]
   },
   {

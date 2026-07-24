@@ -3,6 +3,7 @@ import { H } from './constants.js';
 import { bonusOf, mergeBonus } from './items.js';
 import { levelFromXp } from './level.js';
 import { hatById } from './accessories.js';
+import { COFFRE_ZONES } from './tilemap.js';
 
 // Un pelage remplace des couleurs de la palette au dessin (B corps, C ventre, D contour).
 export const FURS = [
@@ -19,7 +20,14 @@ export const FURS = [
   { id: 'bonbon', bonus: { luck: 1.18 }, icon: '🍬', name: 'Rose bonbon', cond: 'Gagner 3 combats',
     test: r => r.wins >= 3, map: { B: '#d97ba6', C: '#f7d4e3', D: '#7a3a58' } },
   { id: 'braise', bonus: { heatResist: 0.5 }, icon: '🔥', name: 'Braise', cond: 'Série de 7 jours d\'affilée',
-    test: r => (r.streakBest || 0) >= 7, map: { B: '#b5502a', C: '#f2b28c', D: '#571d0c' } }
+    test: r => (r.streakBest || 0) >= 7, map: { B: '#b5502a', C: '#f2b28c', D: '#571d0c' } },
+  // Récompense de collection : le pelage ne s'achète ni ne se farme, il se
+  // MÉRITE en vidant les six coffres de la vallée. C'est la seule trace qu'on
+  // porte sur soi en permanence — d'où le choix d'un pelage plutôt qu'un objet.
+  { id: 'tresor', bonus: { luck: 1.25, xp: 1.10 }, icon: '🧰', name: 'Reflet de trésor',
+    cond: 'Ouvrir les ' + COFFRE_ZONES.length + ' coffres de la vallée',
+    test: r => (r.chests || []).length >= COFFRE_ZONES.length,
+    map: { B: '#2f7f86', C: '#9fe6dd', D: '#12454c' } }
 ];
 
 // Petits décors dessinés sur la berge.

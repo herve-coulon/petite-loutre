@@ -27,7 +27,7 @@ import { sfx, vibrate, setMuted, setVolume, getVolume } from './audio.js';
 import * as ui from './ui.js';
 import { registerSW, setupInstall, requestPersistentStorage, isIOS, isStandalone } from './pwa.js';
 import { unlockedHats, hatById } from './accessories.js';
-import { unlockedFurs, unlockedDecors, equipBonus } from './skins.js';
+import { unlockedFurs, unlockedDecors, equipBonus, furById } from './skins.js';
 import { newAchievements } from './achievements.js';
 import { encodeCard, decodeCard, newBattle, playTurn, wildFoe, makeFighter } from './battle.js';
 import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
@@ -50,6 +50,7 @@ const storage = (() => { try { return window.localStorage; } catch (e) { return 
 let s = null;
 let rec = null;               // records globaux (toutes loutres confondues)
 let prevHats = new Set();     // pour détecter les nouveaux déblocages
+let prevFurs = new Set();     // idem pour les pelages, qu'on n'annonçait pas
 let mg = null;
 let battle = null;
 let frame = 0;
@@ -546,6 +547,7 @@ function gagnerEpreuve(zoneId) {
   });
   ui.log('⚔️ ' + e.nom + ' est battue ! Épreuves de la vallée : ' +
     epreuvesGagnees() + '/' + EPREUVE_ZONES.length + '.');
+  verifierMaitriseVallee();
 }
 
 const coffreOuvert = (zoneId) => !!(rec && (rec.chests || []).includes(zoneId));
@@ -600,6 +602,37 @@ function parlerAuPnj(pnj) {
   ui.showStory({ emoji: pnj.emoji, title: pnj.nom + ' — ' + pnj.role, lines: lignes, cta: 'MERCI !' });
 }
 
+/**
+ * Les DEUX collections bouclées : c'est le bout du chemin d'exploration de la
+ * vallée. Un légendaire qu'on ne peut obtenir autrement, octroyé une seule
+ * fois — le drapeau évite de le redonner si le joueur l'avait déjà déniché.
+ */
+function verifierMaitriseVallee() {
+  if (!rec || rec.maitrise) return;
+  if (coffresOuverts() < COFFRE_ZONES.length) return;
+  if (epreuvesGagnees() < EPREUVE_ZONES.length) return;
+  rec.maitrise = true;
+  const it = itemById('coeur');
+  const neuf = it && !rec.items.includes(it.id);
+  if (neuf) rec.items.push(it.id);
+  rec.gems = (rec.gems || 0) + 25;
+  gainXp(300);
+  persistRec();
+  sfx.levelup(); vibrate([25, 50, 25, 50, 25]);
+  if (!s.gameOver && s.stage !== 'egg') R.burst('confetti', 40, s.stage);
+  ui.showStory({
+    emoji: '🏞️', title: 'Maîtresse de la vallée',
+    lines: [
+      'Les ' + COFFRE_ZONES.length + ' coffres ouverts, les ' + EPREUVE_ZONES.length +
+        ' championnes battues : plus un recoin de la vallée ne t\'est étranger.',
+      it ? (it.emoji + ' ' + it.name + ' — ' + RARITIES[it.rarity].label.toLowerCase() +
+        (neuf ? ', à toi.' : ', un second n\'est pas de trop.')) : '',
+      '💎 +25 gemmes · +300 XP'
+    ].filter(Boolean),
+    cta: 'RIEN NE ME RÉSISTE'
+  });
+}
+
 /** Ouvrir le coffre d'un lieu : un trésor garanti, une seule fois. */
 function ouvrirCoffre(c) {
   if (!rec || coffreOuvert(c.zone)) return;
@@ -621,7 +654,8 @@ function ouvrirCoffre(c) {
   if (!s.gameOver && s.stage !== 'egg') R.burst('confetti', 24, s.stage);
   // « Le coffre du » + « La forêt » donnait « du la forêt » : on met le lieu
   // en tête, la seule tournure juste pour les six noms (Le/La/Les)
-  ui.showStory({ emoji: '🧰', title: lieu + ' — un coffre oublié', lines: lignes, cta: 'SUPERBE !' });
+  ui.showStory({ emoji: '🧰', title: lieu + ' — un coffre oublié', lines: lignes, cta: 'SUPERBE !' },
+    verifierMaitriseVallee);   // enchaîné : sinon l'écran de maîtrise l'écraserait
   ui.updateHUD(s, mg, rec);
 }
 
@@ -1280,6 +1314,19 @@ function checkUnlocks() {
   }
   prevHats = new Set(nowUnlocked);
 
+  // les pelages se débloquaient EN SILENCE : on gagnait une récompense sans
+  // jamais l'apprendre. Ils s'annoncent comme les chapeaux.
+  const nowFurs = unlockedFurs(rec);
+  for (const id of nowFurs) {
+    if (!prevFurs.has(id)) {
+      const f = furById(id);
+      ui.toast('🎨 Pelage débloqué : ' + f.name + ' !');
+      if (s && !s.gameOver && s.stage !== 'egg') R.burst('sparkle', 12, s.stage);
+      sfx.evolve(); vibrate([15, 30, 15]);
+    }
+  }
+  prevFurs = new Set(nowFurs);
+
   const got = newAchievements(s, rec);
   for (const a of got) {
     ui.toast(a.icon + ' Succès : ' + a.name + ' !');
@@ -1581,6 +1628,7 @@ function boot() {
 
   rec = loadRecords(storage);
   prevHats = new Set(unlockedHats(rec));
+  prevFurs = new Set(unlockedFurs(rec));
   ui.renderLevel(rec);
   refreshGift();
 
@@ -1971,6 +2019,7 @@ function boot() {
       rec = r.rec;
       setMuted(s.mute);
       prevHats = new Set(unlockedHats(rec));
+  prevFurs = new Set(unlockedFurs(rec));
       const { events } = simulateOffline(s, now());
       applyEvents(events, true);
       persist(); persistRec();
