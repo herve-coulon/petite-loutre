@@ -506,6 +506,24 @@ function discoverZone(zoneId) {
   return true;
 }
 
+/**
+ * Voyage depuis la carte du profil : on se rend directement dans un lieu déjà
+ * découvert, au point d'entrée de la zone. Refusé si l'on n'est pas en balade
+ * (la carte sert alors seulement à consulter) ou si le lieu est inconnu.
+ */
+/** Le voyage n'est proposé que pendant une balade ; sinon la carte se consulte. */
+function worldTravelHandler() {
+  return (s && s.place === 'monde' && world) ? travelTo : null;
+}
+
+function travelTo(zoneId) {
+  if (!world || !isVisited(zoneId) || zoneId === world.zone) return false;
+  const p = spawnPoint(zoneId);
+  goToZone(zoneId, p.x, p.y);
+  ui.hideOverlay('ovl-menu');
+  return true;
+}
+
 /** Change de zone : nouvelle carte, nouvelles loutres, on entre par le bon bord. */
 function goToZone(zoneId, px, py) {
   const p = safeEntry(zoneId, px, py);
@@ -637,7 +655,7 @@ function befriend(o) {
     ui.toast('Escouade complète (5) 🦦'); closeEncounter(false); return;
   }
   recruit(rec.gang, o); markRecruited(o.id); o.gone = true;
-  persistRec(); ui.renderProfile(s, rec);
+  persistRec(); ui.renderProfile(s, rec, worldTravelHandler());
   ui.log('🤝 ' + o.name + ' rejoint « ' + rec.gang.name + ' » !');
   ui.toast('🤝 ' + o.name + ' rejoint ton escouade !');
   closeEncounter(true);
@@ -1612,7 +1630,7 @@ function boot() {
     create: (name, emblem) => {
       rec.gang = makeGang(name, emblem, s);
       persistRec(); sfx.happy(); vibrate(12);
-      ui.renderProfile(s, rec); refreshGang();
+      ui.renderProfile(s, rec, worldTravelHandler()); refreshGang();
     },
     recruit: (c) => {
       if (!rec.gang || rec.gang.members.length >= MAX_MEMBERS) return;
@@ -1620,7 +1638,7 @@ function boot() {
       if (recruit(rec.gang, c)) {
         rec.xp -= c.cost; markRecruited(c.id);
         persistRec(); sfx.happy(); vibrate(12);
-        ui.renderProfile(s, rec); refreshGang();
+        ui.renderProfile(s, rec, worldTravelHandler()); refreshGang();
       }
     },
     battle: () => {
@@ -1641,7 +1659,7 @@ function boot() {
       }
       persistRec();
       if (res.winner === 'a') { sfx.happy(); vibrate([15, 30, 15]); } else { sfx.press(); vibrate(20); }
-      ui.renderProfile(s, rec);
+      ui.renderProfile(s, rec, worldTravelHandler());
       ui.renderGangResult(res, rival, rec.gang, gangHandlers);
     },
     back: () => refreshGang()
@@ -1688,7 +1706,7 @@ function boot() {
   };
 
   // La pastille de niveau ouvre l'écran « Profil de la loutre ».
-  $('lvl-badge').addEventListener('click', () => { sfx.press(); ui.renderProfile(s, rec); ui.showOverlay('ovl-menu'); });
+  $('lvl-badge').addEventListener('click', () => { sfx.press(); ui.renderProfile(s, rec, worldTravelHandler()); ui.showOverlay('ovl-menu'); });
   $('m-gear').addEventListener('click', () => { ui.hideOverlay('ovl-menu'); openSettings(); });
   $('btn-set-close').addEventListener('click', () => ui.hideOverlay('ovl-set'));
   $('btn-copy').addEventListener('click', async () => {

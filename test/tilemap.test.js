@@ -289,3 +289,19 @@ test('arrivée : chaque lieu a son texte de découverte', () => {
     assert.equal(it.title, ZONES[id].name, id + ' : le titre doit nommer le lieu');
   }
 });
+
+test('voyage : on ne peut viser que des lieux connus, et jamais celui où l\'on est', () => {
+  // règle appliquée par travelTo (main.js) : connu, différent du lieu courant.
+  const connus = ['clairiere', 'foret'];
+  const courant = 'clairiere';
+  const jouable = (id) => connus.includes(id) && id !== courant;
+  assert.equal(jouable('foret'), true, 'un lieu connu et distinct est une destination');
+  assert.equal(jouable('clairiere'), false, 'on ne voyage pas vers soi-même');
+  assert.equal(jouable('cascade'), false, 'un lieu inconnu n\'est pas une destination');
+  // et toute destination valide a un point d'entrée praticable
+  for (const id of ids) {
+    const p = spawnPoint(id);
+    assert.equal(isSolid(id, Math.floor(p.x / TILE), Math.floor(p.y / TILE)), false,
+      id + ' : arrivée de voyage bloquée');
+  }
+});

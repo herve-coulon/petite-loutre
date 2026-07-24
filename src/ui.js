@@ -13,7 +13,7 @@ import { traitById, bondLevel } from './personality.js';
 import { gangPower, fighterPower, MAX_MEMBERS } from './gang.js';
 import { makeFighter, encodeCard } from './battle.js';
 import { paintOtter } from './render.js';
-import { ZONES, ZONE_INTRO, zoneLayout } from './tilemap.js';
+import { ZONES, ZONE_INTRO, FIND_ICON, zoneLayout } from './tilemap.js';
 
 const $ = id => document.getElementById(id);
 const setTxt = (id, v) => { const e = $(id); if (e) e.textContent = v; };
@@ -118,7 +118,7 @@ export function renderLevel(rec) {
 }
 
 /** Écran « Profil de la loutre » : portrait + slots, carte d'identité, onglets. */
-export function renderProfile(s, rec) {
+export function renderProfile(s, rec, onTravel) {
   s = s || {}; rec = rec || {};
   const L = levelFromXp(rec.xp || 0);
   const hat = HATS.find(h => h.id === s.hat);
@@ -155,7 +155,7 @@ export function renderProfile(s, rec) {
   setTxt('prof-gang', (gang && gang.name) ? ((gang.emblem || '🦦') + ' ' + gang.name) : 'Aucune');
   setTxt('prof-streak', streak);
   // la carte de la vallée fait partie du profil : un seul point d'appel
-  renderValleyMap(rec, s.place === 'monde' ? (s.worldZone || null) : null);
+  renderValleyMap(rec, s.place === 'monde' ? (s.worldZone || null) : null, onTravel);
 }
 
 /**
@@ -163,7 +163,7 @@ export function renderProfile(s, rec) {
  * donc elle ne peut pas mentir sur la géographie. Les lieux non découverts
  * restent des points d'interrogation — il reste quelque chose à trouver.
  */
-export function renderValleyMap(rec, currentZone) {
+export function renderValleyMap(rec, currentZone, onTravel) {
   const grid = $('pm-grid'); if (!grid) return;
   const layout = zoneLayout();
   const vus = (rec && rec.visited) || [];
@@ -171,23 +171,43 @@ export function renderValleyMap(rec, currentZone) {
   const cols = Math.max(...Object.values(layout).map(p => p.col)) + 1;
   const rows = Math.max(...Object.values(layout).map(p => p.row)) + 1;
   setTxt('pm-count', vus.length + '/' + ids.length);
+  setTxt('pm-hint', onTravel ? 'Touche un lieu connu pour t\'y rendre.' : '');
   grid.innerHTML = '';
   grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const id = ids.find(k => layout[k] && layout[k].col === c && layout[k].row === r);
-      const cell = document.createElement('div');
-      cell.className = 'pm-cell';
-      if (!id) { cell.classList.add('empty'); grid.appendChild(cell); continue; }
+      if (!id) {
+        const vide = document.createElement('div');
+        vide.className = 'pm-cell empty';
+        grid.appendChild(vide);
+        continue;
+      }
       const connu = vus.includes(id);
       const ici = id === currentZone;
+      // un lieu connu (et pas celui où l'on est) devient un vrai bouton de voyage
+      const jouable = !!onTravel && connu && !ici;
+      const cell = document.createElement(jouable ? 'button' : 'div');
+      cell.className = 'pm-cell';
       if (!connu) cell.classList.add('unknown');
       if (ici) cell.classList.add('here');
+      if (jouable) {
+        cell.classList.add('go');
+        cell.type = 'button';
+        cell.setAttribute('aria-label', 'Aller à ' + ZONES[id].name);
+        cell.addEventListener('click', () => onTravel(id));
+      }
       const ic = document.createElement('span'); ic.className = 'pm-ic';
       ic.textContent = connu ? ((ZONE_INTRO[id] && ZONE_INTRO[id].emoji) || '📍') : '❔';
       const nm = document.createElement('span'); nm.className = 'pm-nm';
       nm.textContent = connu ? ZONES[id].name : '???';
       cell.appendChild(ic); cell.appendChild(nm);
+      // ce qu'on y trouve : aide à choisir où aller
+      if (connu && ZONES[id].find) {
+        const f = document.createElement('span'); f.className = 'pm-find';
+        f.textContent = FIND_ICON[ZONES[id].find.kind] || '';
+        cell.appendChild(f);
+      }
       grid.appendChild(cell);
     }
   }
