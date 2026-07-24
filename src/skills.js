@@ -17,27 +17,23 @@ export const TECHNIQUES = [
   {
     id: 'riposte', icon: '↩️', name: 'Riposte affûtée',
     cond: 'Remporter 5 duels',
-    desc: 'Tes ripostes d\'esquive font moitié plus mal.',
+    desc: 'Tes parades ripostent 50 % plus fort.',
     test: r => (r.wins || 0) >= 5,
     effet: { riposte: 1.5 }
   },
   {
     id: 'depart', icon: '⚡', name: 'Départ lancé',
     cond: 'Livrer 15 duels',
-    desc: 'Tu commences chaque duel avec un cran d\'élan.',
+    desc: 'Tu entames chaque duel avec un cran de combo — l\'ouverture vient plus vite.',
     test: r => (r.battles || 0) >= 15,
-    effet: { elanDepart: 1 }
+    effet: { comboDepart: 1 }
   },
   {
     id: 'percee', icon: '💥', name: 'Percée',
     cond: 'Battre 3 championnes de la vallée',
-    desc: 'Quand ta charge lourde traverse une esquive, elle passe presque entière.',
+    desc: 'Tes frappes d\'ouverture font bien plus mal.',
     test: r => (r.epreuves || []).length >= 3,
-    // Abaisser le SEUIL de percée supprimait le contre de l'esquive : la frappe
-    // devenait imparable et le triangle s'effondrait (mesuré : 0 % -> 100 % de
-    // victoires à elle seule, quelle que soit la difficulté). On renforce donc
-    // ce qui passe, pas le moment où ça passe.
-    effet: { perceeForce: 0.85 }
+    effet: { frappe: 1.35 }
   },
   {
     id: 'cuirasse', icon: '🛡️', name: 'Cuirasse',
@@ -49,17 +45,17 @@ export const TECHNIQUES = [
   {
     id: 'souffle', icon: '🌬️', name: 'Second souffle',
     cond: 'Ouvrir 4 coffres de la vallée',
-    desc: 'Sous 25 % de PV, tu regagnes un cran d\'élan — une fois par duel.',
+    desc: 'Sous 25 % de PV, un coup fatal est encaissé sans dommage — une fois par duel.',
     test: r => (r.chests || []).length >= 4,
     effet: { secondSouffle: true }
   },
   {
     id: 'maitrise', icon: '🏞️', name: 'Maîtrise de la vallée',
     cond: 'Tous les coffres ET toutes les championnes',
-    desc: 'Élan maximal porté à 4 : une charge complète devient dévastatrice.',
+    desc: 'Ta fenêtre de parade s\'élargit : parer devient bien plus facile.',
     test: r => (r.chests || []).length >= COFFRE_ZONES.length
       && (r.epreuves || []).length >= EPREUVE_ZONES.length,
-    effet: { elanMax: 4 }
+    effet: { fenetre: 1.35 }
   },
   // ── Techniques de MINI-JEU ──────────────────────────────────────────────
   // Les mini-jeux sont durcis (v3.64) : sans contrepartie ils décourageraient.
@@ -128,12 +124,12 @@ export function combatBuffs(rec) {
   const out = {};
   for (const id of unlockedTechniques(rec)) {
     const e = techniqueById(id).effet;
-    if (e.riposte) out.riposte = (out.riposte || 1) * e.riposte;
-    if (e.force) out.force = (out.force || 1) * e.force;
-    if (e.encaisse) out.encaisse = (out.encaisse || 1) * e.encaisse;
-    if (e.elanDepart) out.elanDepart = (out.elanDepart || 0) + e.elanDepart;
-    if (e.elanMax) out.elanMax = Math.max(out.elanMax || 0, e.elanMax);
-    if (e.perceeForce) out.perceeForce = Math.max(out.perceeForce || 0, e.perceeForce);
+    if (e.riposte) out.riposte = (out.riposte || 1) * e.riposte;      // ×dégâts de riposte
+    if (e.force) out.force = (out.force || 1) * e.force;              // ×tous mes dégâts
+    if (e.frappe) out.frappe = (out.frappe || 1) * e.frappe;         // ×dégâts d'ouverture
+    if (e.encaisse) out.encaisse = (out.encaisse || 1) * e.encaisse; // ×dégâts subis (<1)
+    if (e.fenetre) out.fenetre = Math.max(out.fenetre || 1, e.fenetre); // ×largeur de parade
+    if (e.comboDepart) out.comboDepart = (out.comboDepart || 0) + e.comboDepart;
     if (e.secondSouffle) out.secondSouffle = true;
   }
   return out;

@@ -222,6 +222,28 @@ button.pm-cell.go:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,5
 .bt-tag{font-size:11px; font-weight:700; color:var(--ink); white-space:nowrap;
   overflow:hidden; text-overflow:ellipsis; max-width:100%;}
 .bt-vs{font-size:20px; padding-bottom:22px;}
+
+/* ── Duel réflexe : le télégraphe de parade ─────────────────────────────── */
+.bt-combo{min-height:20px; text-align:center; font-weight:800; font-size:14px;
+  letter-spacing:2px; color:#b8860b; margin:2px 0;}
+.bt-tele{position:relative; height:26px; margin:4px 0 8px; border:2px solid var(--ink);
+  border-radius:8px; background:var(--track); overflow:hidden;}
+.bt-tele.dim{opacity:.4;}
+.bt-tele.strike{background:rgba(242,193,78,.35);}
+.bt-tele-band{position:absolute; top:0; bottom:0;}
+.bt-tele-band.ok{background:rgba(95,201,224,.30);}          /* fenêtre de blocage */
+.bt-tele-band.perfect{background:rgba(79,139,118,.55);}     /* fenêtre parfaite */
+.bt-tele-line{position:absolute; top:-2px; bottom:-2px; width:3px; margin-left:-1px;
+  background:var(--ink);}                                    /* l'impact */
+.bt-tele-cursor{position:absolute; top:-3px; bottom:-3px; width:4px; margin-left:-2px;
+  background:#e5484d; box-shadow:0 0 4px #e5484d;}           /* le curseur qui balaie */
+.bt-feedback{text-align:center; font-weight:700; min-height:30px;}
+.bt-feedback.perfect{color:#2e8b57;}
+.bt-feedback.hurt{color:#e5484d;}
+.bt-feedback.strike,.bt-feedback.open{color:#b8860b;}
+#bt-strike{background:rgba(242,193,78,.5);}
+#bt-parry:disabled,#bt-strike:disabled{opacity:.4;}
+
 .bt-friend{margin-top:12px; text-align:left;}
 .bt-friend summary{cursor:pointer; font-size:12px; font-weight:700; color:var(--ink); padding:6px 0;}
 

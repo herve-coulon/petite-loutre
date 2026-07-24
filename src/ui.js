@@ -11,7 +11,7 @@ import { seasonInfo } from './seasons.js';
 import { ITEMS, RARITIES, MILESTONES, describeBonus, itemById, cosmeticPrice, treasurePrice } from './items.js';
 import { traitById, bondLevel } from './personality.js';
 import { gangPower, fighterPower, MAX_MEMBERS } from './gang.js';
-import { makeFighter, encodeCard, ELAN_MAX } from './battle.js';
+import { makeFighter, encodeCard, OPEN_MS, COMBO_OPEN } from './battle.js';
 import { TECHNIQUES, unlockedTechniques } from './skills.js';
 import { equipBonus } from './skins.js';
 import { paintOtter } from './render.js';
@@ -709,24 +709,64 @@ function renderTechniques(rec, s) {
 }
 
 /** Jauge d'élan : « ⚡⚡· » — la ressource doit se LIRE, sinon on choisit à l'aveugle. */
-const elanTxt = (n) => '⚡'.repeat(n || 0) + '·'.repeat(Math.max(0, ELAN_MAX - (n || 0)));
+const comboTxt = (n) => n > 0 ? '🔥 combo ×' + n + ' '.repeat(0) + '▸'.repeat(Math.min(n, COMBO_OPEN)) : '';
 
-export function updateBattleUI(b) {
+/**
+ * Rend l'arène du duel réflexe à l'instant `now`. Appelée CHAQUE IMAGE tant que
+ * le duel tourne : le curseur du télégraphe balaie en direct, on pare quand il
+ * traverse la zone. La géométrie se déduit de l'état — rien n'est animé « à
+ * l'aveugle », tout suit l'horloge du moteur.
+ */
+export function updateBattleUI(b, now) {
   $('bt-setup').classList.add('hidden');
   $('bt-arena').classList.remove('hidden');
   setTxt('bt-mename', b.me.name + ' ' + b.me.hp + '/' + b.me.maxHp);
   setTxt('bt-foename', b.foe.name + ' ' + b.foe.hp + '/' + b.foe.maxHp);
   $('bt-mehp').style.width = (b.me.hp / b.me.maxHp * 100) + '%';
   $('bt-foehp').style.width = (b.foe.hp / b.foe.maxHp * 100) + '%';
-  setTxt('bt-meelan', elanTxt(b.me.elan));
-  setTxt('bt-foeelan', elanTxt(b.foe.elan));
-  $('bt-log').innerHTML = b.log.slice(-4).join('<br>');
-  // Le triangle ET le fait qu'elle observe : sans cette dernière information,
-  // se faire contrer en boucle passerait pour de l'arbitraire alors que c'est
-  // la règle du jeu. Rien n'est tiré au sort, tout se lit.
+  setTxt('bt-meelan', ''); setTxt('bt-foeelan', '');
+  setTxt('bt-combo', comboTxt(b.combo));
+
+  const fb = b.feedback || { text: '', kind: '' };
+  const log = $('bt-log');
+  log.textContent = fb.text || '';
+  log.className = 'small bt-feedback ' + (fb.kind || '');
+
+  const tele = $('bt-tele');
+  const cursor = $('bt-tele-cursor'), line = $('bt-tele-line');
+  const perf = $('bt-tele-perfect'), ok = $('bt-tele-ok');
+  const setBand = (el, aPct, bPct) => { el.style.left = Math.max(0, aPct) + '%'; el.style.width = Math.max(0, Math.min(100, bPct) - Math.max(0, aPct)) + '%'; };
+
+  if (!b.over && b.phase === 'wind' && now != null) {
+    // le curseur balaie de windStart à impact+wOk ; on pare quand il croise le vert
+    tele.className = 'bt-tele';
+    const total = b.windup + b.wOk;
+    const pct = (t) => (t - b.windStart) / total * 100;
+    setBand(ok, pct(b.impactAt - b.wOk), pct(b.impactAt + b.wOk));
+    setBand(perf, pct(b.impactAt - b.wPerfect), pct(b.impactAt + b.wPerfect));
+    line.style.left = pct(b.impactAt) + '%'; line.style.display = '';
+    cursor.style.display = '';
+    cursor.style.left = Math.max(0, Math.min(100, pct(now))) + '%';
+  } else if (!b.over && b.phase === 'opening' && now != null) {
+    // fenêtre de FRAPPE : toute la barre est « bonne », le curseur file jusqu'au bout
+    tele.className = 'bt-tele strike';
+    setBand(ok, 0, 100); setBand(perf, 0, 0);
+    line.style.display = 'none';
+    cursor.style.display = '';
+    const openStart = b.openUntil - OPEN_MS;
+    cursor.style.left = Math.max(0, Math.min(100, (now - openStart) / OPEN_MS * 100)) + '%';
+  } else {
+    // intro / répit / fin : pas de fenêtre active
+    tele.className = 'bt-tele dim';
+    setBand(ok, 0, 0); setBand(perf, 0, 0);
+    line.style.display = 'none'; cursor.style.display = 'none';
+  }
+
   setTxt('bt-tip', b.over ? ''
-    : '🌊 punit 🔥 · 💨 punit 🌊 · 🔥 punit 💨 — elle contre tes habitudes');
-  ['bt-frappe', 'bt-esquive', 'bt-elan'].forEach(id => { $(id).disabled = b.over; });
+    : b.phase === 'opening' ? '⚡ FRAPPE tant que l\'ouverture dure !'
+      : '🛡️ PARE quand le curseur atteint la zone verte — pile à l\'impact = riposte + combo');
+  $('bt-parry').disabled = b.over || b.phase !== 'wind';
+  $('bt-strike').disabled = b.over || b.phase !== 'opening';
   const again = $('bt-again'); if (again) again.classList.toggle('hidden', !b.over);
   paintOtter($('bt-mepic'), b.me, 3, false);
   paintOtter($('bt-foepic'), b.foe, 3, true);

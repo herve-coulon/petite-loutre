@@ -29,7 +29,7 @@ import { registerSW, setupInstall, requestPersistentStorage, isIOS, isStandalone
 import { unlockedHats, hatById } from './accessories.js';
 import { unlockedFurs, unlockedDecors, equipBonus, furById, decorById } from './skins.js';
 import { newAchievements } from './achievements.js';
-import { encodeCard, decodeCard, newBattle, playTurn, wildFoe, makeFighter } from './battle.js';
+import { encodeCard, decodeCard, newBattle, stepBattle, duelInput, wildFoe, makeFighter } from './battle.js';
 import { combatBuffs, jeuBuffs, unlockedTechniques, techniqueById } from './skills.js';
 import { chasseurRode, newChasseur, stepChasseur, DEGATS_CAPTURE } from './chasseur.js';
 import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
@@ -56,6 +56,7 @@ let prevHats = new Set();     // pour détecter les nouveaux déblocages
 let prevFurs = new Set();     // idem pour les pelages, qu'on n'annonçait pas
 let mg = null;
 let battle = null;
+let battleDone = false;      // le dénouement (récompenses) ne se joue qu'une fois
 let frame = 0;
 let dragFood = null;          // {x,y} quand on glisse le poisson vers la loutre (px canvas)
 let draggingBall = false;     // vrai pendant qu'on tient la balle pour la lancer
@@ -1131,6 +1132,31 @@ function closeEncounter(befriended) {
 let battleStarter = null;   // pont vers le lanceur de combat (défini au boot)
 let epreuveEnCours = null;  // zone dont on affronte la championne, s'il y a lieu
 
+/**
+ * Fin de duel : récompenses (une seule fois). Déclenché soit par une entrée qui
+ * porte le coup de grâce, soit par la boucle quand le moteur conclut de lui-même
+ * (une loutre tombe à zéro entre deux appuis). Le drapeau battleDone évite le
+ * double comptage.
+ */
+function onDuelOver() {
+  if (!battle || !battle.over || battleDone) return;
+  battleDone = true;
+  if (battle.winner === 'me') {
+    rec.wins++;
+    s.fun = clamp(s.fun + 12, 0, 100);
+    gainXp(XP.win);
+    sfx.happy(); vibrate([20, 40, 20]); ui.toast('🏆 Victoire de ' + battle.me.name + ' !');
+    tryDrop(1.5);                       // une victoire peut rapporter un trésor
+    if (epreuveEnCours) gagnerEpreuve(epreuveEnCours);
+  } else {
+    s.fun = clamp(s.fun + 2, 0, 100);
+    sfx.sad(); ui.toast('💔 Défaite… ça se rejouera !');
+    if (epreuveEnCours) ui.log('⚔️ L\'épreuve reste à passer — reviens quand tu seras prête.');
+  }
+  epreuveEnCours = null;
+  persist(); persistRec(); checkUnlocks();
+}
+
 const encHandlers = {
   offer: () => {
     const o = encounterOtter; if (!o) return;
@@ -1858,6 +1884,14 @@ function loop() {
     if (res) (mg.mode === 'slide' ? endSlide : endGame)(res);
   }
   if (!frozen && s && s.place === 'monde') stepWorld();
+  // Le DUEL RÉFLEXE avance en temps réel : le moteur fait naître et tomber les
+  // coups au fil de l'horloge, et l'arène se redessine (curseur du télégraphe)
+  // à chaque image tant que le combat tourne.
+  if (battle && !battle.over) {
+    stepBattle(battle, now());
+    ui.updateBattleUI(battle, now());
+    if (battle.over) onDuelOver();
+  }
   R.render(s, mg, frame, {
     wobble: s && now() < wobbleUntil,
     diving: diving(),
@@ -1955,15 +1989,16 @@ function boot() {
   /** Lance un combat contre la carte donnée. */
   const startBattle = (card, seed, foeMult) => {
     if (!card) return;
-    // l'équipement porté ET les techniques apprises entrent enfin dans le duel
+    // l'équipement porté ET les techniques apprises entrent dans le duel réflexe.
+    // now() amorce l'horloge : la boucle rAF avance ensuite le duel image par image.
     battle = newBattle(s, card, seed,
-      { bonus: equipBonus(s), buffs: combatBuffs(rec), foeMult: foeMult || 1 });
-    battle.log.push('Le combat commence ! ' + battle.me.name + ' vs ' + battle.foe.name);
+      { bonus: equipBonus(s), buffs: combatBuffs(rec), foeMult: foeMult || 1, level: curLevel(), now: now() });
+    battleDone = false;
     rec.battles++;
     persistRec();
     ui.shake();
     sfx.evolve(); vibrate([20, 40, 20]);
-    ui.updateBattleUI(battle);
+    ui.updateBattleUI(battle, now());
     gainXp(XP.battle);
     quest('battles');
   };
@@ -1993,31 +2028,22 @@ function boot() {
     if (!card) { ui.toast('❌ Code de combat invalide'); return; }
     startBattle(card, encodeCard(s) + $('bt-foecode').value.trim());
   });
-  const doMove = (id) => {
+  // Une entrée du joueur dans le duel réflexe : parer (pendant un coup) ou
+  // frapper (pendant une ouverture). La boucle rAF fait avancer le temps ; ici
+  // on ne fait que dater l'appui. Le dénouement est traité par onDuelOver().
+  const duelAct = (kind) => {
     if (!battle || battle.over) return;
-    playTurn(battle, id);
-    vibrate(8); sfx.press();
-    ui.updateBattleUI(battle);
-    if (battle.over) {
-      if (battle.winner === 'me') {
-        rec.wins++;
-        s.fun = clamp(s.fun + 12, 0, 100);
-        gainXp(XP.win);
-        sfx.happy(); ui.toast('🏆 Victoire de ' + battle.me.name + ' !');
-        tryDrop(1.5); // une victoire peut rapporter un trésor
-        if (epreuveEnCours) gagnerEpreuve(epreuveEnCours);
-      } else {
-        s.fun = clamp(s.fun + 2, 0, 100);
-        sfx.sad(); ui.toast('💔 Défaite… ça se rejouera !');
-        if (epreuveEnCours) ui.log('⚔️ L\'épreuve reste à passer — reviens quand tu seras prête.');
-      }
-      epreuveEnCours = null;
-      persist(); persistRec(); checkUnlocks();
-    }
+    duelInput(battle, kind, now());
+    vibrate(6);
+    const fk = battle.feedback && battle.feedback.kind;
+    if (fk === 'perfect' || fk === 'strike') { sfx.catch(); feel('soft'); }
+    else if (fk === 'hurt') { sfx.sad(); ui.shake(); }
+    else sfx.press();
+    ui.updateBattleUI(battle, now());
+    if (battle.over) onDuelOver();
   };
-  $('bt-frappe').addEventListener('click', () => doMove('frappe'));
-  $('bt-esquive').addEventListener('click', () => doMove('esquive'));
-  $('bt-elan').addEventListener('click', () => doMove('elan'));
+  $('bt-parry').addEventListener('click', () => duelAct('parry'));
+  $('bt-strike').addEventListener('click', () => duelAct('strike'));
 
   $('b-mute').addEventListener('click', () => {
     s.mute = !s.mute; setMuted(s.mute); syncMusic(); persist(); ui.updateHUD(s, mg, rec);

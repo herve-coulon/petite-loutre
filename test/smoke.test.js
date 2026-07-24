@@ -12,7 +12,6 @@ import { seasonFor } from '../src/seasons.js';
 import { ACHIEVEMENTS } from '../src/achievements.js';
 import { ITEMS } from '../src/items.js';
 import { HATS } from '../src/accessories.js';
-import { foeIntent } from '../src/battle.js';
 import { VIES_MAX, DEGATS_EJECTION } from '../src/toboggan.js';
 import { COFFRE_ZONES, EPREUVE_ZONES } from '../src/tilemap.js';
 import { FURS, DECORS } from '../src/skins.js';
@@ -684,13 +683,18 @@ test('habitant : rend son service une fois par jour, puis se contente de bavarde
   assert.equal(L.state.fun, 20, 'ni pour l\'entrain');
 });
 
-// Le duel n'a plus d'aléa : on le gagne en contrant l'intention annoncée.
+// Le duel réflexe se gagne à la parade parfaite. Pour le test, on met la
+// championne au bord du K.O. et on arme une fenêtre de parade large calée sur
+// « maintenant » : le clic tombe pile, la riposte porte le coup de grâce, et le
+// gestionnaire d'entrée déclenche le dénouement (récompenses).
 const gagnerLeDuel = () => {
-  for (let i = 0; i < 30 && L.battle && !L.battle.over; i++) {
-    L.battle.foe.hp = 1;                       // on abrège : seul le dénouement nous intéresse
-    const contre = { frappe: 'esquive', esquive: 'elan', elan: 'frappe' };
-    $('bt-' + contre[foeIntent(L.battle)]).dispatchEvent(new window.Event('click', { bubbles: true }));
-  }
+  const b = L.battle; if (!b || b.over) return;
+  b.foe.hp = 1;
+  b.phase = 'wind';
+  b.impactAt = Date.now();
+  b.windStart = b.impactAt - 500;
+  b.wPerfect = 600; b.wOk = 700;             // fenêtre large : la parade sera parfaite
+  $('bt-parry').dispatchEvent(new window.Event('click', { bubbles: true }));
 };
 
 test('épreuve : la championne propose son duel, et son trophée ne se gagne qu\'une fois', async () => {

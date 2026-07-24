@@ -1,14 +1,52 @@
-// Tests v2.2 : combats, skins, actions progressives (node --test, zéro dépendance).
+// Tests du duel RÉFLEXE (temps réel, sans aléa) + skins et cartes.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { makeRng, hashSeed, makeFighter, encodeCard, decodeCard, newBattle, playTurn, MOVES, wildFoe, foeIntent, frappeDamage, ELAN_MAX, ROUNDS_MAX } from '../src/battle.js';
+import {
+  makeRng, hashSeed, makeFighter, encodeCard, decodeCard,
+  newBattle, stepBattle, duelInput, wildFoe,
+  INTRO_MS, PARRY_PERFECT, PARRY_OK, COMBO_OPEN
+} from '../src/battle.js';
 import { FURS, DECORS, unlockedFurs, unlockedDecors, furById } from '../src/skins.js';
 import { HATS } from '../src/accessories.js';
 import { newState, newRecords, loadState } from '../src/state.js';
 import { PAL } from '../src/sprites.js';
 
 const T0 = 1_750_000_000_000;
+const meState = () => Object.assign(newState(T0), { name: 'A', stage: 'adult', health: 90, fun: 70, energy: 60 });
+const foeCard = () => ({ name: 'B', stage: 'adult', health: 85, fun: 75, energy: 60 });
+
+/* ---------------- outils ---------------- */
+
+/** Amène le duel jusqu'à la prochaine phase `wind` (ou fin), horloge à l'appui. */
+function toWind(b, clock) {
+  let t = clock.t;
+  while (!b.over && b.phase !== 'wind') { t += 16; stepBattle(b, t); }
+  clock.t = t;
+  return b;
+}
+
+/**
+ * Joue un duel entier avec un joueur simulé qui pare avec un DÉCALAGE fixe par
+ * rapport à l'impact (0 = parfait) et frappe dans les ouvertures. Retourne b.
+ */
+function simulate(b, { offset = 0, parry = true, strike = true, maxMs = 90000 } = {}) {
+  let t = 0; const DT = 16; let aimed = null;
+  while (!b.over && t < maxMs) {
+    t += DT; stepBattle(b, t);
+    if (b.phase === 'wind' && parry) {
+      if (aimed === null) aimed = b.impactAt + offset;
+      if (t >= aimed && t < aimed + DT) { duelInput(b, 'parry', t); aimed = null; }
+    } else if (b.phase === 'opening' && strike) {
+      duelInput(b, 'strike', t);
+    } else if (b.phase !== 'wind') {
+      aimed = null;
+    }
+  }
+  return b;
+}
+
+/* ---------------- RNG & cartes (inchangés) ---------------- */
 
 test('rng seedé : déterministe', () => {
   const a = makeRng(hashSeed('graine')), b = makeRng(hashSeed('graine'));
@@ -33,36 +71,116 @@ test('combattant : les stats croissent avec le stade', () => {
   assert.ok(adultF.atk > babyF.atk);
 });
 
-test('combat : reproductible avec la même graine, se termine toujours', () => {
-  const me = newState(T0); me.name = 'A'; me.stage = 'child'; me.health = 90; me.fun = 80; me.energy = 70;
-  const foe = { name: 'B', stage: 'child', health: 85, fun: 75, energy: 60 };
+/* ---------------- Le duel réflexe ---------------- */
 
-  const run = () => {
-    const b = newBattle(me, foe, 'graine-fixe');
-    let guard = 0;
-    while (!b.over && guard++ < 200) playTurn(b, 'splash');
-    return b;
+test('duel : une PARADE PARFAITE annule le coup et riposte, le combo monte', () => {
+  const b = newBattle(meState(), foeCard(), 's', { now: 0 });
+  stepBattle(b, INTRO_MS);                       // premier coup armé
+  assert.equal(b.phase, 'wind');
+  const foeAvant = b.foe.hp, monHp = b.me.hp;
+  duelInput(b, 'parry', b.impactAt);             // pile à l'impact
+  assert.equal(b.me.hp, monHp, 'aucun dégât encaissé');
+  assert.ok(b.foe.hp < foeAvant, 'la riposte porte');
+  assert.equal(b.combo, 1, 'le combo monte');
+  assert.equal(b.phase, 'recover');
+});
+
+test('duel : ne PAS parer fait encaisser le coup plein', () => {
+  const b = newBattle(meState(), foeCard(), 's', { now: 0 });
+  stepBattle(b, INTRO_MS);
+  const monHp = b.me.hp;
+  stepBattle(b, b.impactAt + b.wOk + 40);        // la fenêtre passe sans appui
+  assert.ok(b.me.hp < monHp, 'le coup non paré touche');
+  assert.equal(b.combo, 0);
+});
+
+test('duel : parer un peu à côté BLOQUE (dégâts réduits, petite riposte)', () => {
+  const b = newBattle(meState(), foeCard(), 's', { now: 0 });
+  stepBattle(b, INTRO_MS);
+  const monHp = b.me.hp, foeAvant = b.foe.hp;
+  duelInput(b, 'parry', b.impactAt + b.wPerfect + 40);   // hors « parfait », dans « ok »
+  const encaisse = monHp - b.me.hp, rendu = foeAvant - b.foe.hp;
+  assert.ok(encaisse > 0, 'un bloc coûte un peu');
+  assert.ok(rendu > 0, 'mais rend un peu aussi');
+  // un bloc encaisse bien moins qu'un coup plein subi
+  const plein = newBattle(meState(), foeCard(), 's', { now: 0 });
+  stepBattle(plein, INTRO_MS);
+  const avant2 = plein.me.hp;
+  stepBattle(plein, plein.impactAt + plein.wOk + 40);
+  assert.ok(encaisse < avant2 - plein.me.hp, 'bloquer vaut mieux qu\'encaisser');
+});
+
+test('duel : parer à contretemps (trop tôt) ouvre la garde — coup plein', () => {
+  const b = newBattle(meState(), foeCard(), 's', { now: 0 });
+  stepBattle(b, INTRO_MS);
+  const monHp = b.me.hp;
+  duelInput(b, 'parry', b.impactAt - b.wOk - 80);  // bien trop tôt
+  assert.ok(monHp - b.me.hp > 0, 'un appui à contretemps se paie');
+  assert.equal(b.combo, 0);
+});
+
+test('duel : trois parades parfaites ouvrent une FRAPPE dévastatrice', () => {
+  const b = newBattle(meState(), { name: 'Roc', stage: 'adult', health: 100, fun: 90, energy: 40 }, 's', { now: 0 });
+  b.foe.maxHp = 9999; b.foe.hp = 9999;             // increvable : on isole l'ouverture
+  const clock = { t: 0 };
+  for (let k = 0; k < COMBO_OPEN; k++) {
+    toWind(b, clock);
+    duelInput(b, 'parry', b.impactAt);             // parade parfaite
+  }
+  assert.equal(b.pendingOpen, true, COMBO_OPEN + ' parades parfaites arment une ouverture');
+  let t = clock.t;
+  while (b.phase !== 'opening' && !b.over) { t += 16; stepBattle(b, t); }
+  assert.equal(b.phase, 'opening');
+  const avant = b.foe.hp;
+  duelInput(b, 'strike', t);
+  const frappe = avant - b.foe.hp;
+  assert.ok(frappe > b.me.atk, 'la frappe d\'ouverture doit faire très mal (' + frappe + ')');
+});
+
+test('duel : NERVEUX — le télégraphe s\'accélère quand le niveau monte', () => {
+  const bas = newBattle(meState(), foeCard(), 's', { now: 0, level: 1 });
+  stepBattle(bas, INTRO_MS);
+  const haut = newBattle(meState(), foeCard(), 's', { now: 0, level: 28 });
+  stepBattle(haut, INTRO_MS);
+  assert.ok(haut.windup < bas.windup, 'à haut niveau, on voit venir le coup moins longtemps');
+});
+
+test('duel : le talent décide — parer juste gagne, ne jamais parer perd', () => {
+  const me = meState();
+  const foe = wildFoe(20, 'skill', makeFighter(me));
+  const gagne = simulate(newBattle(me, foe, 's', { now: 0, level: 20 }), { offset: 0 });
+  assert.equal(gagne.winner, 'me', 'parer juste doit l\'emporter');
+  const perd = simulate(newBattle(me, foe, 's', { now: 0, level: 20 }), { parry: false });
+  assert.equal(perd.winner, 'foe', 'ne rien faire doit perdre');
+});
+
+test('duel : AUCUN aléa — même tempo d\'appuis, déroulé identique', () => {
+  const me = meState(), foe = wildFoe(12, 'fixe', makeFighter(me));
+  const rejoue = () => {
+    const b = simulate(newBattle(me, foe, 'g', { now: 0, level: 12 }), { offset: 45 });
+    return { winner: b.winner, hp: [b.me.hp, b.foe.hp], log: b.log.join('|') };
   };
-  const b1 = run(), b2 = run();
-  assert.ok(b1.over && b2.over, 'les combats se terminent');
-  assert.equal(b1.winner, b2.winner, 'même vainqueur');
-  assert.deepEqual(b1.log, b2.log, 'même déroulé');
-  assert.ok(['me', 'foe'].includes(b1.winner));
+  assert.deepEqual(rejoue(), rejoue(), 'le duel réflexe doit être parfaitement reproductible');
 });
 
-test('duel : la prise d\'élan charge et fait reprendre son souffle, sans déborder', () => {
-  const b = newBattle(newState(T0), { name: 'X', stage: 'baby' }, 'seed');
-  b.me.hp = 10;
-  b.lastMine = 'esquive';          // -> elle prend son élan aussi : personne ne frappe
-  playTurn(b, 'elan');
-  assert.equal(b.me.elan, 1, 'un cran d\'élan');
-  assert.ok(b.me.hp > 10, 'et un peu de souffle repris');
-  assert.ok(b.me.hp <= b.me.maxHp);
-  b.me.hp = b.me.maxHp;
-  playTurn(b, 'elan');
-  assert.ok(b.me.hp <= b.me.maxHp, 'jamais au-dessus du maximum');
-  assert.equal(MOVES.length, 3);
+test('duel : l\'équipement et la difficulté pèsent (PV/attaque de l\'épreuve)', () => {
+  const normal = newBattle(meState(), foeCard(), 'g', { now: 0 });
+  const dure = newBattle(meState(), foeCard(), 'g', { now: 0, foeMult: 2 });
+  assert.ok(dure.foe.maxHp > normal.foe.maxHp, 'une championne a plus de PV');
+  assert.ok(dure.foe.atk > normal.foe.atk, 'et frappe plus fort');
+  assert.ok(dure.foe.atk < normal.me.maxHp, 'un coup encaissé ne doit pas tuer d\'un coup');
 });
+
+test('duel : les fenêtres de parade sont finies et cohérentes', () => {
+  const b = newBattle(meState(), foeCard(), 's', { now: 0 });
+  assert.ok(b.wPerfect > 0 && b.wPerfect < b.wOk, 'parfait plus étroit que bloc');
+  assert.equal(b.wPerfect, PARRY_PERFECT);        // sans technique « fenêtre »
+  assert.equal(b.wOk, PARRY_OK);
+  const large = newBattle(meState(), foeCard(), 's', { now: 0, buffs: { fenetre: 1.35 } });
+  assert.ok(large.wPerfect > b.wPerfect && large.wOk > b.wOk, 'la maîtrise élargit la parade');
+});
+
+/* ---------------- Skins, cartes, migration (inchangés) ---------------- */
 
 test('skins : pelages/décors débloqués par records, ids uniques', () => {
   const rec = newRecords();
@@ -103,7 +221,7 @@ test('migration : sauvegarde v2.1 (sans fur/decor/plongée) complétée', () => 
   assert.equal(back.divingUntil, 0);
 });
 
-/* ---------------- Adversaires solo (v3.40) ---------------- */
+/* ---------------- Adversaires solo ---------------- */
 
 test('loutre sauvage : engendrée sans code d\'ami, et utilisable telle quelle', () => {
   const foe = wildFoe(8, 'graine');
@@ -111,8 +229,7 @@ test('loutre sauvage : engendrée sans code d\'ami, et utilisable telle quelle',
     assert.ok(foe[k] !== undefined, 'champ manquant : ' + k);
   }
   assert.ok(['baby', 'child', 'adult'].includes(foe.stage));
-  // elle doit pouvoir entrer directement dans l'arène
-  const b = newBattle(newState(T0), foe, 'duel');
+  const b = newBattle(newState(T0), foe, 'duel', { now: 0 });
   assert.ok(b.foe.maxHp > 0 && b.foe.atk > 0);
   assert.equal(b.foe.name, foe.name);
 });
@@ -132,15 +249,10 @@ test('loutre sauvage : plus coriace à haut niveau', () => {
 });
 
 test('combat solo : se termine toujours, avec un vainqueur', () => {
-  const b = newBattle(newState(T0), wildFoe(5, 'fin'), 'seed-fin');
-  for (let i = 0; i < 200 && !b.over; i++) playTurn(b, ['elan', 'frappe'][i % 2]);
+  const b = simulate(newBattle(newState(T0), wildFoe(5, 'fin'), 'seed-fin', { now: 0, level: 5 }), { offset: 30 });
   assert.ok(b.over, 'le combat doit se conclure');
   assert.ok(b.winner === 'me' || b.winner === 'foe');
-  // deux dénouements possibles : le K.O., ou la limite de tours qui départage
-  // aux points (verrou anti-enlisement, sans lequel deux esquives tourneraient
-  // en boucle sans fin)
-  assert.ok(b.me.hp === 0 || b.foe.hp === 0 || b.round > ROUNDS_MAX,
-    'ni K.O. ni limite de tours : le duel s\'est arrêté sans raison');
+  assert.ok(b.me.hp === 0 || b.foe.hp === 0, 'il se conclut par un K.O.');
 });
 
 test('adversaire calé sur la loutre : les gabarits restent comparables', () => {
@@ -153,78 +265,3 @@ test('adversaire calé sur la loutre : les gabarits restent comparables', () => 
       'PV hors fourchette : ' + foe.maxHp + ' vs ' + me.maxHp);
   }
 });
-
-/* Le duel doit récompenser l'attention, pas la chance ni le martèlement.
-   Ces trois tests fixent ce contrat en le MESURANT sur des joueurs simulés. */
-function duel(s, me, i, choisir) {
-  const b = newBattle(s, wildFoe(20, 'd' + i, me), 's' + i);
-  for (let t = 0; t < 60 && !b.over; t++) playTurn(b, choisir(b, t));
-  return b;
-}
-function tauxDeVictoire(choisir, n = 120) {
-  const s = newState(T0);
-  s.stage = 'adult'; s.health = 90; s.fun = 70; s.energy = 60;
-  const me = makeFighter(s);
-  let w = 0, ecart = 0;
-  for (let i = 0; i < n; i++) {
-    const b = duel(s, me, i, choisir);
-    if (b.winner === 'me') w++;
-    ecart += Math.abs(b.me.hp / b.me.maxHp - b.foe.hp / b.foe.maxHp);
-  }
-  return { taux: w / n, ecart: ecart / n };
-}
-
-test('duel : marteler le même coup est sévèrement puni', () => {
-  for (const coup of ['frappe', 'esquive', 'elan']) {
-    const r = tauxDeVictoire(() => coup);
-    assert.ok(r.taux <= 0.1, 'marteler « ' + coup + ' » ne doit pas gagner : ' + r.taux);
-    assert.ok(r.ecart > 0.5, 'et doit se solder par une déroute nette, pas un match serré');
-  }
-});
-
-test('duel : un joueur qui LIT l\'adversaire l\'emporte', () => {
-  // elle annonce son intention par foeIntent ; la contrer est la bonne réponse
-  const contre = { frappe: 'esquive', esquive: 'elan', elan: 'frappe' };
-  const r = tauxDeVictoire(b => contre[foeIntent(b)]);
-  assert.ok(r.taux >= 0.9, 'lire l\'adversaire doit payer : ' + r.taux);
-});
-
-test('duel : un rythme régulier perd, mais de peu — la revanche doit tenter', () => {
-  const r = tauxDeVictoire((b, t) => ['elan', 'frappe', 'esquive'][t % 3]);
-  assert.ok(r.taux < 0.5, 'un cycle mécanique ne doit pas suffire');
-  assert.ok(r.ecart < 0.35, 'mais la défaite doit rester serrée : écart ' + r.ecart);
-});
-
-test('duel : AUCUN aléa — même partie, même déroulé, à la virgule près', () => {
-  const s = newState(T0); s.stage = 'adult';
-  const rejoue = () => {
-    const b = newBattle(s, wildFoe(12, 'fixe'), 'graine');
-    const coups = ['elan', 'elan', 'frappe', 'esquive', 'frappe', 'elan', 'frappe'];
-    for (const c of coups) { if (b.over) break; playTurn(b, c); }
-    return { hp: [b.me.hp, b.foe.hp], elan: [b.me.elan, b.foe.elan], log: b.log.join('|') };
-  };
-  assert.deepEqual(rejoue(), rejoue(), 'le duel doit être parfaitement reproductible');
-});
-
-test('duel : le triangle est respecté, sans dépendre de la graine', () => {
-  const mk = () => newBattle(Object.assign(newState(T0), { stage: 'adult' }),
-    { name: 'X', stage: 'adult', health: 90, fun: 70, energy: 10 }, 'g');
-
-  // frappe PUNIT une charge : plus de dégâts qu'une frappe ordinaire
-  const a = mk(); a.foe.spd = 1; a.me.elan = 1;
-  const avant = a.foe.hp;
-  a.hist = ['esquive', 'esquive'];          // -> elle veut charger
-  assert.equal(foeIntent(a), 'elan');
-  playTurn(a, 'frappe');
-  const degatsPunition = avant - a.foe.hp;
-  assert.ok(degatsPunition > frappeDamage(a.me, 1), 'la punition doit dépasser un coup normal');
-
-  // esquive ANNULE une frappe faible et riposte
-  const c = mk(); c.hist = ['elan', 'elan'];  // -> elle veut frapper
-  assert.equal(foeIntent(c), 'frappe');
-  const monHp = c.me.hp;
-  playTurn(c, 'esquive');
-  assert.equal(c.me.hp, monHp, 'une frappe sans élan esquivée ne touche pas');
-  assert.ok(c.foe.hp < c.foe.maxHp, 'et la riposte porte');
-});
-
