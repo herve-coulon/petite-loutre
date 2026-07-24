@@ -7,7 +7,7 @@ import { moodOf, pickIdle, canIdle, IDLE_FRAMES } from './mood.js';
 import { dailyEvent, butterflyPos } from './events.js';
 import { dayKey } from './quests.js';
 import { seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
-import { WATER_Y, TELL_MS, COMBO_STEP as FISH_COMBO_STEP, fishProgress } from './minigame.js';
+import { WATER_Y, TELL_MS, COMBO_STEP as FISH_COMBO_STEP, GOBE_MS as FISH_GOBE_MS, fishProgress } from './minigame.js';
 import { itemById, RARITIES, ITEMS } from './items.js';
 import { LANE_X, SLIDE_OTTER_Y, COMBO_STEP, GOBE_MS, slideProgress } from './toboggan.js';
 import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, FIND_ICON, groundTile, decorTile, zoneGates } from './tilemap.js';
@@ -1428,8 +1428,40 @@ export function makeRenderer(cv) {
       }
 
       // les poissons qui bondissent (orientés selon leur sens)
+      // La gueule de la loutre, vers laquelle filent les prises. Elle se recentre
+      // pendant la pêche, donc on lit sa position RÉELLE de cette image.
+      const gueuleX = Math.round(otterWX) + 16, gueuleY = GROUND_Y - 26;
       for (const f of (mg.fishes || [])) {
         const fx2 = Math.round(f.x), fy2 = Math.round(f.y);
+        // GOBÉ : happé vers la loutre, il rétrécit et s'efface, ses points
+        // s'envolent. Auparavant il disparaissait net, et l'éclaboussure était
+        // dessinée à la SURFACE de l'eau — loin du poisson pris en plein vol.
+        if (f.got) {
+          const k = Math.min(1, (now - f.gotAt) / FISH_GOBE_MS);
+          const doux = k * k * (3 - 2 * k);
+          const gx = f.x + (gueuleX - f.x) * doux;
+          const gy = f.y + (gueuleY - f.y) * doux;
+          const taille = 1 - doux;
+          ctx.save();
+          ctx.globalAlpha = 1 - doux * 0.85;
+          ctx.translate(gx, gy);
+          ctx.scale(Math.max(0.05, taille), Math.max(0.05, taille));
+          drawSprite(SPRITES.fish, 0, 0, 1,
+            f.kind === 'gold' ? { B: '#ffd94a', D: '#c9922a', W: '#fff6cd' } : null, f.dir > 0);
+          ctx.restore();
+          ctx.globalAlpha = 1 - doux;
+          ctx.fillStyle = 'rgba(255,255,255,.85)';       // gouttelettes d'envol
+          ctx.fillRect(Math.round(gx - 3 - doux * 4), Math.round(gy - 3 - doux * 5), 2, 2);
+          ctx.fillRect(Math.round(gx + 5 + doux * 3), Math.round(gy - 1 - doux * 7), 1, 1);
+          if (f.pts) {
+            ctx.font = '8px monospace'; ctx.textAlign = 'center';
+            ctx.fillStyle = f.kind === 'gold' ? '#ffd94a' : '#eaf7d8';
+            ctx.fillText('+' + f.pts, Math.round(gx + 5), Math.round(gy - 7 - doux * 14));
+            ctx.textAlign = 'left';
+          }
+          ctx.globalAlpha = 1;
+          continue;
+        }
         if (f.kind === 'gold') {
           ctx.fillStyle = 'rgba(255,226,120,.30)'; ctx.fillRect(fx2 - 4, fy2 - 4, 18, 14);
           drawSprite(SPRITES.fish, fx2, fy2, 1, { B: '#ffd94a', D: '#c9922a', W: '#fff6cd' }, f.dir > 0);

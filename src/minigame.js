@@ -21,6 +21,7 @@ export const TELL_MS = 520;      // durée de l'ondulation d'annonce
 export const COMBO_STEP = 3;     // un point bonus toutes les 3 prises d'affilée
 export const GOLD_POINTS = 5;
 export const MAX_IN_AIR = 3;      // au départ ; monte à MAX_IN_AIR_FIN sur la fin
+export const GOBE_MS = 260;       // durée pendant laquelle un poisson est « avalé »
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -51,9 +52,10 @@ export function tellDelay(p) {
   return Math.round(TELL_MS * (1 - 0.4 * p));
 }
 
-/** Le premier poisson encore en l'air (pratique pour le rendu et les tests). */
+/** Le premier poisson ENCORE À PRENDRE (ceux qu'on avale ne comptent plus). */
 export function firstFish(mg) {
-  return (mg && mg.fishes && mg.fishes.length) ? mg.fishes[0] : null;
+  if (!mg || !mg.fishes) return null;
+  return mg.fishes.find(f => !f.got) || null;
 }
 
 /** Fait jaillir un poisson à l'endroit annoncé. */
@@ -85,27 +87,35 @@ export function tickGame(mg, now = Date.now(), rnd = Math.random, opts = {}) {
   for (const t of ready) launch(mg, t, now, rnd);
   if (ready.length) mg.tells = mg.tells.filter(t => now < t.at + attente);
 
-  // arc de saut ; un poisson qui retombe sans être pris brise l'élan
+  // arc de saut ; un poisson qui retombe sans être pris brise l'élan.
+  // Un poisson GOBÉ ne suit plus son arc : il est happé vers la loutre.
   for (const f of mg.fishes) {
+    if (f.got) continue;
     f.p = (now - f.start) / (f.until - f.start);
     const s = Math.sin(clamp01(f.p) * Math.PI);
     f.y = WATER_Y - s * f.jumpH - 6;
     f.x = f.baseX + f.dir * s * 12;
   }
-  const escaped = mg.fishes.filter(f => now > f.until);
+  // …et il ne peut évidemment pas « s'échapper » : sans ce filtre, un poisson
+  // attrapé aurait brisé le combo au moment même où il le faisait grandir.
+  const escaped = mg.fishes.filter(f => !f.got && now > f.until);
   if (escaped.length) {
     mg.splash = { x: escaped[0].x + 5, t: now };
     mg.missed += escaped.length;
     mg.combo = 0;
     mg.missAt = now;
-    mg.fishes = mg.fishes.filter(f => now <= f.until);
+    mg.fishes = mg.fishes.filter(f => f.got || now <= f.until);
   }
+  // on garde un instant les poissons gobés, le temps de l'animation
+  mg.fishes = mg.fishes.filter(f => !f.got || now - f.gotAt < GOBE_MS);
 
   // le rythme se resserre au fil de la partie
   const p = fishProgress(mg, now);
   const enAir = MAX_IN_AIR + Math.round((MAX_IN_AIR_FIN - MAX_IN_AIR) * p);
-  if (now >= mg.nextTell && now < mg.endsAt - 900
-    && mg.fishes.length + mg.tells.length < enAir) {
+  // les poissons en cours d'avalage ne « prennent pas de place » : sinon ils
+  // bloqueraient les apparitions pendant toute l'animation
+  const occupes = mg.fishes.filter(f => !f.got).length + mg.tells.length;
+  if (now >= mg.nextTell && now < mg.endsAt - 900 && occupes < enAir) {
     // la chance portée (trésors, pelages) fait jaillir plus de dorés : c'est
     // ainsi que l'équipement compte aussi dans les mini-jeux
     const kind = rnd() < Math.min(0.32, 0.12 * (opts.chance || 1)) ? 'gold' : 'fish';
@@ -123,18 +133,19 @@ export function tickGame(mg, now = Date.now(), rnd = Math.random, opts = {}) {
 }
 
 /** Tente d'attraper un poisson en (x,y) canvas. pad = tolérance (plus grand au doigt). */
-export function clickGame(mg, x, y, pad = 4) {
+export function clickGame(mg, x, y, pad = 4, now = Date.now()) {
   if (!mg || !mg.fishes || !mg.fishes.length) return false;
-  for (let i = 0; i < mg.fishes.length; i++) {
-    const f = mg.fishes[i];
+  for (const f of mg.fishes) {
+    if (f.got) continue;                       // déjà pris : on ne l'attrape pas deux fois
     if (x >= f.x - pad && x <= f.x + 10 + pad && y >= f.y - pad && y <= f.y + 6 + pad) {
       mg.caught++;
       mg.combo++;
       mg.bestCombo = Math.max(mg.bestCombo, mg.combo);
-      if (f.kind === 'gold') { mg.score += GOLD_POINTS; mg.goldAt = Date.now(); }
-      else mg.score += 1 + Math.floor(mg.combo / COMBO_STEP);
-      mg.splash = { x: f.x + 5, t: Date.now() };
-      mg.fishes.splice(i, 1);
+      if (f.kind === 'gold') { f.pts = GOLD_POINTS; mg.goldAt = now; }
+      else f.pts = 1 + Math.floor(mg.combo / COMBO_STEP);
+      mg.score += f.pts;
+      // il n'est pas retiré tout de suite : il part vers la gueule de la loutre
+      f.got = true; f.gotAt = now;
       return true;
     }
   }

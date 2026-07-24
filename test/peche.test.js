@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   newGame, tickGame, clickGame, fishProgress, firstFish,
-  GAME_DURATION, WATER_Y, TELL_MS, COMBO_STEP, GOLD_POINTS, MAX_IN_AIR, tellDelay
+  GAME_DURATION, WATER_Y, TELL_MS, COMBO_STEP, GOLD_POINTS, MAX_IN_AIR, GOBE_MS, tellDelay
 } from '../src/minigame.js';
 
 const T0 = 1_750_000_000_000;
@@ -177,4 +177,69 @@ test('progression : la technique d\'endurance rallonge vraiment la partie', () =
   assert.equal(long.endsAt - long.startedAt, Math.round(GAME_DURATION * 1.2));
   // et l'avancement se cale sur la durée réelle, sinon la fin arriverait trop tôt
   assert.ok(fishProgress(long, T0 + GAME_DURATION) < 1, 'la partie n\'est pas finie');
+});
+
+/** Fait jaillir un poisson et renvoie l'objet, prêt à être attrapé. */
+function unPoisson(mg, at) {
+  tickGame(mg, at, () => 0.5);
+  const t = mg.tells[0];
+  tickGame(mg, t.at + tellDelay(fishProgress(mg, t.at)) + 1, () => 0.5);
+  return mg.fishes[0];
+}
+
+test('gobage : un poisson pris s\'arrête, garde ses points, puis s\'efface', () => {
+  const mg = newGame(T0);
+  const f = unPoisson(mg, T0 + 500);
+  const t0 = mg.lastTick;
+  assert.equal(clickGame(mg, f.x + 5, f.y + 3, 4, t0), true, 'il est attrapé');
+  assert.ok(f.got && f.gotAt === t0, 'marqué et horodaté pour l\'animation');
+  assert.equal(f.pts, 1, 'et il garde les points qu\'il a rapportés');
+  assert.equal(mg.score, 1);
+
+  // il ne suit plus son arc : il file vers la loutre, il ne retombe pas
+  const yPris = f.y;
+  tickGame(mg, t0 + 100, () => 0.5);
+  assert.ok(mg.fishes.includes(f), 'il reste le temps d\'être avalé');
+  assert.equal(f.y, yPris, 'et il ne bouge plus tout seul');
+
+  tickGame(mg, t0 + GOBE_MS + 20, () => 0.5);
+  assert.equal(mg.fishes.includes(f), false, 'effacé après l\'animation');
+});
+
+test('gobage : un poisson attrapé ne peut PAS « s\'échapper » ensuite', () => {
+  // piège réel : le poisson gobé restant en liste, son échéance l'aurait compté
+  // comme manqué — et brisé le combo à l'instant même où il le faisait grandir
+  const mg = newGame(T0);
+  const f = unPoisson(mg, T0 + 500);
+  const t0 = mg.lastTick;
+  clickGame(mg, f.x + 5, f.y + 3, 4, t0);
+  assert.equal(mg.combo, 1);
+  // on dépasse largement son échéance de vol, mais dans la fenêtre d'animation
+  tickGame(mg, Math.max(f.until + 50, t0 + 10), () => 0.5);
+  assert.equal(mg.missed, 0, 'aucun poisson manqué');
+  assert.equal(mg.combo, 1, 'le combo tient');
+});
+
+test('gobage : on ne l\'attrape pas deux fois', () => {
+  const mg = newGame(T0);
+  const f = unPoisson(mg, T0 + 500);
+  const t0 = mg.lastTick;
+  clickGame(mg, f.x + 5, f.y + 3, 4, t0);
+  const score = mg.score, pris = mg.caught;
+  assert.equal(clickGame(mg, f.x + 5, f.y + 3, 4, t0 + 10), false, 'second clic sans effet');
+  assert.equal(mg.score, score);
+  assert.equal(mg.caught, pris);
+});
+
+test('gobage : un poisson en cours d\'avalage ne bloque pas les apparitions', () => {
+  // sinon il occuperait une place « en l'air » pendant toute l'animation et
+  // le rythme se creuserait d'un trou à chaque prise
+  const mg = newGame(T0);
+  const f = unPoisson(mg, T0 + 500);
+  const t0 = mg.lastTick;
+  clickGame(mg, f.x + 5, f.y + 3, 4, t0);
+  assert.equal(firstFish(mg), null, 'plus rien à viser : celui-là est pris');
+  mg.nextTell = t0;                        // une annonce est due
+  tickGame(mg, t0 + 1, () => 0.5);
+  assert.equal(mg.tells.length, 1, 'une nouvelle annonce a bien pu naître');
 });
