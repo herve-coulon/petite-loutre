@@ -11,6 +11,15 @@ import { WATER_Y, TELL_MS, COMBO_STEP as FISH_COMBO_STEP, fishProgress } from '.
 import { itemById, RARITIES, ITEMS } from './items.js';
 import { LANE_X, SLIDE_OTTER_Y, COMBO_STEP, slideProgress } from './toboggan.js';
 import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, FIND_ICON, groundTile, decorTile, zoneGates } from './tilemap.js';
+import { otterArt, drawAnim, frameAt, animForMood, ANATOMY, ANIMS } from './otter-art.js';
+
+// Le kit de sprites dessinés (assets/otter/) : il remplace la grille de pixels
+// pour la loutre ADULTE, là où elle est grande à l'écran (berge, tanière,
+// portraits). Les stades jeunes et la vallée gardent la grille : le kit n'a
+// qu'une morphologie, et à l'échelle des tuiles (16 px) il serait démesuré.
+const ART = otterArt();
+/** Vrai si cette loutre-là doit être rendue avec le kit dessiné. */
+function usesArt(o) { return !!(o && o.stage === 'adult' && ART.ready); }
 
 // Canvas PORTRAIT plein écran (ratio ~ écran mobile) : le ciel occupe le haut,
 // l'eau le bas, la berge au milieu. La scène de base est dessinée pour un sol à
@@ -67,6 +76,33 @@ export function paintOtter(cv, o, sc = 3, flip = false) {
   if (!cv || !cv.getContext || !o) return;
   const ctx = cv.getContext('2d');
   if (!ctx) return;
+  const hatOf = o.hat ? hatById(o.hat) : null;
+  if (usesArt(o)) {
+    // Portrait au kit : la loutre debout, à l'échelle native ×sc.
+    const a = ANIMS.idle, w = a.w / 4, h = a.h / 4;
+    const top = hatOf ? hatOf.rows.length : 0;
+    cv.width = w * sc; cv.height = (h + top) * sc;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.save();
+    ctx.scale(sc, sc);
+    drawAnim(ctx, ART, 'idle', 0, ANATOMY.idle.feet.x, top + h, o.fur, flip);
+    ctx.restore();
+    if (hatOf) {
+      // centré sur la tête du sprite (16 colonnes de chapeau, tête en x≈20)
+      const hx = (ANATOMY.idle.headCx - 8) * sc;
+      for (let j = 0; j < hatOf.rows.length; j++) {
+        const row = hatOf.rows[j];
+        for (let i = 0; i < row.length; i++) {
+          const ch = row[flip ? row.length - 1 - i : i];
+          const col = PAL[ch];
+          if (!col || ch === '.') continue;
+          ctx.fillStyle = col;
+          ctx.fillRect(hx + i * sc, j * sc, sc, sc);
+        }
+      }
+    }
+    return;
+  }
   const spr = SPRITES[o.stage] || SPRITES.adult;
   const fur = (furById(o.fur) || {}).map;
   const hat = o.hat ? hatById(o.hat) : null;
@@ -123,6 +159,7 @@ export function makeRenderer(cv) {
   let otterWX = OTTER_X;
   let otterTarget = OTTER_X;
   let otterDwell = 0;         // frame jusqu'à laquelle elle reste sur place
+  let otterFace = 1;          // sens du regard en marchant (+1 droite, -1 gauche)
   let wanderSeed = 1;         // avance à chaque nouvelle cible (choix pseudo-aléatoire stable)
   let lastFrame = 0;          // dernier numéro de frame vu (pour les appels externes)
   // balle de jeu (ball-fetch). states : idle (au repos) / held (dans la main) /
@@ -380,6 +417,26 @@ export function makeRenderer(cv) {
     // 'baille' : tout se joue sur le visage (yeux fermés, grande bouche)
   }
 
+  /**
+   * Bulle d'humeur au-dessus de la tête. La loutre du kit a son visage
+   * dessiné : on ne peut plus lui froncer les sourcils, alors on dit son besoin
+   * en clair — c'est même plus lisible que quatre pixels de sourcil.
+   * Rien pour 'contente' ni 'neutre' : la pose suffit.
+   */
+  function drawMoodEmote(mood, cx, topY, frame, hatH) {
+    const ICON = { affamee: '🍖', boudeuse: '💢', malade: '🤒' };
+    const icon = ICON[mood];
+    if (!icon) return;
+    const bob = Math.sin(frame / 18) * 1.5;
+    const y = Math.round(topY - 6 - (hatH || 0) + bob);   // au-dessus du chapeau
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = '11px system-ui,sans-serif';
+    ctx.fillText(icon, Math.round(cx), y);
+    ctx.restore();
+    ctx.textAlign = 'left';
+  }
+
   /* ---------------- Visage selon l'humeur ---------------- */
   function drawFace(s, mood, ox, oy, frame, fur, yawning) {
     if (!mood || mood === 'dodo') return; // paupières de sommeil gérées ailleurs
@@ -555,28 +612,39 @@ export function makeRenderer(cv) {
     const spr = SPRITES[s.stage] || SPRITES.adult;
     const fur = furById(s.fur).map;
     const ox = 64, oy = 62;
+    const artOn = usesArt(s);
+    const feetY = oy + spr.length * 2;      // même sol dans les deux voies
     const breathing = !reduced && !s.gameOver;
     if (breathing) {
       const b = Math.sin(frame / 32), sy = 1 + b * 0.02, sx = 1 - b * 0.012;
-      const cx = ox + 16, cyf = oy + spr.length * 2;
+      const cx = ox + 16, cyf = feetY;
       ctx.save(); ctx.translate(cx, cyf); ctx.scale(sx, sy); ctx.translate(-cx, -cyf);
     }
-    drawSprite(spr, ox, oy, 2, fur);
-    drawRim(spr, ox, oy, 2, 'rgba(255,224,150,.42)', 'rgba(0,0,0,.24)'); // baignée dans la lueur chaude
+    let headCx = ox + 16, headTop = oy, box = null;
+    if (artOn) {
+      box = drawAnim(ctx, ART, 'idle', frameAt('idle', Date.now()), ox + 16, feetY, s.fur, false);
+      if (box) { headCx = box.x + ANATOMY.idle.headCx; headTop = box.y + ANATOMY.idle.headTop; }
+    } else {
+      drawSprite(spr, ox, oy, 2, fur);
+      drawRim(spr, ox, oy, 2, 'rgba(255,224,150,.42)', 'rgba(0,0,0,.24)'); // baignée dans la lueur chaude
+    }
     if (breathing) ctx.restore();
-    if (s.hat) { const hat = hatById(s.hat); if (hat) drawSprite(hat.rows, ox, oy - hat.rows.length * 2 + 4, 2); }
-    drawFace(s, s.sleeping ? 'dodo' : 'contente', ox, oy, frame, fur, false);
-    const ey = oy + (s.stage === 'baby' ? 10 : 8);
+    if (s.hat) { const hat = hatById(s.hat); if (hat) drawSprite(hat.rows, headCx - 16, headTop - hat.rows.length * 2 + 4, 2); }
+    if (!artOn) drawFace(s, s.sleeping ? 'dodo' : 'contente', ox, oy, frame, fur, false);
+    // paupières : calées sur les yeux du sprite en cours (grille ou kit)
+    const ey = box ? box.y + 12 : oy + (s.stage === 'baby' ? 10 : 8);
+    const lx = box ? box.x + 9 : ox + 4, rx = box ? box.x + 24 : ox + 22;
     const bp = frame % 220, dbl = ((frame / 220) | 0) % 3 === 0;
     const blink = !s.sleeping && (bp < 6 || (dbl && bp > 11 && bp < 17));
     if (s.sleeping || blink) {
-      ctx.fillStyle = (fur && fur.B) || PAL.B; ctx.fillRect(ox + 4, ey, 6, 2); ctx.fillRect(ox + 22, ey, 6, 2);
-      ctx.fillStyle = (fur && fur.D) || PAL.D; ctx.fillRect(ox + 4, ey + 1, 6, 1); ctx.fillRect(ox + 22, ey + 1, 6, 1);
+      ctx.fillStyle = (fur && fur.B) || PAL.B; ctx.fillRect(lx, ey, 6, 2); ctx.fillRect(rx, ey, 6, 2);
+      ctx.fillStyle = (fur && fur.D) || PAL.D; ctx.fillRect(lx, ey + 1, 6, 1); ctx.fillRect(rx, ey + 1, 6, 1);
     }
     if (s.sleeping) {
       ctx.fillStyle = '#ffffff'; ctx.font = '9px monospace';
       const ph = (frame >> 4) % 3;
-      ctx.fillText('z', ox + 34, oy - 2 + ph); ctx.fillText('Z', ox + 40, oy - 8 + ph);
+      const zx = box ? box.x + box.w + 2 : ox + 34;
+      ctx.fillText('z', zx, headTop + 6 + ph); ctx.fillText('Z', zx + 6, headTop + ph);
     }
   }
 
@@ -1061,7 +1129,7 @@ export function makeRenderer(cv) {
       fetching = true;
       const targetX = ball.state === 'resting' ? ball.x - 16 : OTTER_X; // va à la balle, puis rentre
       const d = targetX - otterWX;
-      if (Math.abs(d) > 1) { otterWX += Math.sign(d) * Math.min(0.9, Math.abs(d)); walking = true; } // course vive
+      if (Math.abs(d) > 1) { otterWX += Math.sign(d) * Math.min(0.9, Math.abs(d)); walking = true; otterFace = Math.sign(d); } // course vive
       else if (ball.state === 'resting') ball.state = 'carried';                    // ramassée
       else { ball.state = 'idle'; ball.x = BALL_HOME.x; ball.y = BALL_HOME.y; fetchDone++; } // rapportée !
     }
@@ -1074,7 +1142,7 @@ export function makeRenderer(cv) {
         otterDwell = frame + 150 + (wanderSeed % 260);
       }
       const d = otterTarget - otterWX;
-      if (Math.abs(d) > 0.5) { otterWX += Math.sign(d) * Math.min(0.4, Math.abs(d)); walking = true; }
+      if (Math.abs(d) > 0.5) { otterWX += Math.sign(d) * Math.min(0.4, Math.abs(d)); walking = true; otterFace = Math.sign(d); }
     } else if (!fetching && (mg || fx.foe)) {
       // combat / mini-jeu : la loutre revient au centre (position attendue par la scène)
       otterWX += (OTTER_X - otterWX) * 0.2;
@@ -1098,8 +1166,11 @@ export function makeRenderer(cv) {
     const heatStress = alive && season.key === 'ete' && s.clean < SEASON_FX.HEAT_OVERHEAT_CLEAN;
     if (coldStress) ox += (frame >> 1) % 2 === 0 ? -1 : 1; // grelottement rapide
 
-    // ombre de contact au sol : ancre la loutre (rétrécit et s'éclaircit quand elle saute)
-    if (s.stage !== 'egg' && !s.away) {
+    // ombre de contact au sol : ancre la loutre (rétrécit et s'éclaircit quand
+    // elle saute). Les sprites du kit portent DÉJÀ leur ombre : en dessiner une
+    // seconde faisait flotter la loutre sur deux ombres superposées.
+    const artOn = usesArt(s);
+    if (s.stage !== 'egg' && !s.away && !artOn) {
       const lift = Math.max(0, GROUND_Y - (oy + spr.length * 2));
       const w = 24 - lift * 2, sx0 = ox + 16 - (w >> 1);
       ctx.fillStyle = 'rgba(16,26,16,' + (0.26 - lift * 0.03).toFixed(2) + ')';
@@ -1123,24 +1194,48 @@ export function makeRenderer(cv) {
       ctx.translate(-cx, -cyf);
     }
 
-    // cycle de marche : la 2e image du pas quand elle se déplace vraiment
-    const marche = walking && SPRITES[s.stage + 'Walk'] && (frame >> 2) % 2 === 1;
-    drawSprite(marche ? SPRITES[s.stage + 'Walk'] : spr, ox, oy, 2, s.stage === 'egg' ? null : fur);
-    // relief lumineux (jour : soleil chaud ; nuit : lune froide et discrète)
-    drawRim(spr, ox, oy, 2,
-      c.night ? 'rgba(200,214,255,.28)' : 'rgba(255,246,205,.5)',
-      'rgba(0,0,0,.22)');
+    // Le corps : kit dessiné pour l'adulte, grille de pixels pour les jeunes.
+    // headCx/headTop : où poser le chapeau et les bulles, quelle que soit la voie.
+    let box = null, headCx = ox + 16, headTop = oy;
+    if (artOn) {
+      // en marche elle se met de profil (le kit marche de côté), sinon elle
+      // nous fait face ; l'humeur choisit entre la pose calme et la joyeuse
+      const anim = walking ? 'walk' : animForMood(mood);
+      const fr = walking ? (frame >> 2) % ANIMS.walk.frames : frameAt(anim, Date.now());
+      box = drawAnim(ctx, ART, anim, fr, ox + 16, GROUND_Y + bounce, s.fur, walking && otterFace < 0);
+      if (box) {
+        const an = ANATOMY[anim];
+        const flip = walking && otterFace < 0;
+        headCx = flip ? box.x + box.w - an.headCx : box.x + an.headCx;
+        headTop = box.y + an.headTop;
+      }
+    } else {
+      // cycle de marche : la 2e image du pas quand elle se déplace vraiment
+      const marche = walking && SPRITES[s.stage + 'Walk'] && (frame >> 2) % 2 === 1;
+      drawSprite(marche ? SPRITES[s.stage + 'Walk'] : spr, ox, oy, 2, s.stage === 'egg' ? null : fur);
+      // relief lumineux (jour : soleil chaud ; nuit : lune froide et discrète)
+      drawRim(spr, ox, oy, 2,
+        c.night ? 'rgba(200,214,255,.28)' : 'rgba(255,246,205,.5)',
+        'rgba(0,0,0,.22)');
+      headCx = ox + 16; headTop = oy;
+    }
     if (crack > 0) drawEggCracks(ox, oy, crack, frame);
 
     // chapeau équipé (posé sur la tête, suit le rebond)
+    let hatH = 0;
     if (s.stage !== 'egg' && s.hat) {
       const hat = hatById(s.hat);
-      if (hat) drawSprite(hat.rows, ox, oy - hat.rows.length * 2 + 4, 2);
+      if (hat) {
+        drawSprite(hat.rows, headCx - 16, headTop - hat.rows.length * 2 + 4, 2);
+        hatH = hat.rows.length * 2 - 4;
+      }
     }
 
     // manie en cours (grattage, caillou…) puis visage de l'humeur
-    if (idleAnim) drawIdle(idleAnim.kind, frame - idleAnim.start, ox, oy, fur);
-    if (s.stage !== 'egg') drawFace(s, mood, ox, oy, frame, fur, yawning);
+    // (le kit a son visage dessiné : l'humeur passe alors par une bulle)
+    if (idleAnim) drawIdle(idleAnim.kind, frame - idleAnim.start, box ? box.x + 5 : ox, box ? box.y + 12 : oy, fur);
+    if (s.stage !== 'egg' && !artOn) drawFace(s, mood, ox, oy, frame, fur, yawning);
+    if (artOn && !s.sleeping) drawMoodEmote(mood, headCx, headTop, frame, hatH);
 
     // paupières (sommeil / clignement)
     if (s.stage !== 'egg') {

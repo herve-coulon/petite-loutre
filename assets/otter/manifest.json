@@ -1,0 +1,118 @@
+{
+  "name": "petite_loutre",
+  "scale": 4,
+  "palette": {
+    "O": "#2b1c13",
+    "OL": "#4a3120",
+    "B": "#9a6238",
+    "BL": "#b8804f",
+    "BH": "#caa06e",
+    "BS": "#6f4526",
+    "BD": "#573619",
+    "C": "#f3ddb6",
+    "CL": "#fbeccf",
+    "CS": "#e0c091",
+    "M": "#f8ead2",
+    "N": "#3a251c",
+    "NH": "#5c3b28",
+    "E": "#1c110b",
+    "W": "#fffaf0",
+    "K": "#e69684",
+    "TN": "#e07a86",
+    "SH": "#f2aac2",
+    "SHL": "#fbccdb",
+    "SHS": "#cd7f9c",
+    "SHD": "#a86382",
+    "GR": "#242a34",
+    "wl": "#6bb6d6"
+  },
+  "anchor": {
+    "x": 0.5,
+    "y": 1
+  },
+  "skins": {
+    "default": "palette de base",
+    "silver": {
+      "#573619": "#3a3d47",
+      "#6f4526": "#4c505c",
+      "#9a6238": "#6b7180",
+      "#b8804f": "#878da0",
+      "#caa06e": "#a6acbd",
+      "#2b1c13": "#20222a",
+      "#4a3120": "#33363f",
+      "#e0c091": "#c9cdd8",
+      "#f3ddb6": "#e6e9f0",
+      "#fbeccf": "#f4f6fb",
+      "#f8ead2": "#eef0f6",
+      "#3a251c": "#2a2c34",
+      "#5c3b28": "#454955"
+    }
+  },
+  "animations": {
+    "idle": {
+      "file": "assets/idle_strip.png",
+      "silverFile": "assets/silver_idle_strip.png",
+      "frameWidth": 160,
+      "frameHeight": 200,
+      "frames": 2,
+      "fps": 2,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "walk": {
+      "file": "assets/walk_strip.png",
+      "silverFile": "assets/silver_walk_strip.png",
+      "frameWidth": 168,
+      "frameHeight": 144,
+      "frames": 4,
+      "fps": 8,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "swim": {
+      "file": "assets/swim_strip.png",
+      "silverFile": "assets/silver_swim_strip.png",
+      "frameWidth": 184,
+      "frameHeight": 104,
+      "frames": 2,
+      "fps": 6,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "jump": {
+      "file": "assets/jump_strip.png",
+      "silverFile": "assets/silver_jump_strip.png",
+      "frameWidth": 168,
+      "frameHeight": 168,
+      "frames": 3,
+      "fps": 6,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "happy": {
+      "file": "assets/happy_strip.png",
+      "silverFile": "assets/silver_happy_strip.png",
+      "frameWidth": 160,
+      "frameHeight": 200,
+      "frames": 2,
+      "fps": 3,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    }
+  }
+}

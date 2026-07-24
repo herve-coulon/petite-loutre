@@ -1,6 +1,6 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v3.53.0';
+const VERSION = 'v3.54.0';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [
@@ -32,6 +32,12 @@ const PRECACHE = [
   './src/gang.js',
   './src/tilemap.js',
   './assets/tileset.png',
+  './src/otter-art.js',
+  './assets/otter/idle_strip.png',
+  './assets/otter/walk_strip.png',
+  './assets/otter/swim_strip.png',
+  './assets/otter/jump_strip.png',
+  './assets/otter/happy_strip.png',
   './src/seasonpass.js',
   './src/push.js',
   './src/photocard.js',

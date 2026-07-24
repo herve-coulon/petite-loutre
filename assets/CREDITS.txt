@@ -5,3 +5,8 @@ Aucune attribution requise ; ce crédit est volontaire.
 
 Format : tuiles de 16x16 px, marge de 1 px entre les tuiles.
 Feuille : 968x526 px -> grille de 57 x 31 tuiles.
+
+Sprites de la loutre : assets/otter/*.png — kit « Petite Loutre » fourni par le
+propriétaire du projet (handoff de design). Animations : idle, walk, swim, jump,
+happy. Grille native ×4, fond transparent, ancrage centre-bas (0.5, 1.0).
+Rendu obligatoire en nearest-neighbor, mise à l'échelle en multiples entiers.
