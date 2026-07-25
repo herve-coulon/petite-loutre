@@ -284,3 +284,11 @@ en aller-retour). Système de recrutement (gang.js) : tableau de recrues du jour
 seedé + coût en XP proportionnel à la puissance. Nouveau module seasonpass.js
 (pur, testé) : un cadeau exclusif par saison, réclamable une fois par (saison,
 année), preuve de jeu requise.*
+v3.77 : quêtes du jour jamais impossibles. Le pool s'étend à 20 objectifs
+(soin, pêche, combat, toboggan, plongée, vallée) avec un filtre d'éligibilité
+déclaratif (niveau, features, monde) : un joueur niveau 1 ne reçoit jamais
+« Livrer 1 combat ». Le tirage reste déterministe par date — les quêtes
+inéligibles sont remplacées (pas supprimées) pour garder 3 objectifs. Cinq
+nouvelles actions de quête branchées sur la vallée : visiter le lieu du jour,
+parler à un habitant, ramasser des trouvailles, glisser, plonger. Bandeau
+« lieu du jour ×2 » affiché sous la quête quand le monde est ouvert.*

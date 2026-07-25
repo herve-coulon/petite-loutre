@@ -408,10 +408,23 @@ export function renderEncounter(o, gang, need, h) {
 /** Bannière de quête : la première quête du jour non terminée + sa progression. */
 export function renderDailies(s, rec) {
   const el = $('quest');
+  const zh = $('zone-hint');
   if (!el) return;
-  if (!s || s.stage === 'egg' || s.gameOver || !s.qDaily) { el.classList.add('hidden'); return; }
+  if (!s || s.stage === 'egg' || s.gameOver || !s.qDaily) {
+    el.classList.add('hidden');
+    if (zh) zh.classList.add('hidden');
+    return;
+  }
   el.classList.remove('hidden');
-  const qs = dailyQuests(s.qDaily.date);
+  // Contexte de filtrage : même logique que questCtx() dans main.js
+  const niveau = levelFromXp((rec && rec.xp) || 0).level;
+  const unlocked2 = [];
+  if (niveau >= UNLOCK_LEVEL.treat) unlocked2.push('treat');
+  if (niveau >= UNLOCK_LEVEL.slide) unlocked2.push('slide');
+  if (niveau >= UNLOCK_LEVEL.dive) unlocked2.push('dive');
+  if (niveau >= UNLOCK_LEVEL.battle) unlocked2.push('battle');
+  const ctx = { level: niveau, unlocked: unlocked2, world: s.place === 'monde' };
+  const qs = dailyQuests(s.qDaily.date, ctx);
   const q = qs.find(q => !s.qDaily.done.includes(q.id)) || qs[qs.length - 1];
   const done = s.qDaily.done.includes(q.id);
   const prog = Math.min(s.qDaily.progress[q.key] || 0, q.target);
@@ -419,6 +432,17 @@ export function renderDailies(s, rec) {
   const f = $('quest-fill'); if (f) f.style.width = Math.round(prog / q.target * 100) + '%';
   setTxt('quest-prog', done ? '✓' : prog + '/' + q.target);
   el.classList.toggle('done', done);
+  // Bandeau « lieu du jour » : visible quand le monde est ouvert
+  if (zh) {
+    if (s.place === 'monde') {
+      const jour = zoneDuJour(dayKey());
+      const z = ZONES[jour];
+      zh.textContent = '★ ' + z.name.toLowerCase() + ' : trouvailles ×2';
+      zh.classList.remove('hidden');
+    } else {
+      zh.classList.add('hidden');
+    }
+  }
 }
 
 let reducedMotion = false;
@@ -808,7 +832,14 @@ export function renderAchievements(rec, s) {
     const t = document.createElement('p');
     t.className = 'set-section'; t.textContent = '— 🎯 Quêtes du jour —';
     list.appendChild(t);
-    for (const q of dailyQuests(s.qDaily.date)) {
+    const niveau = levelFromXp((rec && rec.xp) || 0).level;
+    const unlocked2 = [];
+    if (niveau >= UNLOCK_LEVEL.treat) unlocked2.push('treat');
+    if (niveau >= UNLOCK_LEVEL.slide) unlocked2.push('slide');
+    if (niveau >= UNLOCK_LEVEL.dive) unlocked2.push('dive');
+    if (niveau >= UNLOCK_LEVEL.battle) unlocked2.push('battle');
+    const ctx = { level: niveau, unlocked: unlocked2, world: s.place === 'monde' };
+    for (const q of dailyQuests(s.qDaily.date, ctx)) {
       const done = s.qDaily.done.includes(q.id);
       const prog = Math.min(s.qDaily.progress[q.key] || 0, q.target);
       const div = document.createElement('div');

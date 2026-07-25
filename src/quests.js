@@ -2,26 +2,75 @@
 // tirés de façon déterministe à partir de la date). Module pur.
 import { hashSeed, makeRng } from './battle.js';
 
+// Chaque entrée du pool gagne un champ `need` déclaratif.
+// Les quêtes dont le need n'est pas satisfait par le contexte joueur sont
+// REMPLACÉES (pas supprimées) : on reprend le même tirage déterministe et on
+// comble les trous avec la quête éligible suivante du même tirage.
 export const QUEST_POOL = [
+  // ── Soin (toujours éligible) ──
   { id: 'meals3', icon: '🐟', label: 'Servir 3 repas', key: 'meals', target: 3 },
-  { id: 'games2', icon: '🎣', label: 'Jouer 2 parties de pêche', key: 'games', target: 2 },
-  { id: 'fish5', icon: '🐠', label: 'Attraper 5 poissons', key: 'fish', target: 5 },
   { id: 'wash2', icon: '🧼', label: 'Donner 2 bains', key: 'washes', target: 2 },
   { id: 'pets5', icon: '💛', label: 'Câliner 5× (touche la loutre)', key: 'pets', target: 5 },
+  { id: 'sleep1', icon: '💤', label: 'Border la loutre 1 fois', key: 'sleeps', target: 1 },
+  { id: 'meals5', icon: '🍽️', label: 'Servir 5 repas', key: 'meals', target: 5, need: { level: 5 } },
+  { id: 'wash5', icon: '🫧', label: 'Donner 5 bains', key: 'washes', target: 5, need: { level: 8 } },
+  { id: 'pets10', icon: '🤗', label: 'Câliner 10×', key: 'pets', target: 10, need: { level: 6 } },
+  // ── Pêche (accessible dès le début) ──
+  { id: 'fish3', icon: '🐠', label: 'Attraper 3 poissons', key: 'fish', target: 3 },
+  { id: 'fish5', icon: '🐟', label: 'Attraper 5 poissons', key: 'fish', target: 5 },
+  { id: 'games2', icon: '🎣', label: 'Jouer 2 parties de pêche', key: 'games', target: 2 },
+  { id: 'fish10', icon: '🎣', label: 'Attraper 10 poissons', key: 'fish', target: 10, need: { level: 5 } },
+  // ── Friandise (niv 2+) ──
   { id: 'treat1', icon: '🍡', label: 'Offrir 1 friandise', key: 'treats', target: 1 },
-  { id: 'battle1', icon: '⚔️', label: 'Livrer 1 combat', key: 'battles', target: 1 },
-  { id: 'sleep1', icon: '💤', label: 'Border la loutre 1 fois', key: 'sleeps', target: 1 }
+  { id: 'treat3', icon: '🍬', label: 'Offrir 3 friandises', key: 'treats', target: 3, need: { level: 8 } },
+  // ── Combat (niv 10) ──
+  { id: 'battle1', icon: '⚔️', label: 'Livrer 1 combat', key: 'battles', target: 1, need: { feature: 'battle' } },
+  { id: 'battle3', icon: '🗡️', label: 'Livrer 3 combats', key: 'battles', target: 3, need: { feature: 'battle' } },
+  // ── Toboggan (niv 3) ──
+  { id: 'slide1', icon: '🌊', label: 'Glisser 1 descente', key: 'slides', target: 1, need: { feature: 'slide' } },
+  // ── Plongée (niv 6) ──
+  { id: 'dive1', icon: '🤿', label: 'Faire 1 plongée', key: 'dives', target: 1, need: { feature: 'dive' } },
+  // ── Vallée / monde ouvert ──
+  { id: 'finds3', icon: '🗺️', label: 'Ramasser 3 trouvailles', key: 'finds', target: 3, need: { world: true } },
+  { id: 'zone1', icon: '📍', label: 'Visiter le lieu du jour', key: 'zoneVisit', target: 1, need: { world: true } },
+  { id: 'habitant1', icon: '💬', label: 'Parler à un habitant', key: 'habitantTalk', target: 1, need: { world: true } }
 ];
+
+/** Vérifie si une quête est éligible au contexte donné. */
+export function isEligible(q, ctx) {
+  if (!q.need || !ctx) return true;
+  const n = q.need;
+  if (n.level && (ctx.level || 1) < n.level) return false;
+  if (n.feature && !(ctx.unlocked || []).includes(n.feature)) return false;
+  if (n.world && !ctx.world) return false;
+  return true;
+}
 
 export const dayKey = (now = Date.now()) => new Date(now).toISOString().slice(0, 10);
 
-/** Les 3 quêtes du jour (déterministes par date). */
-export function dailyQuests(date) {
+/**
+ * Les 3 quêtes du jour (déterministes par date).
+ * @param {string} date - clé jour (YYYY-MM-DD)
+ * @param {object} [ctx] - { level, unlocked[], world } — optionnel, défaut permissif
+ * @returns {Array} 3 quêtes éligibles, tirées de façon déterministe
+ */
+export function dailyQuests(date, ctx) {
   const rng = makeRng(hashSeed('quests-' + date));
   const pool = [...QUEST_POOL];
+
+  // Tirage déterministe : on parcourt la séquence rng dans l'ordre,
+  // chaque step choisit un index dans la pool résiduelle.
+  // Si la quête tirée est inéligible, on la saute (elle reste dans le pool
+  // pour d'éventuels tirages futurs, mais on ne la compte pas).
   const picked = [];
   while (picked.length < 3 && pool.length) {
-    picked.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
+    const idx = Math.floor(rng() * pool.length);
+    const candidate = pool.splice(idx, 1)[0];
+    if (isEligible(candidate, ctx)) {
+      picked.push(candidate);
+    }
+    // si inéligible : on continue le tirage (la pool rétrécit quand même,
+    // ce qui garantit la stabilité déterministe à ctx égal)
   }
   return picked;
 }
@@ -41,11 +90,14 @@ export function bumpQuest(s, key, n = 1, now = Date.now()) {
   s.qDaily.progress[key] = (s.qDaily.progress[key] || 0) + n;
 }
 
-/** @returns les quêtes nouvellement terminées (marquées dans s.qDaily.done). */
-export function completedQuests(s, rec, now = Date.now()) {
+/**
+ * @returns les quêtes nouvellement terminées (marquées dans s.qDaily.done).
+ * @param {object} [ctx] - contexte pour le filtrage (même que dailyQuests)
+ */
+export function completedQuests(s, rec, now = Date.now(), ctx) {
   ensureDaily(s, now);
   const got = [];
-  for (const q of dailyQuests(s.qDaily.date)) {
+  for (const q of dailyQuests(s.qDaily.date, ctx)) {
     if (s.qDaily.done.includes(q.id)) continue;
     if ((s.qDaily.progress[q.key] || 0) >= q.target) {
       s.qDaily.done.push(q.id);

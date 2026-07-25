@@ -12,7 +12,7 @@ import { dailyEvent, butterflyPos } from './events.js';
 import * as music from './music.js';
 import * as ambient from './ambient.js';
 import { XP, levelFromXp, titleFor } from './level.js';
-import { bumpQuest, completedQuests, ensureDaily, dayKey } from './quests.js';
+import { bumpQuest, completedQuests, ensureDaily, dayKey, isEligible } from './quests.js';
 import { giftClaimable, giftClaimed, claimSeasonGift } from './seasonpass.js';
 
 import {
@@ -108,6 +108,16 @@ function busy() { return !s || s.gameOver || s.away || s.stage === 'egg' || mg |
 function press() { vibrate(10); }
 const curLevel = () => levelFromXp((rec && rec.xp) || 0).level;
 const unlocked = (feat) => curLevel() >= UNLOCK_LEVEL[feat];
+
+/** Contexte de filtrage des quêtes : level, features débloquées, monde ouvert. */
+function questCtx() {
+  const unlocked2 = [];
+  if (unlocked('treat')) unlocked2.push('treat');
+  if (unlocked('slide')) unlocked2.push('slide');
+  if (unlocked('dive')) unlocked2.push('dive');
+  if (unlocked('battle')) unlocked2.push('battle');
+  return { level: curLevel(), unlocked: unlocked2, world: !!(s && s.place === 'monde') };
+}
 const UNLOCK_LABEL = { treat: '🍡 Friandise', slide: '🛝 Toboggan', battle: '⚔️ Combat', dive: '🤿 Plongée' };
 /** Activités qui s'ouvrent en passant de `before` à `after` (annonce de palier). */
 function featuresOpenedBetween(before, after) {
@@ -180,6 +190,7 @@ function resolveDive() {
   persist();
   checkUnlocks();
   careBond('dive');
+  quest('dives');
 }
 
 function actFeed() {
@@ -445,6 +456,7 @@ function endSlide(res) {
   persist();
   ui.updateHUD(s, mg, rec);
   quest('games');
+  quest('slides');
   if (sc > 0) quest('fish', sc);
   tryDrop(clean ? 1.8 : 1); // descente parfaite = meilleure chance de trésor
   careBond('play');
@@ -684,6 +696,7 @@ function parlerAuPnj(pnj) {
       : '🔭 « Rien à signaler aujourd\'hui. La vallée est tranquille. »');
   }
   sfx.chirp(); vibrate(10);
+  quest('habitantTalk');
   persist(); persistRec();
   ui.updateHUD(s, mg, rec);
   ui.showStory({ emoji: pnj.emoji, title: pnj.nom + ' — ' + pnj.role, lines: lignes, cta: 'MERCI !' });
@@ -778,6 +791,7 @@ function ouvrirCoffre(c) {
 function collectFind(f) {
   if (!rec) return;
   (rec.found = rec.found || []).push(f.id);
+  quest('finds');
   const name = s.name || 'La loutre';
   const honneur = zoneDuJour(dayKey()) === (s.worldZone || START_ZONE);
   const x2 = honneur ? 2 : 1;
@@ -932,6 +946,7 @@ function goToZone(zoneId, px, py) {
   world.chasseur = chasseurFor(zoneId);
   world.finds = findsFor(zoneId);
   sfx.press(); vibrate(8);
+  quest('zoneVisit');
   // le passage se met en scène : rideau + nom du lieu (cf. R.flashZone)
   const z = zoneById(zoneId), intro = ZONE_INTRO[zoneId];
   R.flashZone && R.flashZone(z.name, intro && intro.emoji);
@@ -1681,7 +1696,7 @@ function tryDrop(boost = 1) {
 function quest(key, n = 1) {
   if (!s || s.stage === 'egg' || s.gameOver) return;
   bumpQuest(s, key, n, now());
-  for (const q of completedQuests(s, rec, now())) {
+  for (const q of completedQuests(s, rec, now(), questCtx())) {
     s.fun = clamp(s.fun + 10, 0, 100);
     R.spawn('heart', s.stage);
     R.burst('sparkle', 10, s.stage);
