@@ -66,8 +66,6 @@ function setBar(id, v) {
   el.classList.toggle('low', v < 20);
   const bar = el.closest && (el.closest('.mg') || el.closest('.bar'));
   if (bar) bar.classList.toggle('crit', v < 20);       // alerte : glow
-  const vEl = $('v-' + id.slice(2));
-  if (vEl) vEl.textContent = Math.round(val);
   const prev = barPrev[id];
   if (prev !== undefined && v > prev + 0.5) {
     el.classList.remove('up');

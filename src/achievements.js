@@ -3,7 +3,7 @@ import { H } from './constants.js';
 import { HATS, unlockedHats } from './accessories.js';
 import { FURS, unlockedFurs } from './skins.js';
 import { levelFromXp } from './level.js';
-import { COFFRE_ZONES, EPREUVE_ZONES } from './tilemap.js';
+import { COFFRE_ZONES, EPREUVE_ZONES, ZONES } from './tilemap.js';
 
 export const ACHIEVEMENTS = [
   { id: 'naissance', icon: '🥚', name: 'Première éclosion', desc: 'Faire éclore un œuf',
@@ -48,6 +48,9 @@ export const ACHIEVEMENTS = [
   { id: 'championne', icon: '🥇', name: 'Championne de la vallée',
     desc: 'Battre les ' + EPREUVE_ZONES.length + ' championnes',
     test: (s, r) => (r.epreuves || []).length >= EPREUVE_ZONES.length },
+  { id: 'explorer', icon: '🗺️', name: 'Exploratrice',
+    desc: 'Découvrir les ' + Object.keys(ZONES).length + ' lieux de la vallée',
+    test: (s, r) => (r.visited || []).length >= Object.keys(ZONES).length },
   { id: 'maitresse', icon: '🏞️', name: 'Maîtresse de la vallée',
     desc: 'Tous les coffres ET toutes les championnes',
     test: (s, r) => (r.chests || []).length >= COFFRE_ZONES.length

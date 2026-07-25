@@ -299,3 +299,7 @@ Le champ levelReached dans les records mémorise le palier le plus haut atteint
 partage, carte postale et achievements s'affichent au niveau effectif (jamais
 inférieur au précédent). Le profil montre désormais les paliers franchis au fil
 du jeu.*
+v3.78 : badge « Exploratrice » pour avoir découvert les 15 lieux de la vallée.
+
+Toast repositionné en haut à droite ; jauges muettes (plus de compteur
+numérique).*  

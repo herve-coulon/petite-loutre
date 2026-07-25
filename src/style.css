@@ -509,12 +509,13 @@ input#name-input{
 input#name-input:focus{border-color:var(--teal);}
 
 #toast{
-  position:fixed; top:calc(14px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%) scale(0);
+  position:fixed; top:calc(14px + env(safe-area-inset-top)); right:calc(14px + env(safe-area-inset-right));
+  transform:scale(0);
   background:var(--ink); color:#f3e9c8; border:2px solid var(--gold);
   font-size:13px; font-weight:700; padding:8px 14px; border-radius:999px; z-index:30;
   transition:transform .25s; white-space:nowrap;
 }
-#toast.show{transform:translateX(-50%) scale(1);}
+#toast.show{transform:scale(1);}
 
 /* Célébration */
 #ovl-cheer{position:fixed; inset:0; z-index:22; overflow:hidden;

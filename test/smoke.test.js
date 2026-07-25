@@ -292,7 +292,7 @@ test('game feel : le début de combat secoue l\'écran', () => {
   L.state.hatchedAt = Date.now() - 25 * 3600 * 1000;
   L.state.stage = 'child';
   L.state.sleeping = false;
-  L.records.xp = 100000; // le combat se débloque par NIVEAU désormais
+  L.records.xp = 100000; L.records.levelReached = 0; // le combat se débloque par NIVEAU désormais
   tick();
   assert.equal(L.state.stage, 'child', 'stade stable après tick');
   $('b-battle').click();
@@ -496,7 +496,7 @@ test('montée de niveau : toast étoilé, friandise rechargée, sauvegardé', ()
   };
   const lv0 = $('lvl-badge').textContent;
   // repart d'un niveau bas (les tests précédents peuvent avoir atteint le plafond 50)
-  L.records.xp = 100;
+  L.records.xp = 100; L.records.levelReached = 0;
   const cur = L.records.xp;
   const Lc = levelFromXp(cur);
   L.records.xp = cur + (Lc.next - Lc.cur) - 2; // à 2 XP du niveau suivant
@@ -557,7 +557,7 @@ test('toboggan : verrouillé sous le niveau requis, sinon se lance, se termine e
   L.state.stage = 'child'; L.state.hatchedAt = Date.now() - 25 * 3600 * 1000;
 
   // verrou : niveau trop bas -> bouton grisé mais tapable, qui explique le déblocage
-  L.records.xp = 0; // niveau 1
+  L.records.xp = 0; L.records.levelReached = 0; // niveau 1
   L.step(0); // rafraîchit le HUD (état des boutons)
   assert.ok($('b-slide').classList.contains('locked'), 'bouton grisé sous le niveau requis');
   assert.equal($('b-slide').disabled, false, 'mais tapable pour expliquer le déblocage');
@@ -566,7 +566,7 @@ test('toboggan : verrouillé sous le niveau requis, sinon se lance, se termine e
   assert.match($('log').textContent, /niveau/i, 'astuce de déblocage par niveau affichée');
 
   // débloqué une fois le palier de niveau atteint
-  L.records.xp = 100000;
+  L.records.xp = 100000; L.records.levelReached = 0;
   L.step(0);
   assert.ok(!$('b-slide').classList.contains('locked'), 'débloqué au niveau requis');
   const slidesBefore = L.records.slidesTotal || 0;
@@ -700,7 +700,7 @@ const gagnerLeDuel = () => {
 test('épreuve : la championne propose son duel, et son trophée ne se gagne qu\'une fois', async () => {
   L.state.gameOver = false; L.state.away = false; L.state.divingUntil = 0; L.state.sleeping = false;
   L.state.stage = 'adult'; L.state.hatchedAt = Date.now() - 5 * 24 * 3600 * 1000;
-  L.records.visited = ['clairiere']; L.records.epreuves = []; L.records.xp = 100000;
+  L.records.visited = ['clairiere']; L.records.epreuves = []; L.records.xp = 100000; L.records.levelReached = 0;
   L.state.place = 'berge'; L.state.worldZone = 'clairiere';
 
   $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
@@ -740,7 +740,7 @@ test('épreuve : la championne propose son duel, et son trophée ne se gagne qu\
 test('maîtrise : boucler les DEUX collections octroie le légendaire, une seule fois', async () => {
   L.state.gameOver = false; L.state.away = false; L.state.stage = 'adult';
   L.state.hatchedAt = Date.now() - 5 * 24 * 3600 * 1000;
-  L.records.xp = 100000; L.records.maitrise = false;
+  L.records.xp = 100000; L.records.levelReached = 0; L.records.maitrise = false;
   L.records.items = L.records.items.filter(i => i !== 'coeur');
   // dérivé des constantes : la vallée grandit, le test doit suivre tout seul
   L.records.chests = COFFRE_ZONES.filter(z => z !== 'vallon');   // il en manque un
@@ -778,7 +778,7 @@ test('toboggan : trois rochers éjectent la loutre, et ça lui coûte de la sant
   L.state.stage = 'adult'; L.state.hatchedAt = Date.now() - 5 * 24 * 3600 * 1000;
   L.state.energy = 90; L.state.health = 100;
   L.state.coach = false;        // loutre adulte : le tutoriel est passé depuis longtemps
-  L.records.xp = 100000;
+  L.records.xp = 100000; L.records.levelReached = 0;
   L.step(0);
 
   L.actSlide();
@@ -810,7 +810,7 @@ test('vallée : un toucher vers le bord fait VRAIMENT changer de carte', async (
   L.state.gameOver = false; L.state.away = false; L.state.divingUntil = 0;
   L.state.sleeping = false; L.state.coach = false;
   L.state.stage = 'adult'; L.state.hatchedAt = Date.now() - 5 * 24 * 3600 * 1000;
-  L.records.visited = ['clairiere']; L.records.xp = 100000;   // haut niveau : tout est déverrouillé
+  L.records.visited = ['clairiere']; L.records.xp = 100000; L.records.levelReached = 0;   // haut niveau : tout est déverrouillé
   L.state.place = 'berge'; L.state.worldZone = 'clairiere';
   $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
   assert.equal(L.world.zone, 'clairiere');
@@ -864,7 +864,7 @@ test('déblocage : un bord verrouillé repousse, le niveau requis l\'ouvre', asy
   L.state.sleeping = false; L.state.coach = false;
   L.state.stage = 'adult'; L.state.hatchedAt = Date.now() - 5 * 24 * 3600 * 1000;
   L.records.visited = ['clairiere'];
-  L.records.xp = 0;                                   // niveau 1 : le cœur, rien de plus
+  L.records.xp = 0; L.records.levelReached = 0;                                   // niveau 1 : le cœur, rien de plus
   L.state.place = 'berge'; L.state.worldZone = 'clairiere';
   $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
 
@@ -884,7 +884,7 @@ test('déblocage : un bord verrouillé repousse, le niveau requis l\'ouvre', asy
   assert.ok(!L.records.visited.includes('lac'), 'et ne pas se laisser découvrir');
 
   // on monte en niveau : le lac (palier 3) s'ouvre. Même geste, cette fois ça passe.
-  L.records.xp = 100000;
+  L.records.xp = 100000; L.records.levelReached = 0;
   L.state.place = 'berge'; L.state.worldZone = 'clairiere';
   $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
   seul();
@@ -903,7 +903,7 @@ test('confins : chaque trouvaille lointaine paie vraiment (pas de ramassage à v
   L.state.sleeping = false; L.state.coach = false;
   L.state.stage = 'adult'; L.state.hatchedAt = Date.now() - 5 * 24 * 3600 * 1000;
   L.records.visited = ['clairiere'];
-  L.records.xp = 200000;                       // haut niveau : rien ne bloque
+  L.records.xp = 200000; L.records.levelReached = 0;                       // haut niveau : rien ne bloque
   const KINDS = ['corail', 'cristal', 'glacon', 'nacre', 'pepite', 'etoile'];
   for (const kind of KINDS) {
     L.state.place = 'berge'; L.state.worldZone = 'clairiere';
@@ -992,7 +992,7 @@ test('friandise express : en délai, on peut en offrir une en gemmes ; la voie g
   // qu'un raccourci quand le délai court encore.
   Object.assign(L.state, { gameOver: false, away: false, sleeping: false, stage: 'adult',
     hatchedAt: Date.now() - 5 * 864e5, hunger: 40, fun: 40, lastTreat: Date.now() });  // en plein délai
-  L.records.xp = 100000;                       // niveau haut : friandise débloquée
+  L.records.xp = 100000; L.records.levelReached = 0;                       // niveau haut : friandise débloquée
   L.records.gems = 20;
 
   // sans confirmation, rien ne se passe
