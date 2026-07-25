@@ -40,6 +40,9 @@ export function newState(now = Date.now(), rnd = Math.random) {
     gear: null,      // trésor équipé (id) — bonus de jeu, par loutre
     trait: null,     // personnalité, tirée au baptême (chaque loutre est unique)
     bond: 0,         // lien/affinité avec CETTE loutre, grandit avec les soins
+    telemetry: true,      // statistiques anonymes (opt-out dans ⚙️)
+    telemetryId: null,    // identifiant aléatoire, généré au 1er ping
+    lastTelemetryDay: null, // dernier jour de ping envoyé
     lastTick: now
   };
 }
@@ -77,6 +80,9 @@ function normalizeState(o) {
   if (o.gear === undefined) o.gear = null; // trésor équipé
   if (o.trait === undefined) o.trait = null; // personnalité (assignée au besoin par l'orchestrateur)
   if (typeof o.bond !== 'number') o.bond = 0;
+  if (typeof o.telemetry !== 'boolean') o.telemetry = true;
+  if (typeof o.telemetryId !== 'string') o.telemetryId = null;
+  if (typeof o.lastTelemetryDay !== 'string') o.lastTelemetryDay = null;
   // échelle courante de l'aventure (monde / berge / tanière) — repli sur berge
   if (o.place !== 'taniere' && o.place !== 'monde') o.place = 'berge';
   if (!o.hints || typeof o.hints !== 'object') o.hints = {}; // astuces de gestes déjà vues

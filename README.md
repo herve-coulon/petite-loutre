@@ -311,3 +311,7 @@ designer (Side pour le monde, Face pour les portraits). Les 8 animations
 nouvelles (sleep, dream, wake, hungry, sick, hurt, cold, hot) sont intégrées
 depuis le manifeste, animForMood enrichi, HUD et carte de rencontre peints
 avec le pelage vivant, Œuf crème, pelages dotés de la clé q.*
+v3.81 : télémétrie privacy-first. Un ping quotidien anonyme (niveau, série,
+fonctionnalités utilisées) vers Supabase. Opt-out dans ⚙️, aucun envoi tant
+que la loutre n'est pas nommée. SQL et edge function fournis dans le rapport,
+prêts à déployer côté serveur.*

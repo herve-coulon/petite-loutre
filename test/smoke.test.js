@@ -409,6 +409,25 @@ test('rappels 🔔 : bouton présent, indisponible en jsdom -> message propre, �
   $('btn-set-close').click();
 });
 
+/* ---------------- v3.81 : télémétrie privacy-first ---------------- */
+
+test('télémétrie : bouton présent dans ⚙️, toggle et toast', async () => {
+  $('lvl-badge').click(); $('m-gear').click();
+  const btn = $('b-telemetry');
+  assert.ok(btn, 'bouton b-telemetry présent');
+  assert.match(btn.textContent, /OUI/, 'activé par défaut');
+  assert.equal(L.state.telemetry, true);
+  btn.click();
+  await new Promise(r => setTimeout(r, 20));
+  assert.equal(L.state.telemetry, false, 'désactivé après clic');
+  assert.match(btn.textContent, /NON/);
+  assert.match($('toast').textContent, /désactivées/i);
+  btn.click(); // réactiver pour les tests suivants
+  await new Promise(r => setTimeout(r, 20));
+  assert.equal(L.state.telemetry, true);
+  $('btn-set-close').click();
+});
+
 /* ---------------- v2.7.1 : fermer les menus sans scroller ---------------- */
 
 test('réglages : le numéro de version est affiché (cohérent avec package.json)', async () => {

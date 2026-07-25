@@ -7,6 +7,7 @@ import {
 import { touchStreak } from './streak.js';
 import { greeting } from './mood.js';
 import * as push from './push.js';
+import { canSendTelemetry, sendTelemetry, newTelemetryId } from './telemetry.js';
 import { dailyShareText } from './share.js';
 import { dailyEvent, butterflyPos } from './events.js';
 import * as music from './music.js';
@@ -1853,6 +1854,13 @@ function tick() {
   updateCoach();     // garde le surlignage du tutoriel en phase (dodo, overlays…)
   seasonHint();      // rappelle le contre-geste si le froid/la chaleur la malmène
   syncMusic(); // (re)démarre dès que l'audio est débloqué, coupe si veille/fin
+  // Télémétrie : un ping par jour, jamais pendant l'œuf, ID généré au 1er envoi.
+  if (s && canSendTelemetry(s) && s.lastTelemetryDay !== dayKey(t)) {
+    if (!s.telemetryId) s.telemetryId = newTelemetryId();
+    s.lastTelemetryDay = dayKey(t);
+    sendTelemetry(s, rec, curLevel());
+    persist();
+  }
   if (t - lastSave > 5 * SEC) {
     lastSave = t;
     persist();
@@ -2120,6 +2128,13 @@ function boot() {
         : 'Rappels indisponibles sur ce navigateur.');
     }
   });
+  $('b-telemetry').addEventListener('click', () => {
+    sfx.press();
+    s.telemetry = !s.telemetry;
+    $('b-telemetry').textContent = '📊 STATISTIQUES ANONYMES : ' + (s.telemetry ? 'OUI' : 'NON');
+    persist();
+    ui.toast(s.telemetry ? '📊 Statistiques anonymes activées.' : '📊 Statistiques anonymes désactivées.');
+  });
   $('b-reset').addEventListener('click', () => {
     ui.askConfirm('Recommencer avec un nouvel œuf ? La loutre actuelle sera perdue (chapeaux et succès conservés).', () => {
       clearSave(storage);
@@ -2359,6 +2374,7 @@ function boot() {
     updateVolumeLabel();
     updateA11yLabels();
     $('b-push').textContent = '🔔 RAPPELS : ' + (s && s.push ? 'OUI' : 'NON');
+    $('b-telemetry').textContent = '📊 STATISTIQUES ANONYMES : ' + (s && s.telemetry !== false ? 'OUI' : 'NON');
     ui.showOverlay('ovl-set');
   };
 
