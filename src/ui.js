@@ -342,6 +342,7 @@ export function renderGang(rec, s, h, board) {
   const rT = document.createElement('p'); rT.className = 'g-section'; rT.textContent = 'Recrues du jour';
   host.appendChild(rT);
   const recWrap = document.createElement('div'); recWrap.className = 'gang-recruit';
+  const xpNow = rec.xp || 0;
   (board || []).forEach(c => {
     const card = document.createElement('div'); card.className = 'rec-card';
     const fur = FURS.find(f => f.id === c.fur) || FURS[0];
@@ -349,11 +350,16 @@ export function renderGang(rec, s, h, board) {
     const col = document.createElement('div'); col.className = 'rc-col';
     const nm = document.createElement('span'); nm.className = 'rc-nm'; nm.textContent = c.name;
     const pw = document.createElement('span'); pw.className = 'rc-pw'; pw.textContent = '💪 ' + fmtNum(c.power);
-    col.appendChild(nm); col.appendChild(pw);
+    const afford = xpNow >= c.cost;
+    const sub = document.createElement('span'); sub.className = 'rc-sub';
+    sub.textContent = afford
+      ? 'Tu as ' + fmtNum(xpNow) + ' XP — il en reste ' + fmtNum(xpNow - c.cost)
+      : 'Tu as ' + fmtNum(xpNow) + ' XP — il en manque ' + fmtNum(c.cost - xpNow);
+    col.appendChild(nm); col.appendChild(pw); col.appendChild(sub);
     const btn = document.createElement('button'); btn.className = 'act';
     if (c.recruited) { btn.textContent = 'Recrutée ✓'; btn.disabled = true; }
     else if (full) { btn.textContent = 'Complet'; btn.disabled = true; }
-    else { btn.textContent = c.cost + ' XP'; btn.disabled = (rec.xp || 0) < c.cost; }
+    else { btn.textContent = c.cost + ' XP'; btn.disabled = !afford; }
     btn.addEventListener('click', () => h.recruit && h.recruit(c));
     card.appendChild(ic); card.appendChild(col); card.appendChild(btn);
     recWrap.appendChild(card);

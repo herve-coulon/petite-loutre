@@ -943,6 +943,7 @@ test('boutique : acheter un chapeau en gemmes le débloque et l\'équipe ; sans 
   // assez de gemmes : achat, débit, déblocage, équipement
   L.records.gems = 200;
   handlers.onBuyHat('noeud');
+  $('btn-confirm-yes').click();
   assert.ok((L.records.bought || []).includes('noeud'), 'le chapeau est acheté');
   assert.ok(L.records.gems < 200, 'les gemmes ont été débitées');
   assert.equal(L.state.hat, 'noeud', 'et il est équipé dans la foulée');
@@ -976,6 +977,7 @@ test('boutique : acheter un trésor trouvable en gemmes ; palier et gemmes manqu
   // assez de gemmes : achat, débit, possession, équipement
   L.records.gems = 999;
   handlers.onBuyTresor(trouvable.id);
+  $('btn-confirm-yes').click();
   assert.ok(L.records.items.includes(trouvable.id), 'le trésor est acquis');
   assert.ok(L.records.gems < 999, 'les gemmes sont débitées');
   assert.equal(L.state.gear, trouvable.id, 'et il est équipé aussitôt');

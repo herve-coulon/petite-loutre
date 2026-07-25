@@ -2165,15 +2165,18 @@ function boot() {
         ui.toast('💎 Pas assez de gemmes — il en faut ' + prix + '.'); sfx.sad(); vibrate(20);
         return;
       }
-      rec.gems -= prix;
-      (rec.items = rec.items || []).push(id);
-      s.gear = id;                                        // satisfaction immédiate
-      persist(); persistRec();
-      sfx.levelup(); vibrate([20, 40, 20]);
-      if (s && !s.gameOver && s.stage !== 'egg') R.burst('confetti', 16, s.stage);
-      ui.toast(it.emoji + ' Acheté : ' + it.name + ' ! (−' + prix + ' 💎)');
-      ui.renderLevel(rec);
-      ui.renderWardrobe(s, rec, wardrobeHandlers);
+      ui.askConfirm('Acheter ' + it.emoji + ' ' + it.name + ' pour 💎 ' + prix + ' ?', () => {
+        if ((rec.gems || 0) < prix) return;
+        rec.gems -= prix;
+        (rec.items = rec.items || []).push(id);
+        s.gear = id;                                        // satisfaction immédiate
+        persist(); persistRec();
+        sfx.levelup(); vibrate([20, 40, 20]);
+        if (s && !s.gameOver && s.stage !== 'egg') R.burst('confetti', 16, s.stage);
+        ui.toast(it.emoji + ' Acheté : ' + it.name + ' ! (−' + prix + ' 💎)');
+        ui.renderLevel(rec);
+        ui.renderWardrobe(s, rec, wardrobeHandlers);
+      });
     },
     // Acheter un cosmétique avec des gemmes : la voie « impatiente », en plus de
     // l'exploit. On équipe dans la foulée — la récompense doit être immédiate.
@@ -2197,17 +2200,20 @@ function boot() {
       ui.toast('💎 Pas assez de gemmes — il en faut ' + prix + '.'); sfx.sad(); vibrate(20);
       return;
     }
-    rec.gems -= prix;
-    (rec.bought = rec.bought || []).push(item.id);
-    equip(item.id);                                             // satisfaction immédiate
-    prevHats = new Set(unlockedHats(rec));
-    prevFurs = new Set(unlockedFurs(rec));
-    persist(); persistRec();
-    sfx.levelup(); vibrate([20, 40, 20]);
-    if (s && !s.gameOver && s.stage !== 'egg') R.burst('sparkle', 12, s.stage);
-    ui.toast(item.icon + ' Acheté : ' + item.name + ' ! (−' + prix + ' 💎)');
-    ui.renderLevel(rec);
-    ui.renderWardrobe(s, rec, wardrobeHandlers);
+    ui.askConfirm('Acheter ' + item.icon + ' ' + item.name + ' pour 💎 ' + prix + ' ?', () => {
+      if ((rec.gems || 0) < prix) return;
+      rec.gems -= prix;
+      (rec.bought = rec.bought || []).push(item.id);
+      equip(item.id);                                             // satisfaction immédiate
+      prevHats = new Set(unlockedHats(rec));
+      prevFurs = new Set(unlockedFurs(rec));
+      persist(); persistRec();
+      sfx.levelup(); vibrate([20, 40, 20]);
+      if (s && !s.gameOver && s.stage !== 'egg') R.burst('sparkle', 12, s.stage);
+      ui.toast(item.icon + ' Acheté : ' + item.name + ' ! (−' + prix + ' 💎)');
+      ui.renderLevel(rec);
+      ui.renderWardrobe(s, rec, wardrobeHandlers);
+    });
   }
   // exposé pour les tests (le banc jsdom pilote l'achat via ces gestionnaires)
   if (window.__loutre) window.__loutre.__wardrobeHandlers = wardrobeHandlers;

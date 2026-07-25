@@ -302,4 +302,7 @@ du jeu.*
 v3.78 : badge « Exploratrice » pour avoir découvert les 15 lieux de la vallée.
 
 Toast repositionné en haut à droite ; jauges muettes (plus de compteur
-numérique).*  
+numérique).*
+v3.79 : les coûts sont clairs. Le recrutement en escouade affiche le solde XP
+et ce qu'il reste après l'embauche. La garde-robe demande confirmation avant
+chaque achat en gemmes (chapeaux, pelages, décors, trésors).*

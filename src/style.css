@@ -184,6 +184,7 @@ button.pm-cell.go:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,5
 .rec-card .rc-col{display:flex; flex-direction:column; text-align:left; min-width:0;}
 .rec-card .rc-nm{font-weight:700; color:var(--ink); font-size:13px;}
 .rec-card .rc-pw{font-size:11px; color:rgba(38,54,78,.7);}
+.rec-card .rc-sub{font-size:10px; color:rgba(38,54,78,.55); margin-top:1px;}
 .rec-card .act{margin-left:auto; padding:8px 12px; font-size:12px; white-space:nowrap;}
 .gang-actions{display:flex; flex-direction:column; gap:8px; margin-top:2px;}
 .g-result{text-align:center; padding:9px; border-radius:12px; font-size:16px; font-weight:700;}
