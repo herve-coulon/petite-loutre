@@ -136,10 +136,10 @@ export function decodeCard(code) {
 /* ─────────────────────────── Le duel réflexe ─────────────────────────── */
 
 // Toutes les durées sont en millisecondes.
-export const INTRO_MS = 650;        // « prépare-toi » avant le premier coup
-const WINDUP_MAX = 820;             // télégraphe le plus lent (début, bas niveau)
-const WINDUP_MIN = 400;             // le plus rapide (haut niveau / gros combo)
-const RECOVER_MS = 300;             // répit entre deux coups
+export const INTRO_MS = 750;        // « prépare-toi » avant le premier coup
+const WINDUP_MAX = 1000;            // télégraphe le plus lent (début, bas niveau)
+const WINDUP_MIN = 520;             // le plus rapide (haut niveau / gros combo)
+const RECOVER_MS = 380;             // répit entre deux coups
 export const PARRY_PERFECT = 130;   // |Δ| ≤ → parade parfaite (riposte)
 export const PARRY_OK = 300;        // |Δ| ≤ → blocage ; au-delà → touché plein
 export const OPEN_MS = 720;         // durée d'une ouverture (fenêtre de FRAPPE)
@@ -153,7 +153,7 @@ export const COMBO_OPEN = 3;        // parades parfaites d'affilée → une ouve
  */
 function windupFor(level, seq, combo) {
   const motif = [1.0, 0.72, 1.06, 0.6, 0.9, 0.68][seq % 6];
-  const base = WINDUP_MAX - Math.min(320, level * 12) - combo * 45;
+  const base = WINDUP_MAX - Math.min(300, level * 10) - combo * 35;
   return Math.round(Math.max(WINDUP_MIN, base * motif));
 }
 
