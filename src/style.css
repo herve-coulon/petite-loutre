@@ -57,9 +57,10 @@ button{font-family:inherit;}
 
 /* ---------------- Rangée 1 : avatar / nom+XP / boutique / gemmes ---------------- */
 #topbar{display:flex; align-items:center; gap:10px; flex:none;}
+#avatar-wrap{position:relative; flex:none;}
 #avatar{
-  position:relative; width:58px; height:58px; flex:none; border-radius:50%;
-  background:var(--paper); border:2.5px solid var(--ink);
+  position:relative; width:58px; height:58px; border-radius:50%;
+  background:var(--paper); border:2.5px solid var(--ink); overflow:hidden;
   display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow);
 }
 #avatar .av-face{font-size:24px; line-height:1;}

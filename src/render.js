@@ -135,6 +135,79 @@ export function paintOtter(cv, o, sc = 3, flip = false) {
   if (hat) paint(hat.rows, 0, 0, null);
 }
 
+/**
+ * Pastille profil : dessine juste la tête de la loutre, centrée dans un
+ * canvas de taille fixe (diam × diam). Le chapeau s'il est équipé déborde
+ * légèrement vers le haut — le cercle CSS clippe le tout.
+ */
+export function paintBadge(cv, o, diam = 58) {
+  if (!cv || !cv.getContext || !o) return;
+  const ctx = cv.getContext('2d');
+  if (!ctx) return;
+  const hatOf = o.hat ? hatById(o.hat) : null;
+  const top = hatOf ? hatOf.rows.length : 0;
+  if (usesArt(o)) {
+    const young = ART.stageFrames && ART.stageFrames('idle', o.fur, o.stage);
+    const an = (young && young.anatomy) || ANATOMY.idle;
+    // Tête : headTop..headTop+headW carré centré sur headCx.
+    const ht = an.headTop || 0;
+    const hcw = an.headW || 27;
+    // Échelle maximale pour que la tête tienne dans le cercle (avec chapeau).
+    const sc = Math.floor(diam / Math.max(hcw, ht + top + hcw * 0.6));
+    // drawAnim place le sprite par les pieds (x, y). La tête est à
+    //   screen_x = (x - feet.x + headCx) * sc
+    //   screen_y = (y - feet.y + headTop + headW/2) * sc
+    // On veut la tête centrée : screen = diam/2.
+    const drawX = diam / 2 / sc + an.feet.x - an.headCx;
+    const drawY = diam / 2 / sc + an.feet.y - ht - hcw / 2;
+    cv.width = diam; cv.height = diam;
+    ctx.clearRect(0, 0, diam, diam);
+    ctx.save();
+    ctx.scale(sc, sc);
+    drawAnim(ctx, ART, 'idle', 0, drawX, drawY, o.fur, false, o.stage);
+    ctx.restore();
+    if (hatOf) {
+      // Chapeau centré sur headCx, au-dessus de la tête.
+      const hx = diam / 2 / sc - 8;
+      for (let j = 0; j < hatOf.rows.length; j++) {
+        const row = hatOf.rows[j];
+        for (let i = 0; i < row.length; i++) {
+          const ch = row[i];
+          const col = PAL[ch];
+          if (!col || ch === '.') continue;
+          ctx.fillStyle = col;
+          ctx.fillRect((hx + i) * sc, j * sc, sc, sc);
+        }
+      }
+    }
+    return;
+  }
+  // Mode sprites : le sprite Face est déjà la tête pleine face.
+  const spr = SPRITES_PORTRAITS[o.stage + 'Face'] || SPRITES_PORTRAITS.adultFace;
+  const fur = (furById(o.fur) || {}).map;
+  const hat = o.hat ? hatById(o.hat) : null;
+  const sprTop = hat ? hat.rows.length : 0;
+  const sc = Math.floor(diam / Math.max(spr[0].length, spr.length + sprTop));
+  const ox = Math.floor((diam - spr[0].length * sc) / 2);
+  const oy = Math.floor((diam - (spr.length + sprTop) * sc) / 2);
+  cv.width = diam; cv.height = diam;
+  ctx.clearRect(0, 0, diam, diam);
+  const paint = (rows, px, py, pal) => {
+    for (let j = 0; j < rows.length; j++) {
+      const row = rows[j];
+      for (let i = 0; i < row.length; i++) {
+        const ch = row[i];
+        const col = (pal && pal[ch]) || PAL[ch];
+        if (!col || ch === '.') continue;
+        ctx.fillStyle = col;
+        ctx.fillRect(ox + px + i * sc, oy + py + j * sc, sc, sc);
+      }
+    }
+  };
+  paint(spr, 0, sprTop * sc, fur);
+  if (hat) paint(hat.rows, 0, 0, null);
+}
+
 /* ---------------- Game feel : squash & stretch (fonction pure, testée) ---------------- */
 export const SQUASH_MS = 320;
 /** Enveloppe d'écrasement : t=0 écrasée, rebond étiré amorti, t>=1 repos exact. */

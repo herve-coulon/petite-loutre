@@ -315,3 +315,6 @@ v3.81 : télémétrie privacy-first. Un ping quotidien anonyme (niveau, série,
 fonctionnalités utilisées) vers Supabase. Opt-out dans ⚙️, aucun envoi tant
 que la loutre n'est pas nommée. SQL et edge function fournis dans le rapport,
 prêts à déployer côté serveur.*
+v3.81.1 : pastille profil miniature. La pastille HUD affiche la tête de la
+loutre centrée dans le cercle (pelage vivant + chapeau) au lieu d'un emoji
+ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*

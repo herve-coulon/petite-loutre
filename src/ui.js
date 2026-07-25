@@ -14,7 +14,7 @@ import { gangPower, fighterPower, MAX_MEMBERS } from './gang.js';
 import { makeFighter, encodeCard, OPEN_MS, COMBO_OPEN } from './battle.js';
 import { TECHNIQUES, unlockedTechniques } from './skills.js';
 import { equipBonus } from './skins.js';
-import { paintOtter } from './render.js';
+import { paintOtter, paintBadge } from './render.js';
 import { ZONES, ZONE_INTRO, FIND_ICON, SPECIALITE, COFFRE_ZONES, EPREUVE_ZONES, zoneDuJour, zoneLayout, zoneUnlocked, zoneReq } from './tilemap.js';
 
 const $ = id => document.getElementById(id);
@@ -480,7 +480,7 @@ export function updateHUD(s, mg, rec) {
   const level = levelFromXp((rec && rec.xp) || 0).level;
   const tr = traitById(s.trait);
   setTxt('hud-name', (s.name ? s.name.toUpperCase() : '???') + (tr && s.stage !== 'egg' ? ' ' + tr.emoji : ''));
-  if (s.stage !== 'egg') paintFace($('av-face-hud'), s, 1);
+  if (s.stage !== 'egg') paintBadge($('av-face-hud'), s, 58);
   const grumpy = !s.sick && !s.sleeping && (s.grumpyUntil || 0) > Date.now();
   // stage/âge : plus affichés dans la barre du haut (maquette) mais gardés si présents
   setTxt('hud-stage', s.away
