@@ -480,7 +480,7 @@ export function updateHUD(s, mg, rec) {
   const level = levelFromXp((rec && rec.xp) || 0).level;
   const tr = traitById(s.trait);
   setTxt('hud-name', (s.name ? s.name.toUpperCase() : '???') + (tr && s.stage !== 'egg' ? ' ' + tr.emoji : ''));
-  if (s.stage !== 'egg') paintFace($('av-face-hud'), s, 2);
+  if (s.stage !== 'egg') paintFace($('av-face-hud'), s, 1);
   const grumpy = !s.sick && !s.sleeping && (s.grumpyUntil || 0) > Date.now();
   // stage/âge : plus affichés dans la barre du haut (maquette) mais gardés si présents
   setTxt('hud-stage', s.away

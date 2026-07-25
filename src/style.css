@@ -62,7 +62,7 @@ button{font-family:inherit;}
   background:var(--paper); border:2.5px solid var(--ink);
   display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow);
 }
-#avatar .av-face{font-size:32px; line-height:1;}
+#avatar .av-face{font-size:24px; line-height:1;}
 #lvl-badge{
   position:absolute; bottom:-4px; left:-4px; min-width:24px; height:24px; padding:0 5px;
   display:flex; align-items:center; justify-content:center;
