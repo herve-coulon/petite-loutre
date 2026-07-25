@@ -1,6 +1,7 @@
 // État du jeu + records globaux + persistance + export/import.
 // Aucune dépendance DOM : le stockage est injecté.
 import { SAVE_KEY, H } from './constants.js';
+import { levelFromXp } from './level.js';
 
 export const REC_KEY = 'petite_loutre_records_v1';
 const EXPORT_PREFIX = 'LOUTRE1.';
@@ -128,6 +129,7 @@ export function newRecords() {
     battles: 0,
     questsDone: 0,
     xp: 0,
+    levelReached: 0,   // niveau le plus haut jamais atteint (cliquet : ne redescend plus)
     streakCount: 0,
     streakDay: null,
     streakBest: 0,
@@ -154,6 +156,10 @@ function normalizeRecords(o) {
   if (!Array.isArray(o.visited)) o.visited = [];
   if (!o.seasonGifts || typeof o.seasonGifts !== 'object') o.seasonGifts = {};
   if (o.gang !== null && (typeof o.gang !== 'object')) o.gang = null;
+  // Migration douce : levelReached (v3.77) — computed from xp for old saves
+  if (!o.levelReached || o.levelReached < 1) {
+    o.levelReached = levelFromXp(o.xp || 0).level;
+  }
   return o;
 }
 

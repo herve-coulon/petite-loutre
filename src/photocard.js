@@ -23,7 +23,7 @@ export function cardData(s, rec, now = Date.now()) {
   const p = (s.qDaily && s.qDaily.progress) || {};
   const done = (s.qDaily && s.qDaily.done && s.qDaily.done.length) || 0;
   const fish = p.fish || 0, meals = p.meals || 0;
-  const lvl = levelFromXp((rec && rec.xp) || 0).level;
+  const lvl = Math.max(levelFromXp((rec && rec.xp) || 0).level, (rec && rec.levelReached) || 1);
   return {
     title: 'MA PETITE LOUTRE',
     name: (s.name || 'Loutre mystère').toUpperCase(),

@@ -95,9 +95,10 @@ function setCooldown(id, frac, icon, totalMs) {
 /** Barre du haut : niveau (badge + XP), série, compteurs, badges. */
 export function renderLevel(rec) {
   const L = levelFromXp((rec && rec.xp) || 0);
-  setTxt('lvl-badge', L.level);
+  const effLevel = Math.max(L.level, (rec && rec.levelReached) || 1);
+  setTxt('lvl-badge', effLevel);
   const f = $('lvl-fill'); if (f) f.style.width = Math.round(L.cur / L.next * 100) + '%';
-  setTxt('lvl-label', 'NIV ' + L.level + ' · ' + titleFor(L.level)); // (si présent)
+  setTxt('lvl-label', 'NIV ' + effLevel + ' · ' + titleFor(effLevel)); // (si présent)
   setTxt('lvl-num', L.cur + '/' + L.next + ' XP');
 
   const st = (rec && rec.streakCount) || 0;
@@ -138,7 +139,9 @@ function shortBonus(b) {
 /** Écran « Profil de la loutre » : portrait + slots, carte d'identité, onglets. */
 export function renderProfile(s, rec, onTravel) {
   s = s || {}; rec = rec || {};
-  const L = levelFromXp(rec.xp || 0);
+  const baseL = levelFromXp(rec.xp || 0);
+  const effLevel = Math.max(baseL.level, rec.levelReached || 1);
+  const L = { ...baseL, level: effLevel };
   const hat = HATS.find(h => h.id === s.hat);
   const fur = FURS.find(f => f.id === s.fur) || FURS[0];
   const decor = DECORS.find(d => d.id === s.decor) || DECORS[0];
@@ -196,7 +199,7 @@ export function renderValleyMap(rec, currentZone, onTravel) {
   const grid = $('pm-grid'); if (!grid) return;
   const layout = zoneLayout();
   const vus = (rec && rec.visited) || [];
-  const niveau = levelFromXp((rec && rec.xp) || 0).level;
+  const niveau = Math.max(levelFromXp((rec && rec.xp) || 0).level, (rec && rec.levelReached) || 1);
   const ids = Object.keys(ZONES);
   const cols = Math.max(...Object.values(layout).map(p => p.col)) + 1;
   const rows = Math.max(...Object.values(layout).map(p => p.row)) + 1;
@@ -417,7 +420,7 @@ export function renderDailies(s, rec) {
   }
   el.classList.remove('hidden');
   // Contexte de filtrage : même logique que questCtx() dans main.js
-  const niveau = levelFromXp((rec && rec.xp) || 0).level;
+  const niveau = Math.max(levelFromXp((rec && rec.xp) || 0).level, (rec && rec.levelReached) || 1);
   const unlocked2 = [];
   if (niveau >= UNLOCK_LEVEL.treat) unlocked2.push('treat');
   if (niveau >= UNLOCK_LEVEL.slide) unlocked2.push('slide');
@@ -832,7 +835,7 @@ export function renderAchievements(rec, s) {
     const t = document.createElement('p');
     t.className = 'set-section'; t.textContent = '— 🎯 Quêtes du jour —';
     list.appendChild(t);
-    const niveau = levelFromXp((rec && rec.xp) || 0).level;
+    const niveau = Math.max(levelFromXp((rec && rec.xp) || 0).level, (rec && rec.levelReached) || 1);
     const unlocked2 = [];
     if (niveau >= UNLOCK_LEVEL.treat) unlocked2.push('treat');
     if (niveau >= UNLOCK_LEVEL.slide) unlocked2.push('slide');

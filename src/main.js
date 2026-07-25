@@ -106,7 +106,7 @@ function applyEvents(events, offline = false) {
 function diving() { return s && (s.divingUntil || 0) > now(); }
 function busy() { return !s || s.gameOver || s.away || s.stage === 'egg' || mg || diving(); }
 function press() { vibrate(10); }
-const curLevel = () => levelFromXp((rec && rec.xp) || 0).level;
+const curLevel = () => Math.max(levelFromXp((rec && rec.xp) || 0).level, (rec && rec.levelReached) || 1);
 const unlocked = (feat) => curLevel() >= UNLOCK_LEVEL[feat];
 
 /** Contexte de filtrage des quêtes : level, features débloquées, monde ouvert. */
@@ -1635,6 +1635,7 @@ function gainXp(n) {
   const before = levelFromXp(rec.xp || 0).level;
   rec.xp = (rec.xp || 0) + n;
   const L = levelFromXp(rec.xp);
+  rec.levelReached = Math.max(rec.levelReached || 0, L.level);
   if (s && !s.gameOver && s.stage !== 'egg') R.xpText('+' + n, s.stage);
   if (L.level > before) {
     if (s) {

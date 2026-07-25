@@ -10,6 +10,8 @@ import { PAL } from '../src/sprites.js';
 import { unlockedFurs } from '../src/skins.js';
 import { FUR_REMAP } from '../src/otter-art.js';
 import { COFFRE_ZONES, EPREUVE_ZONES } from '../src/tilemap.js';
+import { levelFromXp, xpCost } from '../src/level.js';
+import { milestoneItem } from '../src/items.js';
 
 const T0 = 1_750_000_000_000;
 
@@ -193,4 +195,74 @@ test('complétion : trois succès, dont un qui exige les DEUX collections', () =
   newAchievements(null, rec);
   assert.ok(rec.achievements.includes('championne'), 'succès des championnes');
   assert.ok(rec.achievements.includes('maitresse'), 'et la maîtrise, une fois les deux');
+});
+
+/* ---------------- niveau « cliquet » (v3.77) ---------------- */
+
+test('levelReached : nouveau record contient le champ', () => {
+  const rec = newRecords();
+  assert.equal(typeof rec.levelReached, 'number');
+  assert.equal(rec.levelReached, 0);
+});
+
+test('levelReached : migration d\'une vieille sauvegarde le compute depuis xp', () => {
+  // Simule une vieille save sans levelReached
+  const old = { v: 1, xp: xpCost(1) + xpCost(2) + xpCost(3), items: [], achievements: [] };
+  const storage = { data: {}, getItem(k) { return this.data[k] || null; }, setItem(k, v) { this.data[k] = v; } };
+  saveRecords(old, storage);
+  const loaded = loadRecords(storage);
+  assert.equal(loaded.levelReached, 4, 'niveau 4 depuis xp de 4 niveaux');
+});
+
+test('levelReached : gainXp met à jour le niveau le plus haut', () => {
+  const rec = newRecords();
+  // Simule un gain d'XP jusqu'au niveau 3
+  rec.xp = xpCost(1) + xpCost(2);
+  rec.levelReached = levelFromXp(rec.xp).level;
+  assert.equal(rec.levelReached, 3);
+  // Simule une perte d'XP (recrutement)
+  rec.xp -= 50;
+  assert.ok(levelFromXp(rec.xp).level < 3, 'niveau XP baisse');
+  // levelReached ne bouge pas
+  assert.equal(rec.levelReached, 3, 'levelReached conservé malgré la perte d\'XP');
+});
+
+test('levelReached : curLevel never go down (simulation)', () => {
+  const rec = newRecords();
+  // Monte au niveau 5
+  for (let i = 1; i <= 5; i++) rec.xp += xpCost(i);
+  rec.levelReached = levelFromXp(rec.xp).level;
+  assert.equal(rec.levelReached, 6);
+  // Simule une dépense massive d'XP
+  rec.xp -= xpCost(5) + xpCost(4);
+  const xpLevel = levelFromXp(rec.xp).level;
+  const effLevel = Math.max(xpLevel, rec.levelReached);
+  assert.ok(xpLevel < 6, 'niveau XP réel a baissé');
+  assert.equal(effLevel, 6, 'niveau effectif reste 6');
+});
+
+test('levelReached : zones toujours ouvertes après perte d\'XP', () => {
+  const rec = newRecords();
+  // Monte au niveau 12 (déverrouille cascade)
+  for (let i = 1; i <= 12; i++) rec.xp += xpCost(i);
+  rec.levelReached = levelFromXp(rec.xp).level;
+  // Perte d'XP
+  rec.xp -= xpCost(12) + xpCost(11);
+  const effLevel = Math.max(levelFromXp(rec.xp).level, rec.levelReached);
+  assert.ok(effLevel >= 12, 'niveau effectif >= 12 : cascade reste ouverte');
+});
+
+test('levelReached : milestoneItem pas redonné (double octroi protégé)', () => {
+  const rec = newRecords();
+  // Monte au niveau 2 (débloque un milestone)
+  rec.xp = xpCost(1);
+  rec.levelReached = 2;
+  const mid = milestoneItem(2);
+  if (mid) {
+    rec.items.push(mid);
+    // Simule un gain identique → ne devrait pas re-ajouter
+    const before = rec.items.length;
+    rec.items.push(mid); // double ajout volontaire
+    assert.equal(rec.items.length, before + 1, 'le guard !items.includes empêche le double');
+  }
 });

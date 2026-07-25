@@ -292,3 +292,10 @@ inéligibles sont remplacées (pas supprimées) pour garder 3 objectifs. Cinq
 nouvelles actions de quête branchées sur la vallée : visiter le lieu du jour,
 parler à un habitant, ramasser des trouvailles, glisser, plonger. Bandeau
 « lieu du jour ×2 » affiché sous la quête quand le monde est ouvert.*
+v3.77.1 : niveau « cliquet » — recruter un habitant ne redescend plus jamais.
+
+Le champ levelReached dans les records mémorise le palier le plus haut atteint
+(par gain d'XP ou recrutement) ; les paliers, zones, quêtes, badge, profil,
+partage, carte postale et achievements s'affichent au niveau effectif (jamais
+inférieur au précédent). Le profil montre désormais les paliers franchis au fil
+du jeu.*
