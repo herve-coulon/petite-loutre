@@ -1,5 +1,5 @@
 // Rendu canvas 160x120 (mis à l'échelle en CSS, image-rendering: pixelated).
-import { PAL, SPRITES } from './sprites.js';
+import { PAL, SPRITES, SPRITES_MONDE, SPRITES_PORTRAITS } from './sprites.js';
 import { HATCH_MS, MIN, SEC, SEASON_FX } from './constants.js';
 import { hatById } from './accessories.js';
 import { furById } from './skins.js';
@@ -68,8 +68,9 @@ export function eggCrackLevel(progress) {
 }
 
 export function otterY(stage) {
-  const spr = SPRITES[stage] || SPRITES.baby;
-  return GROUND_Y - spr.length * 2 + (stage === 'egg' ? 4 : 0);
+  if (stage === 'egg') return GROUND_Y - SPRITES.egg.length * 2 + 4;
+  const spr = SPRITES_PORTRAITS[stage + 'Face'] || SPRITES_PORTRAITS.adultFace;
+  return GROUND_Y - spr.length * 2;
 }
 
 /**
@@ -111,7 +112,7 @@ export function paintOtter(cv, o, sc = 3, flip = false) {
     }
     return;
   }
-  const spr = SPRITES[o.stage] || SPRITES.adult;
+  const spr = SPRITES_PORTRAITS[o.stage + 'Face'] || SPRITES_PORTRAITS.adultFace;
   const fur = (furById(o.fur) || {}).map;
   const hat = o.hat ? hatById(o.hat) : null;
   const top = hat ? hat.rows.length : 0;                 // place pour le chapeau
@@ -607,7 +608,7 @@ export function makeRenderer(cv) {
 
   // La loutre au repos dans sa tanière (calme : respiration, clignement, visage paisible).
   function drawDenOtter(s, frame) {
-    const spr = SPRITES[s.stage] || SPRITES.adult;
+    const spr = SPRITES_PORTRAITS[s.stage + 'Face'] || SPRITES_PORTRAITS.adultFace;
     const fur = furById(s.fur).map;
     const ox = 64, oy = 62;
     const artOn = usesArt(s);
@@ -798,7 +799,7 @@ export function makeRenderer(cv) {
     const stage = otterLike.stage || 'adult';
     // cycle de marche : on alterne la pose de repos et le pas
     const pas = walking && (frame >> 3) % 2 === 1;
-    const spr = (pas && SPRITES[stage + 'Walk']) || SPRITES[stage] || SPRITES.adult;
+    const spr = (pas && SPRITES_MONDE[stage + 'SideWalk']) || SPRITES_MONDE[stage + 'Side'] || SPRITES_MONDE.adultSide;
     const fur = furById(otterLike.fur).map;
     const w = spr[0].length, h = spr.length;                 // échelle 1 = une tuile de large
     const bob = walking ? (Math.sin(frame / 5) < 0 ? 1 : 0) : 0;   // pas chaloupé
@@ -1212,7 +1213,7 @@ export function makeRenderer(cv) {
 
     // adversaire de combat (dessiné à droite, en miroir)
     if (fx.foe) {
-      const fspr = SPRITES[fx.foe.stage] || SPRITES.baby;
+      const fspr = SPRITES_PORTRAITS[fx.foe.stage + 'Face'] || SPRITES_PORTRAITS.babyFace;
       const fy = GROUND_Y - fspr.length * 2 + ((frame >> 4) % 2 ? -2 : 0);
       drawSprite(fspr, 112, fy, 2, furById(fx.foe.fur).map, true);
       const fhat = fx.foe.hat && hatById(fx.foe.hat);
@@ -1276,7 +1277,7 @@ export function makeRenderer(cv) {
     const yawning = !!idleAnim && idleAnim.kind === 'baille';
 
     // loutre / œuf
-    const spr = SPRITES[s.stage];
+    const eggSpr = SPRITES.egg;
     // éclosion : plus l'œuf approche, plus il se fissure et tremble tout seul
     const eggProg = s.stage === 'egg' ? Math.max(0, Math.min(1, (Date.now() - s.born) / HATCH_MS)) : 0;
     const crack = s.stage === 'egg' ? eggCrackLevel(eggProg) : 0;
@@ -1331,6 +1332,7 @@ export function makeRenderer(cv) {
     // Les sprites du kit s'animent déjà tout seuls : leur ajouter un sautillement
     // faisait trembler la loutre sur place.
     const artOn = usesArt(s);
+    const spr = artOn ? null : (SPRITES_PORTRAITS[s.stage + 'Face'] || SPRITES_PORTRAITS.adultFace);
     const bounce = (artOn || s.sleeping || s.stage === 'egg' || yawning) ? 0
       : walking ? ((frame >> 2) % 2 === 0 ? 0 : -1)
       : ((frame >> 4) % 2 === 0 ? 0 : -2);
@@ -1392,11 +1394,11 @@ export function makeRenderer(cv) {
         headTop = box.y + an.headTop;
       }
     } else {
-      // cycle de marche : la 2e image du pas quand elle se déplace vraiment
-      const marche = walking && SPRITES[s.stage + 'Walk'] && (frame >> 2) % 2 === 1;
-      drawSprite(marche ? SPRITES[s.stage + 'Walk'] : spr, ox, oy, 2, s.stage === 'egg' ? null : fur);
+      const eggPal = s.stage === 'egg' ? { G: '#e0c091', g: '#f8ead2' } : null;
+      const faceSpr = s.stage === 'egg' ? SPRITES.egg : (SPRITES_PORTRAITS[s.stage + 'Face'] || SPRITES_PORTRAITS.adultFace);
+      drawSprite(faceSpr, ox, oy, 2, eggPal || fur);
       // relief lumineux (jour : soleil chaud ; nuit : lune froide et discrète)
-      drawRim(spr, ox, oy, 2,
+      if (s.stage !== 'egg') drawRim(faceSpr, ox, oy, 2,
         c.night ? 'rgba(200,214,255,.28)' : 'rgba(255,246,205,.5)',
         'rgba(0,0,0,.22)');
       headCx = ox + 16; headTop = oy;
@@ -1770,7 +1772,7 @@ export function makeRenderer(cv) {
         drawAnim(ctx, ART, 'swim', frameAt('swim', Date.now()), Math.round(slideX), cy, s.fur, false, s.stage);
       }
     } else {
-      drawSprite(SPRITES[s.stage] || SPRITES.child, ox, oy, 2, fur);
+      drawSprite(SPRITES_PORTRAITS[s.stage + 'Face'] || SPRITES_PORTRAITS.childFace, ox, oy, 2, fur);
     }
 
     // flashs : rouge au choc, doré sur un poisson d'or
@@ -1870,7 +1872,7 @@ export function makeRenderer(cv) {
       const w = y ? y.frames[0].width : ANIMS.idle.w / 4;
       return { x: Math.round(otterWX) + 16 - (w >> 1), y: GROUND_Y - h, w, h };
     }
-    const sp = SPRITES[stage] || SPRITES.baby;
+    const sp = SPRITES_PORTRAITS[stage + 'Face'] || SPRITES_PORTRAITS.babyFace;
     return { x: Math.round(otterWX), y: otterY(stage), w: 32, h: sp.length * 2 };
   }
 

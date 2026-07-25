@@ -306,3 +306,8 @@ numérique).*
 v3.79 : les coûts sont clairs. Le recrutement en escouade affiche le solde XP
 et ce qu'il reste après l'embauche. La garde-robe demande confirmation avant
 chaque achat en gemmes (chapeaux, pelages, décors, trésors).*
+v3.80 : harmonisation des loutres. PAL et grilles pixel alignés sur le kit
+designer (Side pour le monde, Face pour les portraits). Les 8 animations
+nouvelles (sleep, dream, wake, hungry, sick, hurt, cold, hot) sont intégrées
+depuis le manifeste, animForMood enrichi, HUD et carte de rencontre peints
+avec le pelage vivant, Œuf crème, pelages dotés de la clé q.*

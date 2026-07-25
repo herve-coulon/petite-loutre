@@ -1,6 +1,6 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v3.79.0';
+const VERSION = 'v3.80.0';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [
@@ -40,6 +40,15 @@ const PRECACHE = [
   './assets/otter/swim_strip.png',
   './assets/otter/jump_strip.png',
   './assets/otter/happy_strip.png',
+  './assets/otter/sleep_strip.png',
+  './assets/otter/hurt_strip.png',
+  './assets/otter/sick_strip.png',
+  './assets/otter/cold_strip.png',
+  './assets/otter/hot_strip.png',
+  './assets/otter/dream_strip.png',
+  './assets/otter/wake_strip.png',
+  './assets/otter/hungry_strip.png',
+  './assets/otter/manifest.json',
   './src/seasonpass.js',
   './src/push.js',
   './src/photocard.js',

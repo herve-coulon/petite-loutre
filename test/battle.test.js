@@ -199,7 +199,7 @@ test('skins : palettes des pelages = couleurs hex valides', () => {
   for (const f of FURS) {
     if (!f.map) continue;
     for (const [k, v] of Object.entries(f.map)) {
-      assert.ok(['B', 'C', 'D'].includes(k), f.id);
+      assert.ok(['B', 'C', 'D', 'q'].includes(k), f.id);
       assert.match(v, /^#[0-9a-f]{6}$/i, f.id + '.' + k);
     }
   }

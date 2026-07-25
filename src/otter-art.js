@@ -12,11 +12,19 @@ export const ART_SCALE = 4;   // facteur d'export des strips
 
 /** Les animations, telles que décrites par le manifeste du kit. */
 export const ANIMS = {
-  idle:  { file: 'idle_strip.png',  w: 160, h: 200, frames: 2, fps: 2 },
-  walk:  { file: 'walk_strip.png',  w: 168, h: 144, frames: 4, fps: 8 },
-  swim:  { file: 'swim_strip.png',  w: 184, h: 104, frames: 2, fps: 6 },
-  jump:  { file: 'jump_strip.png',  w: 168, h: 168, frames: 3, fps: 6 },
-  happy: { file: 'happy_strip.png', w: 160, h: 200, frames: 2, fps: 3 }
+  idle:   { file: 'idle_strip.png',   w: 160, h: 200, frames: 2, fps: 2 },
+  walk:   { file: 'walk_strip.png',   w: 168, h: 144, frames: 4, fps: 8 },
+  swim:   { file: 'swim_strip.png',   w: 184, h: 104, frames: 2, fps: 6 },
+  jump:   { file: 'jump_strip.png',   w: 168, h: 168, frames: 3, fps: 6 },
+  happy:  { file: 'happy_strip.png',  w: 160, h: 200, frames: 2, fps: 3 },
+  sleep:  { file: 'sleep_strip.png',  w: 200, h: 144, frames: 4, fps: 2 },
+  hurt:   { file: 'hurt_strip.png',   w: 160, h: 208, frames: 2, fps: 7 },
+  sick:   { file: 'sick_strip.png',   w: 160, h: 208, frames: 4, fps: 4 },
+  cold:   { file: 'cold_strip.png',   w: 160, h: 208, frames: 4, fps: 10 },
+  hot:    { file: 'hot_strip.png',    w: 160, h: 208, frames: 2, fps: 3 },
+  dream:  { file: 'dream_strip.png',  w: 240, h: 168, frames: 4, fps: 2 },
+  wake:   { file: 'wake_strip.png',   w: 208, h: 224, frames: 4, fps: 3 },
+  hungry: { file: 'hungry_strip.png', w: 208, h: 224, frames: 3, fps: 3 }
 };
 
 /** Les teintes de fourrure de la loutre d'origine, du plus sombre au plus clair. */
@@ -111,6 +119,19 @@ function tintedCanvas(img, table, doc) {
 export function loadOtterArt(base = './assets/otter/') {
   const art = { ready: false, sheets: {}, tinted: {} };
   if (typeof Image === 'undefined' || typeof document === 'undefined') return art;
+  // Charger le manifest pour piloter ANIMS dynamiquement (fallback = constantes ci-dessus)
+  if (typeof fetch !== 'undefined') {
+    fetch(base + 'manifest.json').then(r => r.json()).then(m => {
+      if (m && m.animations) for (const [name, def] of Object.entries(m.animations)) {
+        if (!ANIMS[name]) ANIMS[name] = {};
+        ANIMS[name].file = name + '_strip.png';
+        ANIMS[name].w = def.frameWidth;
+        ANIMS[name].h = def.frameHeight;
+        ANIMS[name].frames = def.frames;
+        ANIMS[name].fps = def.fps;
+      }
+    }).catch(() => {});
+  }
   let pending = Object.keys(ANIMS).length;
   for (const [name, a] of Object.entries(ANIMS)) {
     const img = new Image();
@@ -172,16 +193,28 @@ export function frameAt(name, t) {
  * tâtonner : `feet` est le point d'ancrage centre-bas de l'animation.
  */
 export const ANATOMY = {
-  idle:  { feet: { x: 20, y: 50 }, headTop: 4, headCx: 20, headW: 27 },
-  happy: { feet: { x: 20, y: 50 }, headTop: 4, headCx: 19, headW: 29 },
-  walk:  { feet: { x: 21, y: 36 }, headTop: 2, headCx: 28, headW: 15 },
-  jump:  { feet: { x: 21, y: 41 }, headTop: 9, headCx: 28, headW: 15 },
-  swim:  { feet: { x: 23, y: 21 }, headTop: 2, headCx: 29, headW: 34 }
+  idle:   { feet: { x: 20, y: 50 }, headTop: 4, headCx: 20, headW: 27 },
+  happy:  { feet: { x: 20, y: 50 }, headTop: 4, headCx: 19, headW: 29 },
+  walk:   { feet: { x: 21, y: 36 }, headTop: 2, headCx: 28, headW: 15 },
+  jump:   { feet: { x: 21, y: 41 }, headTop: 9, headCx: 28, headW: 15 },
+  swim:   { feet: { x: 23, y: 21 }, headTop: 2, headCx: 29, headW: 34 },
+  sleep:  { feet: { x: 38, y: 36 }, headTop: 0, headCx: 12, headW: 16 },
+  hurt:   { feet: { x: 20, y: 52 }, headTop: 4, headCx: 20, headW: 20 },
+  sick:   { feet: { x: 20, y: 52 }, headTop: 4, headCx: 20, headW: 20 },
+  cold:   { feet: { x: 20, y: 52 }, headTop: 4, headCx: 20, headW: 20 },
+  hot:    { feet: { x: 20, y: 52 }, headTop: 4, headCx: 20, headW: 20 },
+  dream:  { feet: { x: 42, y: 42 }, headTop: 0, headCx: 14, headW: 18 },
+  wake:   { feet: { x: 20, y: 56 }, headTop: 4, headCx: 20, headW: 26 },
+  hungry: { feet: { x: 20, y: 56 }, headTop: 4, headCx: 20, headW: 26 }
 };
 
-/** L'animation à jouer pour une humeur donnée (le kit n'en offre que deux). */
+/** L'animation à jouer pour une humeur donnée. */
 export function animForMood(mood) {
-  return mood === 'contente' ? 'happy' : 'idle';
+  if (mood === 'contente') return 'happy';
+  if (mood === 'dodo') return 'sleep';
+  if (mood === 'affamee') return 'hungry';
+  if (mood === 'malade') return 'sick';
+  return 'idle';
 }
 
 /* ─────────────────────── Les stades jeunes ───────────────────────
@@ -198,11 +231,19 @@ export function animForMood(mood) {
 
 /** Où couper tête et corps dans chaque pose, et de quel côté est la tête. */
 const SPLIT = {
-  idle:  { axis: 'y', at: 21 },   // de face : tête au-dessus, corps en dessous
-  happy: { axis: 'y', at: 21 },
-  walk:  { axis: 'x', at: 20 },   // de profil : corps à gauche, tête à droite
-  jump:  { axis: 'x', at: 20 },
-  swim:  { axis: 'x', at: 20 }
+  idle:   { axis: 'y', at: 21 },
+  happy:  { axis: 'y', at: 21 },
+  walk:   { axis: 'x', at: 20 },
+  jump:   { axis: 'x', at: 20 },
+  swim:   { axis: 'x', at: 20 },
+  sleep:  { axis: 'x', at: 38 },
+  hurt:   { axis: 'y', at: 21 },
+  sick:   { axis: 'y', at: 21 },
+  cold:   { axis: 'y', at: 21 },
+  hot:    { axis: 'y', at: 21 },
+  dream:  { axis: 'x', at: 44 },
+  wake:   { axis: 'y', at: 24 },
+  hungry: { axis: 'y', at: 24 }
 };
 
 /**

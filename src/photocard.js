@@ -1,7 +1,7 @@
 // Carte photo partageable : une belle image de la loutre (nom, stade, chapeau,
 // exploits du jour) à envoyer sur WhatsApp/Insta. Dessin canvas autonome,
 // aucune requête DOM — le document est injecté, tout le reste est pur.
-import { PAL, SPRITES } from './sprites.js';
+import { PAL, SPRITES, SPRITES_PORTRAITS } from './sprites.js';
 import { STAGES, H, MIN } from './constants.js';
 import { hatById } from './accessories.js';
 import { furById } from './skins.js';
@@ -86,7 +86,7 @@ export function drawCard(ctx, s, rec, now = Date.now()) {
   }
 
   // la star, avec son pelage et son chapeau
-  const spr = SPRITES[s.stage] || SPRITES.baby;
+  const spr = s.stage === 'egg' ? SPRITES.egg : (SPRITES_PORTRAITS[s.stage + 'Face'] || SPRITES_PORTRAITS.adultFace);
   const sc = 13;
   const ox = SX + Math.round((SW - 16 * sc) / 2);
   const oy = RIVY - spr.length * sc;

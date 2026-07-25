@@ -24,7 +24,18 @@
     "SHS": "#cd7f9c",
     "SHD": "#a86382",
     "GR": "#242a34",
-    "wl": "#6bb6d6"
+    "wl": "#6bb6d6",
+    "BLD": "#c0392b",
+    "BLDL": "#e05a4a",
+    "BLDD": "#8e2a1e",
+    "ILL": "#8fae72",
+    "ILL2": "#6f8f57",
+    "ZZ": "#cfe4f5",
+    "CLD": "#8fc4e8",
+    "CLD2": "#bfe2f7",
+    "HOT": "#f08a5d",
+    "SWT": "#9fd4f2",
+    "SWTL": "#cfeeff"
   },
   "anchor": {
     "x": 0.5,
@@ -95,7 +106,7 @@
       "frameHeight": 168,
       "frames": 3,
       "fps": 6,
-      "loop": true,
+      "loop": false,
       "anchor": {
         "x": 0.5,
         "y": 1
@@ -107,6 +118,110 @@
       "frameWidth": 160,
       "frameHeight": 200,
       "frames": 2,
+      "fps": 3,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "sleep": {
+      "file": "assets/sleep_strip.png",
+      "silverFile": "assets/silver_sleep_strip.png",
+      "frameWidth": 200,
+      "frameHeight": 144,
+      "frames": 4,
+      "fps": 2,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "hurt": {
+      "file": "assets/hurt_strip.png",
+      "silverFile": "assets/silver_hurt_strip.png",
+      "frameWidth": 160,
+      "frameHeight": 208,
+      "frames": 2,
+      "fps": 7,
+      "loop": false,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "sick": {
+      "file": "assets/sick_strip.png",
+      "silverFile": "assets/silver_sick_strip.png",
+      "frameWidth": 160,
+      "frameHeight": 208,
+      "frames": 4,
+      "fps": 4,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "cold": {
+      "file": "assets/cold_strip.png",
+      "silverFile": "assets/silver_cold_strip.png",
+      "frameWidth": 160,
+      "frameHeight": 208,
+      "frames": 4,
+      "fps": 10,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "hot": {
+      "file": "assets/hot_strip.png",
+      "silverFile": "assets/silver_hot_strip.png",
+      "frameWidth": 160,
+      "frameHeight": 208,
+      "frames": 2,
+      "fps": 3,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "dream": {
+      "file": "assets/dream_strip.png",
+      "silverFile": "assets/silver_dream_strip.png",
+      "frameWidth": 240,
+      "frameHeight": 168,
+      "frames": 4,
+      "fps": 2,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "wake": {
+      "file": "assets/wake_strip.png",
+      "silverFile": "assets/silver_wake_strip.png",
+      "frameWidth": 208,
+      "frameHeight": 224,
+      "frames": 4,
+      "fps": 3,
+      "loop": false,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "hungry": {
+      "file": "assets/hungry_strip.png",
+      "silverFile": "assets/silver_hungry_strip.png",
+      "frameWidth": 208,
+      "frameHeight": 224,
+      "frames": 3,
       "fps": 3,
       "loop": true,
       "anchor": {

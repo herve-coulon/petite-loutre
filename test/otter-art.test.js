@@ -74,9 +74,12 @@ test('pelages : chaque fourrure du jeu a sa déclinaison', () => {
   }
 });
 
-test('humeur : seule « contente » déclenche la pose joyeuse', () => {
+test('humeur : « contente » déclenche happy, dodo/affamee/malade ont leur anim', () => {
   assert.equal(animForMood('contente'), 'happy');
-  for (const m of ['neutre', 'affamee', 'boudeuse', 'malade', 'dodo', null]) {
+  assert.equal(animForMood('dodo'), 'sleep');
+  assert.equal(animForMood('affamee'), 'hungry');
+  assert.equal(animForMood('malade'), 'sick');
+  for (const m of ['neutre', 'boudeuse', null]) {
     assert.equal(animForMood(m), 'idle', 'humeur ' + m);
   }
 });

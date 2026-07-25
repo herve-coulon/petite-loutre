@@ -23,6 +23,13 @@ const fmtNum = n => (n || 0).toLocaleString('fr-FR');   // « 2 340 » (espace f
 
 export function log(msg) { const e = $('log'); if (e) e.textContent = msg; }
 
+function paintFace(span, o, sc) {
+  if (!span || !o || !document) return;
+  let cv = span.querySelector('canvas');
+  if (!cv) { cv = document.createElement('canvas'); span.textContent = ''; span.appendChild(cv); }
+  paintOtter(cv, o, sc, true);
+}
+
 export function toast(msg) {
   const t = $('toast');
   t.textContent = msg;
@@ -397,7 +404,7 @@ export function renderGangResult(res, rival, gang, h) {
 export function renderEncounter(o, gang, need, h) {
   if (!o) return;
   const fur = FURS.find(f => f.id === o.fur) || FURS[0];
-  setTxt('enc-face', fur.icon);
+  paintFace($('enc-face'), o, 4);
   setTxt('enc-name', o.name + ' t\'observe…');
   const stage = { baby: 'bébé', child: 'jeune', adult: 'adulte' }[o.stage] || '';
   setTxt('enc-sub', '💪 ' + fmtNum(o.power) + (stage ? ' · ' + stage : ''));
@@ -473,6 +480,7 @@ export function updateHUD(s, mg, rec) {
   const level = levelFromXp((rec && rec.xp) || 0).level;
   const tr = traitById(s.trait);
   setTxt('hud-name', (s.name ? s.name.toUpperCase() : '???') + (tr && s.stage !== 'egg' ? ' ' + tr.emoji : ''));
+  if (s.stage !== 'egg') paintFace($('av-face-hud'), s, 2);
   const grumpy = !s.sick && !s.sleeping && (s.grumpyUntil || 0) > Date.now();
   // stage/âge : plus affichés dans la barre du haut (maquette) mais gardés si présents
   setTxt('hud-stage', s.away
