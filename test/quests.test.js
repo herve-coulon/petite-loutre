@@ -185,14 +185,19 @@ describe('completedQuests', () => {
   });
 
   it('fonctionne avec ctx', () => {
-    const date = '2026-07-25';
+    // La date doit être CELLE DU JOUR : completedQuests appelle ensureDaily, qui
+    // réinitialise la journée si sa date ne correspond pas à `now`. Coder une
+    // date en dur cassait le test tous les jours sauf un. On se cale sur
+    // aujourd'hui pour rester déterministe quelle que soit la date d'exécution.
+    const now = Date.now();
+    const date = dayKey(now);
     const ctx = { level: 1, unlocked: [], world: false };
     const qs = dailyQuests(date, ctx);
     // On remplit la progress pour toutes les quêtes tirées
     const s = { qDaily: { date, progress: {}, done: [] } };
     for (const q of qs) s.qDaily.progress[q.key] = q.target + 10;
     const rec = { questsDone: 0 };
-    const got = completedQuests(s, rec, Date.now(), ctx);
+    const got = completedQuests(s, rec, now, ctx);
     assert.equal(got.length, 3, 'les 3 quêtes devraient être terminées');
     assert.equal(rec.questsDone, 3);
   });

@@ -1137,32 +1137,36 @@ export function makeRenderer(cv) {
     } catch (e) { ctx.fillStyle = c.sky; }
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // astre + étoiles
+    // Astre + étoiles. ⚠️ Le HAUT du canevas (y<66) est entièrement masqué par
+    // le HUD (badge, jauges, compteurs) : tout ce qu'on y dessinait n'en
+    // ressortait que par bribes, comme une bavure translucide derrière les
+    // gemmes. On les pose donc dans la bande de ciel VRAIMENT visible (y~68-92),
+    // au centre pour ne pas passer derrière les boutons latéraux.
     if (c.night) {
       ctx.fillStyle = '#e8e8d0';
-      ctx.fillRect(126, 12, 10, 10); ctx.fillRect(124, 14, 14, 6);
-      ctx.fillStyle = c.sky; ctx.fillRect(130, 14, 8, 6);
+      ctx.fillRect(90, 74, 10, 10); ctx.fillRect(88, 76, 14, 6);
+      ctx.fillStyle = c.sky; ctx.fillRect(94, 76, 8, 6);           // croissant
       ctx.fillStyle = '#ffffff';
-      [[14, 10], [38, 22], [70, 8], [96, 18], [120, 30], [52, 14], [145, 8], [24, 32]].forEach(p => {
+      [[54, 70], [72, 74], [100, 69], [114, 74], [62, 82], [106, 84]].forEach(p => {
         if ((frame >> 4) % 2 === 0 || (p[0] + p[1]) % 3) ctx.fillRect(p[0], p[1], 1, 1);
       });
     } else {
-      // soleil + halo doux
-      ctx.fillStyle = 'rgba(255,236,150,.28)';
-      ctx.fillRect(122, 6, 24, 24); ctx.fillRect(118, 10, 32, 16); ctx.fillRect(126, 2, 16, 32);
+      // soleil doux (halo léger, pas de gros bloc translucide)
+      ctx.fillStyle = 'rgba(255,236,150,.22)';
+      ctx.fillRect(84, 74, 20, 14); ctx.fillRect(88, 70, 12, 22);
       ctx.fillStyle = '#ffd94a';
-      ctx.fillRect(128, 10, 12, 12); ctx.fillRect(126, 12, 16, 8); ctx.fillRect(130, 8, 8, 16);
+      ctx.fillRect(87, 77, 12, 8); ctx.fillRect(89, 75, 8, 12); ctx.fillRect(85, 79, 16, 4);
     }
 
-    // nuages qui dérivent lentement (le jour) — profondeur du ciel
+    // nuages qui dérivent lentement (le jour), dans la même bande visible
     if (!c.night) {
       const cloud = (cx, cy, w) => {
         ctx.fillStyle = 'rgba(255,255,255,.55)';
         ctx.fillRect(cx, cy, w, 3); ctx.fillRect(cx + 3, cy - 2, w - 6, 3); ctx.fillRect(cx + 5, cy + 2, w - 12, 2);
       };
       const d = frame >> 3;
-      cloud(((d * 0.25) % 200) - 30, 14, 22);
-      cloud((150 - (d * 0.16) % 200 + 200) % 200 - 20, 26, 15);
+      cloud(((d * 0.25) % 200) - 30, 70, 20);
+      cloud((150 - (d * 0.16) % 200 + 200) % 200 - 20, 84, 14);
     }
 
     // --- BERGE (collines, herbe, eau) : dessinée pour un sol à y=96 puis

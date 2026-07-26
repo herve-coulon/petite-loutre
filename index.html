@@ -109,9 +109,24 @@
   <div id="toast"></div>
 
   <div id="ovl-intro" class="ovl hidden">
-    <div class="title-sky"></div>
+    <!-- Cinématique d'accueil : le lever du jour sur la rivière, puis l'œuf qui
+         frémit. Tout en CSS (déterministe, coupé net par « mouvement réduit »). -->
+    <div class="intro-scene" aria-hidden="true">
+      <div class="intro-sun"></div>
+      <div class="intro-cloud c1"></div>
+      <div class="intro-cloud c2"></div>
+      <div class="intro-cloud c3"></div>
+      <div class="intro-hills"></div>
+      <div class="intro-water"></div>
+      <div class="intro-reeds"></div>
+      <div class="intro-egg">
+        🥚
+        <span class="intro-spark a">✨</span>
+        <span class="intro-spark b">✨</span>
+        <span class="intro-spark c">✨</span>
+      </div>
+    </div>
     <div class="title-hero">
-      <div class="title-otter">🦦</div>
       <h2 class="title-name">MA&nbsp;PETITE<br>LOUTRE</h2>
       <p class="title-tag">un tamagotchi de rivière</p>
     </div>
@@ -230,56 +245,58 @@
   <!-- Écran « Profil de la loutre », ouvert depuis la pastille de niveau.
        Disposition façon profil de chef : portrait central + slots autour,
        carte d'identité, barre d'onglets vers les sections. -->
-  <div id="ovl-menu" class="ovl hidden">
+  <div id="ovl-menu" class="ovl scroll hidden">
     <button class="ovl-x" aria-label="Fermer">✕</button>
     <p class="big">Profil de la loutre</p>
 
-    <div class="prof-hero">
-      <div class="prof-slots">
-        <button class="prof-slot" id="ps-hat"><span class="ps-ic" id="ps-hat-ic">🎩</span><span class="ps-lbl" id="ps-hat-v">—</span></button>
-        <button class="prof-slot" id="ps-fur"><span class="ps-ic" id="ps-fur-ic">🎨</span><span class="ps-lbl" id="ps-fur-v">—</span></button>
-        <button class="prof-slot" id="ps-gear"><span class="ps-ic" id="ps-gear-ic">💎</span><span class="ps-lbl" id="ps-gear-v">—</span></button>
-      </div>
+    <!-- Portrait + identité, réunis en un bandeau -->
+    <div class="prof-head">
       <div class="prof-otter">
         <span class="prof-hat" id="prof-hat" aria-hidden="true"></span>
         <span class="prof-face" aria-hidden="true">🦦</span>
-        <span class="prof-title" id="prof-title">Niv 1</span>
       </div>
-      <div class="prof-slots">
-        <button class="prof-slot" id="ps-ach"><span class="ps-ic">🏆</span><span class="ps-lbl" id="ps-ach-v">—</span></button>
-        <button class="prof-slot" id="ps-decor2"><span class="ps-ic" id="ps-decor2-ic">🌿</span><span class="ps-lbl" id="ps-decor2-v">—</span></button>
-        <button class="prof-slot" id="ps-streak"><span class="ps-ic">🔥</span><span class="ps-lbl" id="ps-streak-v">0</span></button>
+      <div class="prof-headtxt">
+        <b id="prof-name">Petite loutre</b>
+        <span class="prof-title" id="prof-title">Niv 1</span>
       </div>
     </div>
 
+    <!-- Navigation : les trois écrans, en évidence tout en haut -->
+    <div class="prof-nav">
+      <button class="prof-tab" id="b-ach"><span class="pt-ic">🏆</span>Succès<span class="badge count" id="ach-badge"></span></button>
+      <button class="prof-tab" id="pt-gang"><span class="pt-ic">🦦</span>Escouade</button>
+      <button class="prof-tab" id="m-gear"><span class="pt-ic">⚙️</span>Réglages</button>
+    </div>
+
+    <!-- Équipement : tout ce qui s'équipe, réuni et étiqueté -->
+    <p class="prof-sec">Équipement</p>
+    <div class="prof-equip">
+      <button class="prof-slot" id="ps-hat"><span class="ps-ic" id="ps-hat-ic">🎩</span><span class="ps-nm">Chapeau</span><span class="ps-lbl" id="ps-hat-v">—</span></button>
+      <button class="prof-slot" id="ps-fur"><span class="ps-ic" id="ps-fur-ic">🎨</span><span class="ps-nm">Pelage</span><span class="ps-lbl" id="ps-fur-v">—</span></button>
+      <button class="prof-slot" id="ps-gear"><span class="ps-ic" id="ps-gear-ic">💎</span><span class="ps-nm">Trésor</span><span class="ps-lbl" id="ps-gear-v">—</span></button>
+      <button class="prof-slot" id="ps-decor2"><span class="ps-ic" id="ps-decor2-ic">🌿</span><span class="ps-nm">Décor</span><span class="ps-lbl" id="ps-decor2-v">—</span></button>
+    </div>
+
+    <!-- En bref : les chiffres, dans un tableau propre -->
+    <p class="prof-sec">En bref</p>
     <div class="prof-id">
-      <div class="prof-id-head">
-        <span class="av-face" aria-hidden="true">🦦</span>
-        <b id="prof-name">Petite loutre</b>
-      </div>
       <div class="prof-stats">
         <div><span>💪 Puissance</span><b id="prof-power">—</b></div>
         <div><span>⭐ Niveau</span><b id="prof-lvl">1</b></div>
         <div><span>🐟 Poissons</span><b id="prof-fish">0</b></div>
         <div><span>🐚 Coquillages</span><b id="prof-shell">0</b></div>
-        <div><span>🦦 Escouade</span><b id="prof-gang">Aucune</b></div>
+        <div><span>🧰 Coffres</span><b id="prof-chests">0/15</b></div>
+        <div><span>⚔️ Épreuves</span><b id="prof-trials">0/15</b></div>
         <div><span>🔥 Série</span><b id="prof-streak">0</b></div>
-        <div><span>🧰 Coffres</span><b id="prof-chests">0/6</b></div>
-        <div><span>⚔️ Épreuves</span><b id="prof-trials">0/6</b></div>
+        <div><span>🦦 Escouade</span><b id="prof-gang">Aucune</b></div>
       </div>
     </div>
 
     <!-- Carte de la vallée : ce qu'on a découvert, et ce qui reste à trouver -->
+    <p class="prof-sec">🗺️ La vallée <span class="prof-sec-x" id="pm-count"></span></p>
     <div class="prof-map">
-      <p class="pm-title">🗺️ La vallée <span id="pm-count"></span></p>
       <div id="pm-grid"></div>
       <p class="pm-hint" id="pm-hint"></p>
-    </div>
-
-    <div class="prof-tabs">
-      <button class="prof-tab" id="b-ach"><span class="pt-ic">🏆</span>Succès<span class="badge count" id="ach-badge"></span></button>
-      <button class="prof-tab" id="pt-gang"><span class="pt-ic">🦦</span>Escouade</button>
-      <button class="prof-tab" id="m-gear"><span class="pt-ic">⚙️</span>Réglages</button>
     </div>
   </div>
 
