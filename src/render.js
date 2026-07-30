@@ -1451,7 +1451,7 @@ export function makeRenderer(cv) {
       let sx, sy;
       if (squashing) { ({ sx, sy } = squashScale(sqT)); }
       else { const b = Math.sin(frame / 32); sy = 1 + b * 0.02; sx = 1 - b * 0.012; }
-      const cx = ox + 16, cyf = otterY(s.stage) + spr.length * 2;
+      const cx = ox + 16, cyf = artOn ? GROUND_Y + bounce : otterY(s.stage) + spr.length * 2;
       ctx.save();
       ctx.translate(cx, cyf);
       ctx.scale(sx, sy);
