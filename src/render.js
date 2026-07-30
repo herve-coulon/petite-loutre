@@ -469,17 +469,18 @@ export function makeRenderer(cv) {
         ctx.fillRect(dx2, dy2, 4, 3); ctx.fillRect(dx2 + 3, dy2 - 2, 2, 2);
       }
     } else if (id === 'arcenciel' && !night) {
-      // Repère traduit (BERGE_SHIFT appliqué). Ciel écran y=66-190 → traduit y=-78 à 46.
-      // Arc : sommet écran y=82 (traduit -62), bords écran y=120 (traduit -24).
+      // Annule le BERGE_SHIFT parent pour dessiner en coords écran (ciel y=66-190)
+      ctx.save(); ctx.translate(0, -BERGE_SHIFT);
       const cols = ['#e5484d', '#f2913d', '#f2c14e', '#8ad05f', '#5fc9e0'];
       for (let x = 10; x < 150; x += 2) {
         const d = Math.abs(x - 80);
         const base = Math.sqrt(Math.max(0, 4900 - d * d)) * 0.55;
         for (let i = 0; i < cols.length; i++) {
-          const y = -24 - base + i * 2;
-          if (y > -80 && y < 0) { ctx.fillStyle = cols[i]; ctx.fillRect(x, y, 2, 2); }
+          const y = 130 - base + i * 2;
+          if (y > 75 && y < 140) { ctx.fillStyle = cols[i]; ctx.fillRect(x, y, 2, 2); }
         }
       }
+      ctx.restore();
     }
   }
 
