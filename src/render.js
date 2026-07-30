@@ -469,6 +469,7 @@ export function makeRenderer(cv) {
         ctx.fillRect(dx2, dy2, 4, 3); ctx.fillRect(dx2 + 3, dy2 - 2, 2, 2);
       }
     } else if (id === 'arcenciel' && !night) {
+      ctx.save(); ctx.translate(0, -BERGE_SHIFT);
       const cols = ['#e5484d', '#f2913d', '#f2c14e', '#8ad05f', '#5fc9e0'];
       for (let x = 10; x < 150; x += 2) {
         const d = Math.abs(x - 80);
@@ -478,6 +479,7 @@ export function makeRenderer(cv) {
           if (y > 8 && y < 58) { ctx.fillStyle = cols[i]; ctx.fillRect(x, y, 2, 2); }
         }
       }
+      ctx.restore();
     }
   }
 
