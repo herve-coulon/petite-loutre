@@ -84,6 +84,7 @@ export function stepSim(s, dt, opts = {}) {
   }
 
   // Maladie (probabilité par heure simulée) — l'hiver, le froid fait attraper froid
+  // La météo (pluie, brouillard, verglas) augmente aussi le risque.
   if (!s.sick) {
     let p = 0.004 + s.poops.length * 0.02 + (s.clean < 25 ? 0.03 : 0) + (s.hunger < 15 ? 0.02 : 0);
     if (cold) {
@@ -92,6 +93,7 @@ export function stepSim(s, dt, opts = {}) {
         + (s.hunger < SEASON_FX.COLD_LOW_HUNGER ? SEASON_FX.COLD_SICK_HUNGRY : 0);
       p += coldTerm * (1 - (gear.coldResist || 0)); // un trésor peut atténuer le froid
     }
+    if (opts.weatherBonus) p += opts.weatherBonus;
     if (rnd() < p * h) { s.sick = true; events.push({ type: 'sick' }); }
   }
 

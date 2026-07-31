@@ -648,6 +648,63 @@ export function makeRenderer(cv) {
     }
   }
 
+  // Météo dynamique : pluie, brouillard, orage, neige, vent, canicule, verglas.
+  function drawWeather(weather, frame) {
+    if (!weather || weather.type === 'clair') return;
+    const w = weather;
+    if (w.type === 'pluie' || w.type === 'orage') {
+      const N = Math.round(12 * w.intensity);
+      ctx.fillStyle = 'rgba(180,210,240,.55)';
+      for (let i = 0; i < N; i++) {
+        const rx = ((i * 17 + 5 + (frame >> 2) * 0.7) % 168 + 168) % 168 - 4;
+        const ry = ((frame * 2.2 + i * 29) % (GROUND_Y + 12));
+        const len = 3 + Math.round(w.intensity * 3);
+        ctx.fillRect(rx, ry, 1, len);
+      }
+    }
+    if (w.type === 'orage' && (frame >> 4) % 12 === 0) {
+      ctx.fillStyle = 'rgba(255,255,255,.35)';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    }
+    if (w.type === 'brouillard') {
+      ctx.fillStyle = 'rgba(200,210,225,' + (0.12 * w.intensity).toFixed(2) + ')';
+      for (let y = 60; y < GROUND_Y; y += 8) {
+        const dx = Math.sin((frame + y) / 40) * 10;
+        ctx.fillRect(dx, y, CANVAS_W, 6);
+      }
+    }
+    if (w.type === 'vent') {
+      for (let i = 0; i < Math.round(6 * w.intensity); i++) {
+        const vx = ((frame * 3 + i * 31) % (CANVAS_W + 40)) - 20;
+        const vy = 70 + (i * 13) % 40;
+        ctx.fillStyle = 'rgba(220,230,240,.2)';
+        ctx.fillRect(vx, vy, 8 + Math.round(w.intensity * 6), 1);
+      }
+    }
+    if (w.type === 'neige') {
+      const N = Math.round(14 * w.intensity);
+      for (let i = 0; i < N; i++) {
+        const sx = ((i * 19 + 7 + Math.sin((frame + i * 40) / 28) * 4) % 164 + 164) % 164;
+        const sy = ((frame * 0.5 + i * 27) % (GROUND_Y + 6));
+        ctx.fillStyle = (i + (frame >> 4)) % 3 ? '#eef6ff' : '#dde5ef';
+        ctx.fillRect(sx, sy, 2, 2);
+      }
+    }
+    if (w.type === 'canicule') {
+      ctx.fillStyle = 'rgba(255,200,100,.06)';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    }
+    if (w.type === 'verglas') {
+      for (let i = 0; i < Math.round(5 * w.intensity); i++) {
+        const gx = (i * 37 + 11) % CANVAS_W;
+        const gy = GROUND_Y - 2 + (i * 7) % 6;
+        ctx.fillStyle = 'rgba(180,220,255,.3)';
+        ctx.fillRect(gx, gy, 3, 1);
+        ctx.fillRect(gx + 1, gy - 1, 1, 1);
+      }
+    }
+  }
+
   // Trésor de saison du jour : cadeau thématique à toucher (une fois par jour).
   function drawSeasonTreat(key, frame) {
     const bx = TREAT_POS.x, by = TREAT_POS.y + ((frame >> 4) % 2); // léger balancement
@@ -1344,6 +1401,9 @@ export function makeRenderer(cv) {
 
     // ambiance saisonnière : feuilles / pétales / neige qui tombent (pas pendant la pêche)
     if (!mg && !reduced) drawSeasonAmbient(season.ambient, frame);
+
+    // météo dynamique : pluie, brouillard, orage, etc. (pas en mini-jeu)
+    if (!mg && !reduced && fx.weather) drawWeather(fx.weather, frame);
 
     // trésor de saison du jour, à récolter (disparaît une fois pris)
     if (!mg && s.stage !== 'egg' && season.treat && treatAvailable(s)) {

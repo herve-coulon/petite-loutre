@@ -44,6 +44,7 @@ import {
 import { makeCard, CARD_URL } from './photocard.js';
 import { nextBeat, markSeen, coachStep } from './story.js';
 import { seasonFor, seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
+import { weatherFor, sicknessBonus, WEATHER_LABELS } from './weather.js';
 import { ITEMS, RARITIES, itemById, bonusOf, rollDrop, milestoneItem, describeBonus, cosmeticPrice, treasurePrice } from './items.js';
 import { pickTrait, traitById, isFavorite, favoriteLine, bondGain, bondLevel } from './personality.js';
 
@@ -1838,7 +1839,8 @@ function tick() {
     const msg = ui.offlineSummary(s, elapsed, events);
     if (msg && elapsed > 10 * MIN) ui.log(msg);
   } else {
-    applyEvents(stepSim(s, rawDt, { simNow: t }));
+    const wb = weatherFor(new Date(t));
+    applyEvents(stepSim(s, rawDt, { simNow: t, weatherBonus: sicknessBonus(wb) }));
   }
   if (s.divingUntil && t >= s.divingUntil && !s.gameOver && !s.away) resolveDive();
   if (s.stage !== 'egg' && ensureDaily(s, t)) {
@@ -1925,7 +1927,8 @@ function loop() {
     owned: rec ? rec.items : null,
     world: (s && s.place === 'monde') ? world : null,
     level: curLevel(),
-    hint: (s && activeHint) ? hintTargetFor(activeHint) : null
+    hint: (s && activeHint) ? hintTargetFor(activeHint) : null,
+    weather: (s && s.place === 'berge') ? weatherFor(new Date()) : null
   });
   if (R.consumeFetch()) onFetchDone(); // la loutre vient de rapporter la balle
   applyShake();
