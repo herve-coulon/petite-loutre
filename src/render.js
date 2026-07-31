@@ -237,6 +237,10 @@ export function makeRenderer(cv) {
   let nextIdleAt = 400 + Math.random() * 700;       // en frames
   let jumpFish = null;                              // {x, dir, start} — poisson qui saute
   let nextJumpAt = 300 + Math.random() * 500;
+  let jumpFish2 = null;                             // 2e poisson
+  let nextJumpAt2 = 600 + Math.random() * 400;
+  let jumpFish3 = null;                             // 3e poisson
+  let nextJumpAt3 = 900 + Math.random() * 300;
   let wasSleeping = false;                          // état précédent pour détecter le réveil
   let hurtUntil = 0;                               // timestamp fin animation hurt
   // balade : la loutre flâne sur la berge (position vivante, bord gauche du sprite)
@@ -424,24 +428,31 @@ export function makeRenderer(cv) {
       }
     }
 
-    // poisson qui bondit hors de la rivière (jamais pendant la pêche : ce serait un leurre)
-    if (mg) { jumpFish = null; return; }
-    if (!jumpFish && frame >= nextJumpAt) {
-      jumpFish = { x: 16 + Math.random() * 118, dir: Math.random() < 0.5 ? -1 : 1, start: frame };
-      splashAt(jumpFish.x, 108 + BERGE_SHIFT);
-    }
-    if (jumpFish) {
-      const p = (frame - jumpFish.start) / 46;
-      if (p >= 1) {
-        splashAt(jumpFish.x + jumpFish.dir * 14, 108 + BERGE_SHIFT);
-        jumpFish = null;
-        nextJumpAt = frame + 420 + Math.random() * 600;
-      } else {
-        const fx2 = jumpFish.x + jumpFish.dir * p * 14;
-        const fy2 = 108 + BERGE_SHIFT - Math.sin(p * Math.PI) * 15;
-        drawSprite(SPRITES.fish, fx2, fy2, 1, null, jumpFish.dir > 0);
+    // poisson qui bondissent hors de la rivière (3 en parallèle, jamais pendant la pêche)
+    if (mg) { jumpFish = jumpFish2 = jumpFish3 = null; return; }
+    function tickJump(jf, nextJ, xMin, xMax) {
+      if (!jf && frame >= nextJ.v) {
+        jf.v = { x: xMin + Math.random() * (xMax - xMin), dir: Math.random() < 0.5 ? -1 : 1, start: frame };
+        splashAt(jf.v.x, 108 + BERGE_SHIFT);
+      }
+      if (jf.v) {
+        const p = (frame - jf.v.start) / 46;
+        if (p >= 1) {
+          splashAt(jf.v.x + jf.v.dir * 14, 108 + BERGE_SHIFT);
+          jf.v = null; nextJ.v = frame + 350 + Math.random() * 500;
+        } else {
+          const fx2 = jf.v.x + jf.v.dir * p * 14;
+          const fy2 = 108 + BERGE_SHIFT - Math.sin(p * Math.PI) * 15;
+          drawSprite(SPRITES.fish, fx2, fy2, 1, null, jf.v.dir > 0);
+        }
       }
     }
+    tickJump({ get v() { return jumpFish; }, set v(v) { jumpFish = v; } },
+             { get v() { return nextJumpAt; }, set v(v) { nextJumpAt = v; } }, 16, 70);
+    tickJump({ get v() { return jumpFish2; }, set v(v) { jumpFish2 = v; } },
+             { get v() { return nextJumpAt2; }, set v(v) { nextJumpAt2 = v; } }, 60, 120);
+    tickJump({ get v() { return jumpFish3; }, set v(v) { jumpFish3 = v; } },
+             { get v() { return nextJumpAt3; }, set v(v) { nextJumpAt3 = v; } }, 30, 140);
   }
 
   /* ---------------- Événement du jour ---------------- */
@@ -1276,6 +1287,22 @@ export function makeRenderer(cv) {
       for (let y = 105; y < 118; y += 2) {
         if (((y + (frame >> 2)) >> 1) % 2) ctx.fillRect(130 + ((y * 3) % 5), y, 3, 1);
       }
+    }
+    // reflet de la lune sur l'eau la nuit (scintille doucement)
+    if (c.night) {
+      ctx.fillStyle = 'rgba(230,230,210,.18)';
+      for (let y = 106; y < 120; y += 2) {
+        const shimmer = Math.sin((frame + y * 3) / 11) * 3;
+        if (((y + (frame >> 3)) >> 1) % 2) ctx.fillRect(86 + shimmer, y, 4, 1);
+      }
+    }
+    // nénuphars qui dérivent lentement sur la surface
+    for (let i = 0; i < 3; i++) {
+      const lx = ((i * 52 + 18 + (frame * 0.08 + i * 7) % 160) % 160);
+      const ly = 108 + Math.sin((frame + i * 50) / 30) * 2;
+      ctx.fillStyle = (i % 2) ? '#3f8a3f' : '#4a9e4a';
+      ctx.fillRect(lx, ly, 5, 3);
+      ctx.fillStyle = '#6fc96f'; ctx.fillRect(lx + 1, ly, 3, 1);
     }
     ctx.restore(); // fin de la berge décalée
 
