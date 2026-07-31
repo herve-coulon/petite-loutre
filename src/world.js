@@ -18,6 +18,7 @@ export const SCALES = ['monde', 'berge', 'taniere'];
  */
 export const LOCATIONS = [
   { id: 'berge',   name: 'La berge',      emoji: '🦦', unlockLevel: 1,  x: 50, y: 55, scale: 'berge', home: true },
+  { id: 'jardin',  name: 'Le jardin',     emoji: '🌿', unlockLevel: 4,  x: 45, y: 70, scale: null },
   { id: 'amont',   name: "L'amont",       emoji: '🎣', unlockLevel: 6,  x: 76, y: 34, scale: null },
   { id: 'cascade', name: 'La cascade',    emoji: '💧', unlockLevel: 12, x: 28, y: 26, scale: null },
   { id: 'foret',   name: 'La forêt',      emoji: '🌲', unlockLevel: 20, x: 82, y: 72, scale: null },

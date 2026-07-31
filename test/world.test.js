@@ -34,7 +34,7 @@ test('déblocage : le nombre de lieux ouverts croît avec le niveau', () => {
 });
 
 test('prochain lieu : téléguide la progression, null quand tout est ouvert', () => {
-  assert.equal(nextLocation(1).id, 'amont', 'après la berge vient l\'amont');
+  assert.equal(nextLocation(1).id, 'jardin', 'après la berge vient le jardin');
   assert.equal(nextLocation(999), null, 'plus rien à débloquer');
 });
 

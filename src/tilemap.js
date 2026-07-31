@@ -456,6 +456,40 @@ const MINE       = engendrerCarte('mine',       { mur: 'T', decor: ['b', 's'], e
 const GLACIER    = engendrerCarte('glacier',    { mur: 'p', decor: ['p', 's'], eau: 'mare',    densite: 0.10 });
 const CIMES      = engendrerCarte('cimes',      { mur: 'p', decor: ['p'],      eau: 'aucune',  densite: 0.16 });
 
+// Le jardin aquatique : bassins, jardinières et allées.
+const JARDIN = [
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'T............................T',
+  'T....dd..........dd..........T',
+  'T....dd..........dd..........T',
+  'T....dd..~~~~....dd..........T',
+  'T.......~~~~.................T',
+  'T.......~~~~........bb.......T',
+  'T...................bb.......T',
+  'T..bb........................T',
+  'T..bb.......ss...............T',
+  'T...........ss...............T',
+  'T............................T',
+  'T......~~~~.....dd...........T',
+  'T......~~~~..................T',
+  'T...f..........f.............T',
+  'T...f..........f.............T',
+  'T............................T',
+  'T.......ss...........bb......T',
+  'T...................bb.......T',
+  'T............................T',
+  'T....dd..............~~~~....T',
+  'T....dd..............~~~~....T',
+  'T....dd......................T',
+  'T.............f..............T',
+  'T............................T',
+  'T............................T',
+  'T............................T',
+  'T............................T',
+  'T............................T',
+  'TTTTTTTTTTTTTTTTTT..TTTTTTTTTT'
+];
+
 export const ZONES = {
   // ── Le CŒUR de la vallée : ouvert d'emblée ou presque ──
   clairiere: {
@@ -465,8 +499,13 @@ export const ZONES = {
   },
   roseaux: {
     id: 'roseaux', name: 'Les roseaux', rows: expand(ROSEAUX, ZOOM), start: [15 * ZOOM, 1 * ZOOM],
-    links: { north: 'cascade', east: 'clairiere' },
+    links: { north: 'cascade', east: 'clairiere', south: 'jardin' },
     find: { kind: 'coquillage', count: 3 }, boost: 1, req: 1
+  },
+  jardin: {
+    id: 'jardin', name: 'Le jardin', rows: expand(JARDIN, ZOOM), start: [15 * ZOOM, 1 * ZOOM],
+    links: { north: 'roseaux' },
+    find: { kind: 'nenufar', count: 2 }, boost: 1, req: 4
   },
   vallon: {
     id: 'vallon', name: 'Le vallon', rows: expand(VALLON, ZOOM), start: [8 * ZOOM, 2 * ZOOM],
@@ -601,7 +640,10 @@ export const ZONE_INTRO = {
       'Le froid mord ; chaque pas crisse sur la glace.'] },
   cimes: { emoji: '🏔️', title: 'Les cimes',
     lines: ['Le toit de la vallée : la roche nue, le vent, le vide.',
-      'D\'ici, on touche presque les étoiles.'] }
+      'D\'ici, on touche presque les étoiles.'] },
+  jardin: { emoji: '🌿', title: 'Le jardin',
+    lines: ['Un bassin calme, entouré de herbes hautes et de jardinières.',
+      'C\'est ici qu\'on cultive les fleurs aquatiques et qu\'on attrape les grenouilles.'] }
 };
 
 /** Ce que chaque trouvaille montre à l'écran. */
@@ -610,7 +652,8 @@ export const FIND_ICON = {
   coquillage: '🐚', tresor: '🎁', fleur: '🌼',
   crabe: '🦀', silex: '🪨', baie: '🫐',
   corail: '🪸', nacre: '🦪', cristal: '🔮',
-  pepite: '🪙', glacon: '🧊', etoile: '⭐'
+  pepite: '🪙', glacon: '🧊', etoile: '⭐',
+  nenufar: '🪷'
 };
 
 /**
@@ -648,7 +691,9 @@ export const SPECIALITE = {
   glacier: { icon: '❄️', nom: 'La banquise',
     effet: 'le froid trempe le caractère — et la glace garde ses trésors' },
   cimes: { icon: '🔭', nom: 'L\'observatoire',
-    effet: 'du toit du monde, on cueille des étoiles et on voit venir de loin' }
+    effet: 'du toit du monde, on cueille des étoiles et on voit venir de loin' },
+  jardin: { icon: '🌸', nom: 'Le jardin aquatique',
+    effet: 'les graines y poussent si on les arrose, et les grenouilles y dansent' }
 };
 
 /**
@@ -688,7 +733,8 @@ export const FAUNE = {
   caverne:   ['🦇', '🕷️', '🐛'],
   mine:      ['🐀', '🦎', '🪲'],
   glacier:   ['🐧', '🦭', '🐻‍❄️'],
-  cimes:     ['🦅', '🐐', '🦌']
+  cimes:     ['🦅', '🐐', '🦌'],
+  jardin:    ['🐸', '🦋', '🐝']
 };
 
 /**
@@ -742,7 +788,10 @@ export const HABITANT = {
       'J\'ai fait des réserves. Prends, tu tiendras la montée.'] },
   cimes: { emoji: '🐐', nom: 'Altaïr', role: 'le guetteur des cimes', don: 'guet',
     mots: ['D\'ici, la vallée entière tient dans un regard.',
-      'Et je vois tout ce qui bouge — surtout ce qui porte un fusil.'] }
+      'Et je vois tout ce qui bouge — surtout ce qui porte un fusil.'] },
+  jardin: { emoji: '🦔', nom: 'Floréal', role: 'le jardinier du bassin', don: 'friandise',
+    mots: ['Chaque graine a son temps, petite. La patience est la première vertu du jardinier.',
+      'Tiens, j\'ai fait pousser ceci pour toi.'] }
 };
 
 /**
@@ -756,7 +805,7 @@ export const COFFRE = {
   roseaux: 'plume', lac: 'perle', vallon: 'luciole',
   delta: 'amulette', gorge: 'caillou_lune', sapiniere: 'boussole',
   lagon: 'corail', large: 'nacre', caverne: 'geode',
-  mine: 'pepite', glacier: 'stalactite', cimes: 'comete'
+  mine: 'pepite', glacier: 'stalactite', cimes: 'comete', jardin: 'ambre'
 };
 
 /** Toutes les zones qui recèlent un coffre (pour compter la collection). */
@@ -800,7 +849,9 @@ export const EPREUVE = {
   mine: { nom: 'Pyrite', titre: 'la gardienne du filon', fur: 'choco', force: 2.45,
     defi: 'Tout brille, au fond de la mine. Peu en ressortent entières.' },
   cimes: { nom: 'Altesse', titre: 'la souveraine des cimes', fur: 'braise', force: 2.70,
-    defi: 'Tu as gravi toute la vallée pour m\'affronter. Montre-moi.' }
+    defi: 'Tu as gravi toute la vallée pour m\'affronter. Montre-moi.' },
+  jardin: { nom: 'Bassine', titre: 'la gardienne du jardin', fur: 'bonbon', force: 1.08,
+    defi: 'Dans mon jardin, on ne marche pas sur les fleurs. Montre-moi que tu respectes la nature.' }
 };
 
 export const EPREUVE_ZONES = Object.keys(EPREUVE);

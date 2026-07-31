@@ -469,16 +469,7 @@ function endSlide(res) {
 }
 
 /* ---------------- Jardin aquatique (3e mini-jeu) ---------------- */
-function actGarden() {
-  if (busy() || s.sleeping) return;
-  if (!unlocked('garden')) { ui.log('🌿 Le jardin aquatique s\'ouvre au niveau ' + UNLOCK_LEVEL.garden + ' ! ⭐'); return; }
-  if (s.energy < 10) { ui.log(s.name + ' est trop fatiguée pour jardiner…'); return; }
-  press();
-  mg = newGarden(now());
-  sfx.press();
-  ui.log('Jardin ! Plante des graines, arrose-les, récolte les fleurs et attrape les grenouilles ! 🌸🐸');
-  ui.updateHUD(s, mg, rec);
-}
+// actGarden supprimé — le jardin se lance automatiquement en entrant dans la zone jardin
 
 function endGarden(res) {
   const sc = res.score;
@@ -994,6 +985,13 @@ function goToZone(zoneId, px, py) {
   R.flashZone && R.flashZone(z.name, intro && intro.emoji);
   if (!discoverZone(zoneId)) {          // déjà connu : simple annonce
     ui.log('🗺️ ' + z.name);
+  }
+  // Auto-lancer le mini-jeu jardin quand on entre dans la zone jardin
+  if (zoneId === 'jardin' && curLevel() >= UNLOCK_LEVEL.garden && s.energy >= 10 && !mg) {
+    mg = newGarden(now());
+    sfx.press();
+    ui.log('Jardin ! Plante des graines, arrose-les, récolte les fleurs et attrape les grenouilles ! 🌸🐸');
+    ui.updateHUD(s, mg, rec);
   }
 }
 
@@ -2106,7 +2104,6 @@ function boot() {
   $('b-treat').addEventListener('click', actTreat);
   $('b-dive').addEventListener('click', actDive);
   $('b-slide').addEventListener('click', actSlide);
-  $('b-garden').addEventListener('click', actGarden);
   $('b-care').addEventListener('click', actCare);
 
   // Combat de loutres : une sauvage à défier tout de suite (ou le code d'un ami)
@@ -2595,7 +2592,7 @@ window.__loutre = {
     }
   },
   step(ms) { applyEvents(stepSim(s, ms, { simNow: now() })); ui.updateHUD(s, mg, rec); },
-  startNew, actFeed, actWash, actSleep, actHeal, actPlay, actTreat, actDive, actSlide, actGarden, actCare, pet,
+  startNew, actFeed, actWash, actSleep, actHeal, actPlay, actTreat, actDive, actSlide, actCare, pet,
   get battle() { return battle; }
 };
 
