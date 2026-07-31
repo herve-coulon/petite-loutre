@@ -1,5 +1,6 @@
 // Tests visuels : snapshots pixel-art pour détecter les régressions de rendu.
 // Utilise un canvas factice qui capture les opérations de dessin en une grille 160×120.
+// Date est gelée pour rendu 100% déterministe (snapshots identiques sur toute plateforme).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
@@ -9,6 +10,23 @@ import { fileURLToPath } from 'node:url';
 import { makeRenderer, OTTER_X } from '../src/render.js';
 import { newState } from '../src/state.js';
 import { SPRITES, SPRITES_PORTRAITS } from '../src/sprites.js';
+
+// Geler Date.now() pour snap identiques sur macOS / Linux / CI
+const FROZEN_MS = 1700000000000;
+const _RealDate = globalThis.Date;
+let _nowVal = FROZEN_MS;
+globalThis.Date = class extends _RealDate {
+  constructor(...a) { super(a.length ? a : _nowVal); }
+  static now() { return _nowVal; }
+  valueOf() { return _nowVal; }
+  getTime() { return _nowVal; }
+  toISOString() { return new _RealDate(_nowVal).toISOString(); }
+  toDateString() { return new _RealDate(_nowVal).toDateString(); }
+  toTimeString() { return new _RealDate(_nowVal).toTimeString(); }
+};
+globalThis.Date.now = () => _nowVal;
+globalThis.Date.UTC = _RealDate.UTC;
+globalThis.Date.parse = _RealDate.parse;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SNAP_DIR = join(__dirname, '..', 'test', 'snapshots');
