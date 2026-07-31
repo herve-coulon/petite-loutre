@@ -24,6 +24,8 @@ import { stepSim, simulateOffline, ageMs } from './sim.js';
 import { newGame, tickGame, clickGame } from './minigame.js';
 import { newSlide, tickSlide, setSlideLane, laneAt, DEGATS_EJECTION } from './toboggan.js';
 import { newGame as newGarden, tickGame as tickGarden, waterAt, harvestAt } from './garden.js';
+import { spawnCreatures, tickCreatures, checkAttack } from './creatures.js';
+import { seeCreature, catchCreature } from './bestiary.js';
 import { makeRenderer, FOOD_POS, BALL_HOME, denItemAt, CANVAS_W, CANVAS_H } from './render.js';
 import { sfx, vibrate, setMuted, setVolume, getVolume } from './audio.js';
 import * as ui from './ui.js';
@@ -58,6 +60,7 @@ let rec = null;               // records globaux (toutes loutres confondues)
 let prevHats = new Set();     // pour détecter les nouveaux déblocages
 let prevFurs = new Set();     // idem pour les pelages, qu'on n'annonçait pas
 let mg = null;
+let berCreatures = []; // créatures vivantes sur la berge
 let battle = null;
 let battleDone = false;      // le dénouement (récompenses) ne se joue qu'une fois
 let frame = 0;
@@ -1033,6 +1036,7 @@ function exitWorld() {
   world = null; encounterOtter = null;
   ui.hideOverlay('ovl-encounter');
   s.place = 'berge';
+  berCreatures = spawnCreatures('clairiere', Math.random); // créatures de la berge
   sfx.press(); vibrate(8);
   ui.log((s.name || 'La loutre') + ' rentre au bord de la rivière. 🌊');
   updatePlaceBtn(); persist();
@@ -1363,6 +1367,36 @@ function onCanvasPointer(e) {
         ui.log('🦋 Attrapé ! Le papillon rare t\'offre son éclat.');
         persist();
         return;
+      }
+    }
+
+    // créatures du bestiaire : clic pour tenter de l'attraper
+    if (s.place === 'berge' && berCreatures.length) {
+      for (let i = berCreatures.length - 1; i >= 0; i--) {
+        const cr = berCreatures[i];
+        const crx = cr.x, cry = cr.y + 144; // BERGE_SHIFT
+        if (Math.abs(x - crx) < 14 && Math.abs(y - cry) < 14) {
+          const data = creatureById(cr.id);
+          if (!data) continue;
+          const isNew = seeCreature(rec, cr.id);
+          if (data.aggressive) {
+            // agressif : on le repousse mais on le découvre
+            ui.log(data.emoji + ' ' + data.name + ' ! ' + data.desc + (isNew ? ' 📖 Nouveau !' : ''));
+            R.burst('sparkle', 4, s.stage);
+          } else {
+            // pacifique : on l'attrape
+            catchCreature(rec, cr.id);
+            berCreatures.splice(i, 1);
+            s.fun = clamp(s.fun + 3, 0, 100);
+            s.energy = clamp(s.energy - 2, 0, 100);
+            ui.log(data.emoji + ' ' + data.name + ' attrapé ! ' + (isNew ? '📖 Nouveau dans le bestiaire !' : ''));
+            R.burst('sparkle', 8, s.stage);
+            sfx.catch(); vibrate(10);
+            gainXp(data.xp);
+          }
+          persist();
+          break;
+        }
       }
     }
 
@@ -1960,6 +1994,20 @@ function loop() {
     if (res) (mg.mode === 'slide' ? endSlide : mg.mode === 'garden' ? endGarden : endGame)(res);
   }
   if (!frozen && s && s.place === 'monde') stepWorld();
+  // créatures sur la berge : déplacement + attaque
+  if (!frozen && s && s.place === 'berge' && berCreatures.length) {
+    tickCreatures(berCreatures, s.ox || 80, s.oy || 100, now(), Math.random);
+    const atk = checkAttack(berCreatures, s.ox || 80, s.oy || 100);
+    if (atk && now() > (s.lastCreatureHit || 0) + 2000) {
+      s.health = clamp(s.health - 5, 0, 100);
+      s.lastCreatureHit = now();
+      R.hurtOtter();
+      sfx.sad(); vibrate(20); ui.shake();
+      ui.log(atk.name + ' te blesse ! (-5 santé) 🩸');
+      seeCreature(rec, atk.id);
+      persist();
+    }
+  }
   // Le DUEL RÉFLEXE avance en temps réel : le moteur fait naître et tomber les
   // coups au fil de l'horloge, et l'arène se redessine (curseur du télégraphe)
   // à chaque image tant que le combat tourne.
@@ -1977,7 +2025,8 @@ function loop() {
     world: (s && s.place === 'monde') ? world : null,
     level: curLevel(),
     hint: (s && activeHint) ? hintTargetFor(activeHint) : null,
-    weather: (s && s.place === 'berge') ? weatherFor(new Date()) : null
+    weather: (s && s.place === 'berge') ? weatherFor(new Date()) : null,
+    creatures: (s && s.place === 'berge') ? berCreatures : null
   });
   if (R.consumeFetch()) onFetchDone(); // la loutre vient de rapporter la balle
   applyShake();
@@ -2346,7 +2395,13 @@ function boot() {
     ui.showOverlay('ovl-ach');
   };
   $('b-ach').addEventListener('click', openAch);
-  { const el = $('ps-ach'); if (el) el.addEventListener('click', openAch); } // slot Succès du profil
+  { const el = $('ps-ach'); if (el) el.addEventListener('click', openAch); }
+
+  // Bestiaire
+  $('b-bestiary').addEventListener('click', () => {
+    ui.renderBestiary(rec);
+    ui.showOverlay('ovl-bestiary');
+  });
 
   // Escouade (gang) : création, recrutement (coûte de l'XP), combats de bande.
   const gangBoard = () => recruitBoard(curLevel(), dayKey(), 3)

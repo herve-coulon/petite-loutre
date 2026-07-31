@@ -13,6 +13,7 @@ import { LANE_X, SLIDE_OTTER_Y, COMBO_STEP, GOBE_MS, VIES_MAX, slideProgress } f
 import { GROW_TIME as GARDEN_GROW, FLOWER_LIVE as GARDEN_LIVE } from './garden.js';
 import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, FIND_ICON, FAUNE, groundTile, decorTile, zoneGates, zoneUnlocked, zoneReq } from './tilemap.js';
 import { otterArt, drawAnim, frameAt, animForMood, ANATOMY, ANIMS } from './otter-art.js';
+import { creatureById } from './creatures.js';
 
 // Le kit de sprites dessinés (assets/otter/) : il remplace la grille de pixels
 // pour la loutre ADULTE, là où elle est grande à l'écran (berge, tanière,
@@ -1423,6 +1424,23 @@ export function makeRenderer(cv) {
       drawSprite(fspr, 112, fy, 2, furById(fx.foe.fur).map, true);
       const fhat = fx.foe.hat && hatById(fx.foe.hat);
       if (fhat) drawSprite(fhat.rows, 112, fy - fhat.rows.length * 2 + 4, 2, null, true);
+    }
+
+    // créatures du bestiaire sur la berge
+    if (fx.creatures) {
+      for (const cr of fx.creatures) {
+        const crx = Math.round(cr.x), cry = Math.round(cr.y + BERGE_SHIFT);
+        const crData = creatureById(cr.id);
+        if (!crData) continue;
+        ctx.font = '12px system-ui,sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(crData.emoji, crx, cry);
+        ctx.textAlign = 'left';
+        // halo rouge si agressif et en mode chase/attack
+        if (crData.aggressive && (cr.state === 'chase' || cr.state === 'attack')) {
+          ctx.fillStyle = 'rgba(200,40,40,.18)';
+          ctx.fillRect(crx - 6, cry - 10, 12, 12);
+        }
+      }
     }
 
     // Plongée : elle est partie pêcher au large. On la voit dériver sur le dos

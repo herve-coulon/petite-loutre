@@ -269,6 +269,7 @@
     <!-- Navigation : les trois écrans, en évidence tout en haut -->
     <div class="prof-nav">
       <button class="prof-tab" id="b-ach"><span class="pt-ic">🏆</span>Succès<span class="badge count" id="ach-badge"></span></button>
+      <button class="prof-tab" id="b-bestiary"><span class="pt-ic">📖</span>Bestiaire</button>
       <button class="prof-tab" id="pt-gang"><span class="pt-ic">🦦</span>Escouade</button>
       <button class="prof-tab" id="m-gear"><span class="pt-ic">⚙️</span>Réglages</button>
     </div>
@@ -303,6 +304,14 @@
       <div id="pm-grid"></div>
       <p class="pm-hint" id="pm-hint"></p>
     </div>
+  </div>
+
+  <!-- Bestiaire : les créatures découvertes -->
+  <div id="ovl-bestiary" class="ovl scroll hidden" role="dialog" aria-modal="true" aria-label="Bestiaire">
+    <button class="ovl-x" aria-label="Fermer">✕</button>
+    <p class="big">📖 Bestiaire</p>
+    <p class="small" id="bestiary-count"></p>
+    <div id="bestiary-list"></div>
   </div>
 
   <!-- Écran Escouade (gang) : création, membres, recrues du jour, combats -->

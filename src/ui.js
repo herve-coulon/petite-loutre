@@ -16,6 +16,7 @@ import { TECHNIQUES, unlockedTechniques } from './skills.js';
 import { equipBonus } from './skins.js';
 import { paintOtter, paintBadge } from './render.js';
 import { ZONES, ZONE_INTRO, FIND_ICON, SPECIALITE, COFFRE_ZONES, EPREUVE_ZONES, zoneDuJour, zoneLayout, zoneUnlocked, zoneReq } from './tilemap.js';
+import { CREATURES } from './creatures.js';
 
 const $ = id => document.getElementById(id);
 const setTxt = (id, v) => { const e = $(id); if (e) e.textContent = v; };
@@ -560,8 +561,36 @@ export function updateHUD(s, mg, rec) {
 export function showOverlay(id) { $(id).classList.remove('hidden'); }
 export function hideOverlay(id) { $(id).classList.add('hidden'); }
 export function hideAllOverlays() {
-  ['ovl-intro', 'ovl-name', 'ovl-story', 'ovl-over', 'ovl-confirm', 'ovl-hats', 'ovl-ach', 'ovl-set', 'ovl-battle', 'ovl-photo']
+  ['ovl-intro', 'ovl-name', 'ovl-story', 'ovl-over', 'ovl-confirm', 'ovl-hats', 'ovl-ach', 'ovl-set', 'ovl-battle', 'ovl-photo', 'ovl-bestiary']
     .forEach(hideOverlay);
+}
+
+/** Bestiaire : affiche les créatures découvertes. */
+export function renderBestiary(rec) {
+  const list = $('bestiary-list');
+  const cnt = $('bestiary-count');
+  if (!list) return;
+  if (!rec.bestiary || Object.keys(rec.bestiary).length === 0) {
+    cnt.textContent = 'Aucune créature découverte pour l\'instant.';
+    list.innerHTML = '';
+    return;
+  }
+  cnt.textContent = Object.keys(rec.bestiary).length + '/' + CREATURES.length + ' créatures découvertes';
+  let html = '';
+  for (const c of CREATURES) {
+    const entry = rec.bestiary[c.id];
+    if (!entry) {
+      html += '<div class="best-entry best-unknown"><span class="best-emoji">❓</span><span class="best-name">???</span></div>';
+    } else {
+      html += '<div class="best-entry">' +
+        '<span class="best-emoji">' + c.emoji + '</span>' +
+        '<div class="best-info"><b>' + c.name + '</b>' +
+        '<span class="best-desc">' + c.desc + '</span>' +
+        '<span class="best-stats">Vu ' + entry.seen + ' fois' + (entry.caught ? ' · Attrapé ' + entry.caught + 'x' : '') +
+        (c.aggressive ? ' · ⚠️ Agressif' : '') + '</span></div></div>';
+    }
+  }
+  list.innerHTML = html;
 }
 
 /** Carte d'histoire (chapitre) : emoji, titre, texte, bouton de suite. */
