@@ -1,6 +1,6 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v3.82.0';
+const VERSION = 'v3.83.0';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [
@@ -60,6 +60,22 @@ const PRECACHE = [
   './src/ambient.js',
   './src/ui.js',
   './src/pwa.js',
+  './src/telemetry.js',
+  './src/kimi-cache-key.js',
+  './src/kimi-client.js',
+  './assets/otter/silver_idle_strip.png',
+  './assets/otter/silver_walk_strip.png',
+  './assets/otter/silver_swim_strip.png',
+  './assets/otter/silver_jump_strip.png',
+  './assets/otter/silver_happy_strip.png',
+  './assets/otter/silver_sleep_strip.png',
+  './assets/otter/silver_hurt_strip.png',
+  './assets/otter/silver_sick_strip.png',
+  './assets/otter/silver_cold_strip.png',
+  './assets/otter/silver_hot_strip.png',
+  './assets/otter/silver_dream_strip.png',
+  './assets/otter/silver_wake_strip.png',
+  './assets/otter/silver_hungry_strip.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
