@@ -318,3 +318,6 @@ prêts à déployer côté serveur.*
 v3.81.1 : pastille profil miniature. La pastille HUD affiche la tête de la
 loutre centrée dans le cercle (pelage vivant + chapeau) au lieu d'un emoji
 ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
+v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
+les réponses identiques et économiser les crédits token — appels frontend via
+`askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*

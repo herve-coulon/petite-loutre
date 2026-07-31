@@ -5,3 +5,6 @@ dist/
 android/
 ios/
 .claude/
+coverage/
+supabase/.temp/
+PROMPT_LOUTRE_CLAUDE_CODE.md
