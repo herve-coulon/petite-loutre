@@ -47,7 +47,7 @@ export const WAKE_OK_ENERGY = 60;         // en-dessous : réveillée trop tôt 
 
 // v3.6 — les activités se débloquent au fil des NIVEAUX du soigneur (plus par
 // stade de vie) : chaque montée de niveau offre une nouvelle chose à faire.
-export const UNLOCK_LEVEL = { treat: 2, slide: 3, dive: 6, battle: 10 };
+export const UNLOCK_LEVEL = { treat: 2, slide: 3, dive: 6, garden: 4, battle: 10 };
 
 // Chez le héron (v2.7) : plus de mort — un rituel de retour en 3 soins espacés
 export const AWAY_CARE_NEEDED = 3;

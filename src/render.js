@@ -10,6 +10,7 @@ import { seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 import { WATER_Y, TELL_MS, COMBO_STEP as FISH_COMBO_STEP, GOBE_MS as FISH_GOBE_MS, fishProgress } from './minigame.js';
 import { itemById, RARITIES, ITEMS } from './items.js';
 import { LANE_X, SLIDE_OTTER_Y, COMBO_STEP, GOBE_MS, VIES_MAX, slideProgress } from './toboggan.js';
+import { GROW_TIME as GARDEN_GROW, FLOWER_LIVE as GARDEN_LIVE } from './garden.js';
 import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, FIND_ICON, FAUNE, groundTile, decorTile, zoneGates, zoneUnlocked, zoneReq } from './tilemap.js';
 import { otterArt, drawAnim, frameAt, animForMood, ANATOMY, ANIMS } from './otter-art.js';
 
@@ -1839,6 +1840,68 @@ export function makeRenderer(cv) {
       }
       ctx.fillStyle = 'rgba(255,233,168,.75)';
       ctx.fillRect(0, 13, Math.round(CANVAS_W * (1 - fishProgress(mg, now))), 2);
+    }
+
+    // mini-jeu : jardin aquatique (planter, arroser, récolter)
+    if (mg && mg.mode === 'garden') {
+      const now = Date.now();
+      // fond d'eau douce
+      ctx.fillStyle = 'rgba(30,70,100,.25)'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = 'rgba(18,50,70,.18)'; ctx.fillRect(0, 170, CANVAS_W, 100);
+
+      // graines / pousses / fleurs
+      for (const f of (mg.flowers || [])) {
+        const age = now - f.plantedAt;
+        if (f.stage === 'seed') {
+          // petite graine brune
+          ctx.fillStyle = '#8b6914';
+          ctx.fillRect(f.x + 2, f.y + 2, 3, 2);
+        } else if (f.stage === 'sprout') {
+          // tige verte
+          ctx.fillStyle = '#4a8c2a';
+          ctx.fillRect(f.x + 2, f.y - 2, 1, 5);
+          ctx.fillRect(f.x, f.y - 3, 5, 2);
+        } else if (f.stage === 'bloom') {
+          // fleur colorée
+          const hue = (f.x * 7 + f.y * 3) % 360;
+          ctx.fillStyle = 'hsl(' + hue + ',70%,60%)';
+          ctx.fillRect(f.x, f.y - 5, 6, 4);
+          ctx.fillStyle = 'hsl(' + hue + ',80%,75%)';
+          ctx.fillRect(f.x + 1, f.y - 4, 4, 2);
+          // tige
+          ctx.fillStyle = '#3a7a1a';
+          ctx.fillRect(f.x + 2, f.y - 1, 1, 5);
+        } else if (f.stage === 'wilted' && !f.harvested) {
+          ctx.fillStyle = 'rgba(120,100,60,.5)';
+          ctx.fillRect(f.x + 1, f.y - 2, 4, 3);
+        }
+      }
+
+      // grenouilles
+      for (const fr of (mg.frogs || [])) {
+        if (fr.caught) continue;
+        ctx.fillStyle = '#3a9a2a';
+        ctx.fillRect(fr.x, fr.y, 7, 5);
+        ctx.fillStyle = '#2a7a1a';
+        ctx.fillRect(fr.x + 1, fr.y - 1, 2, 2);
+        ctx.fillRect(fr.x + 4, fr.y - 1, 2, 2);
+        // yeux
+        ctx.fillStyle = '#ffe';
+        ctx.fillRect(fr.x + 1, fr.y, 2, 2);
+        ctx.fillRect(fr.x + 4, fr.y, 2, 2);
+        ctx.fillStyle = '#111';
+        ctx.fillRect(fr.x + 2, fr.y, 1, 1);
+        ctx.fillRect(fr.x + 5, fr.y, 1, 1);
+      }
+
+      // bandeau : temps, score
+      const left = Math.max(0, (mg.endsAt - now) / SEC);
+      ctx.fillStyle = 'rgba(15,18,26,.8)'; ctx.fillRect(0, 0, CANVAS_W, 13);
+      ctx.fillStyle = '#a8e6a0'; ctx.font = '8px monospace';
+      ctx.fillText(left.toFixed(0) + 's', 6, 10);
+      ctx.fillText('score ' + mg.score, 34, 10);
+      ctx.fillStyle = 'rgba(168,230,160,.75)';
+      ctx.fillRect(0, 13, Math.round(CANVAS_W * (1 - gardenProgress(mg, now))), 2);
     }
 
     // jeton de nourriture (poisson) : posé sur la berge quand elle a faim, ou suivant

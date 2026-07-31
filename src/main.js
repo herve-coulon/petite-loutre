@@ -23,6 +23,7 @@ import {
 import { stepSim, simulateOffline, ageMs } from './sim.js';
 import { newGame, tickGame, clickGame } from './minigame.js';
 import { newSlide, tickSlide, setSlideLane, laneAt, DEGATS_EJECTION } from './toboggan.js';
+import { newGame as newGarden, tickGame as tickGarden, waterAt, harvestAt } from './garden.js';
 import { makeRenderer, FOOD_POS, BALL_HOME, denItemAt, CANVAS_W, CANVAS_H } from './render.js';
 import { sfx, vibrate, setMuted, setVolume, getVolume } from './audio.js';
 import * as ui from './ui.js';
@@ -461,6 +462,41 @@ function endSlide(res) {
   quest('slides');
   if (sc > 0) quest('fish', sc);
   tryDrop(clean ? 1.8 : 1); // descente parfaite = meilleure chance de trésor
+  careBond('play');
+}
+
+/* ---------------- Jardin aquatique (3e mini-jeu) ---------------- */
+function actGarden() {
+  if (busy() || s.sleeping) return;
+  if (!unlocked('garden')) { ui.log('🌿 Le jardin aquatique s\'ouvre au niveau ' + UNLOCK_LEVEL.garden + ' ! ⭐'); return; }
+  if (s.energy < 10) { ui.log(s.name + ' est trop fatiguée pour jardiner…'); return; }
+  press();
+  mg = newGarden(now());
+  sfx.press();
+  ui.log('Jardin ! Plante des graines, arrose-les, récolte les fleurs et attrape les grenouilles ! 🌸🐸');
+  ui.updateHUD(s, mg, rec);
+}
+
+function endGarden(res) {
+  const sc = res.score;
+  s.fun = clamp(s.fun + 6 + sc * 3, 0, 100);
+  s.energy = clamp(s.energy - 6, 0, 100);
+  s.hunger = clamp(s.hunger - 3, 0, 100);
+  s.played++;
+  rec.gamesTotal++;
+  mg = null;
+  if (sc >= 8) R.burst('confetti', 20, s.stage);
+  else if (sc > 0) R.burst('sparkle', 6, s.stage);
+  if (sc >= 8) { sfx.happy(); ui.log('Magnifique jardin ! ' + sc + ' points de récolte ! 🌸🎉'); }
+  else if (sc > 0) { sfx.eat(); ui.log(sc + ' point' + (sc > 1 ? 's' : '') + ' de jardin ! 🌿'); }
+  else { sfx.sad(); ui.log('Les graines n\'ont pas poussé… il faudra réessayer ! 🌱'); }
+  gainXp(XP.game + sc * XP.fish);
+  checkUnlocks();
+  persist();
+  ui.updateHUD(s, mg, rec);
+  quest('games');
+  if (sc > 0) quest('fish', sc);
+  tryDrop();
   careBond('play');
 }
 
@@ -1214,6 +1250,16 @@ function onCanvasPointer(e) {
 
   if (mg) {
     if (mg.mode === 'slide') { setSlideLane(mg, laneAt(x)); vibrate(6); }
+    else if (mg.mode === 'garden') {
+      // clic : récolte (fleur ou grenouille) ou arrosage
+      const got = harvestAt(mg, x, y, pad);
+      if (got) {
+        if (got.type === 'frog') { sfx.catch(); vibrate(10); feel('soft'); }
+        else { sfx.eat(); vibrate(6); feel('soft'); }
+      } else if (waterAt(mg, x, y)) {
+        sfx.wash(); vibrate(4);
+      }
+    }
     else if (clickGame(mg, x, y, pad)) { R.splashAt(x, y); sfx.catch(); vibrate(8); feel('soft'); }
     return;
   }
@@ -1908,8 +1954,10 @@ function loop() {
     const jb = jeuBuffs(rec, equipBonus(s));
     const res = mg.mode === 'slide'
       ? tickSlide(mg, now(), Math.random, jb)
+      : mg.mode === 'garden'
+      ? tickGarden(mg, now(), Math.random)
       : tickGame(mg, now(), Math.random, jb);
-    if (res) (mg.mode === 'slide' ? endSlide : endGame)(res);
+    if (res) (mg.mode === 'slide' ? endSlide : mg.mode === 'garden' ? endGarden : endGame)(res);
   }
   if (!frozen && s && s.place === 'monde') stepWorld();
   // Le DUEL RÉFLEXE avance en temps réel : le moteur fait naître et tomber les
@@ -2009,6 +2057,7 @@ function boot() {
   $('b-treat').addEventListener('click', actTreat);
   $('b-dive').addEventListener('click', actDive);
   $('b-slide').addEventListener('click', actSlide);
+  $('b-garden').addEventListener('click', actGarden);
   $('b-care').addEventListener('click', actCare);
 
   // Combat de loutres : une sauvage à défier tout de suite (ou le code d'un ami)
@@ -2491,7 +2540,7 @@ window.__loutre = {
     }
   },
   step(ms) { applyEvents(stepSim(s, ms, { simNow: now() })); ui.updateHUD(s, mg, rec); },
-  startNew, actFeed, actWash, actSleep, actHeal, actPlay, actTreat, actDive, actSlide, actCare, pet,
+  startNew, actFeed, actWash, actSleep, actHeal, actPlay, actTreat, actDive, actSlide, actGarden, actCare, pet,
   get battle() { return battle; }
 };
 
