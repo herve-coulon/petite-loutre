@@ -1394,10 +1394,11 @@ function onFetchDone() {
 
 /** Musique + ambiance jouent quand : loutre en vie, option activée, pas coupé, app visible. */
 function syncMusic() {
-  if (s) setVolume(s.volume ?? 0.7); // garde le volume maître en phase avec la préférence
+  if (s) setVolume(s.volume ?? 0.7);
   const on = !!(s && s.music !== false && !s.mute && !s.gameOver && !document.hidden);
   music.setActive(on);
-  ambient.setActive(on);
+  const wt = () => (s && s.place === 'berge') ? weatherFor(new Date()) : null;
+  ambient.setActive(on, wt);
 }
 
 /* ---------------- Accessibilité ---------------- */

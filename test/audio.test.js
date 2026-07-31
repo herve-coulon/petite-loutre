@@ -40,8 +40,20 @@ test('ambientPlan : l\'eau toujours là, oiseaux/grillons/vent selon saison et h
   assert.equal(ambientPlan('ete', night).crickets, true);
   assert.equal(ambientPlan('printemps', night).crickets, false);
   assert.equal(ambientPlan('ete', day).crickets, false, 'pas de grillons le jour');
-  // vent : automne et hiver
+  // vent : automne et hiver, ou météo 'vent'
   assert.equal(ambientPlan('automne', day).wind, true);
   assert.equal(ambientPlan('hiver', night).wind, true);
   assert.equal(ambientPlan('ete', day).wind, false);
+  assert.equal(ambientPlan('ete', day, { type: 'vent' }).wind, true, 'vent forcé par météo');
+  // pluie / orage
+  assert.equal(ambientPlan('ete', day, { type: 'pluie' }).rain, true);
+  assert.equal(ambientPlan('ete', day, { type: 'orage' }).rain, true);
+  assert.equal(ambientPlan('ete', day).rain, false);
+  // tonnerre : seulement orage
+  assert.equal(ambientPlan('ete', day, { type: 'orage' }).thunder, true);
+  assert.equal(ambientPlan('ete', day, { type: 'pluie' }).thunder, false);
+  // rainettes : nuit au printemps
+  assert.equal(ambientPlan('printemps', night).frogs, true);
+  assert.equal(ambientPlan('ete', night).frogs, false);
+  assert.equal(ambientPlan('printemps', day).frogs, false);
 });
