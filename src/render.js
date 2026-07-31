@@ -237,6 +237,8 @@ export function makeRenderer(cv) {
   let nextIdleAt = 400 + Math.random() * 700;       // en frames
   let jumpFish = null;                              // {x, dir, start} — poisson qui saute
   let nextJumpAt = 300 + Math.random() * 500;
+  let wasSleeping = false;                          // état précédent pour détecter le réveil
+  let hurtUntil = 0;                               // timestamp fin animation hurt
   // balade : la loutre flâne sur la berge (position vivante, bord gauche du sprite)
   let otterWX = OTTER_X;
   let otterTarget = OTTER_X;
@@ -1495,8 +1497,16 @@ export function makeRenderer(cv) {
     if (artOn) {
       // en marche elle se met de profil (le kit marche de côté), sinon elle
       // nous fait face ; l'humeur choisit entre la pose calme et la joyeuse
-      const anim = enMarche ? 'walk' : animForMood(mood);
-      const fr = enMarche ? Math.floor(otterDist / FOULEE) : frameAt(anim, Date.now());
+      let anim = enMarche ? 'walk' : animForMood(mood);
+      const now = Date.now();
+      // priorités : hurt > réveil > stress saisonnier > rêves > humeur
+      if (now < hurtUntil) anim = 'hurt';
+      else if (wasSleeping && !s.sleeping) anim = 'wake';
+      else if (coldStress) anim = 'cold';
+      else if (heatStress) anim = 'hot';
+      else if (s.sleeping && (frame >> 5) % 5 === 0) anim = 'dream'; // rêves intermittents
+      wasSleeping = !!s.sleeping;
+      const fr = enMarche ? Math.floor(otterDist / FOULEE) : frameAt(anim, now);
       const flip = enMarche && otterFace < 0;
       box = drawAnim(ctx, ART, anim, fr, ox + 16, GROUND_Y + bounce, s.fur, flip, s.stage);
       if (box) {
@@ -2024,8 +2034,11 @@ export function makeRenderer(cv) {
     passage = { at: Date.now(), nom: nom || '', emoji: emoji || '🗺️' };
   }
 
+  /** Déclenche l'animation hurt (la loutre prend un coup). Appelé depuis main.js. */
+  function hurtOtter() { hurtUntil = Date.now() + 600; }
+
   return {
     render, spawn, splashAt, burst, squash, xpText, pop, ring, setReduced, otterBox, callTo,
-    ballGrabbable, grabBall, dragBall, throwBall, consumeFetch, flashZone
+    ballGrabbable, grabBall, dragBall, throwBall, consumeFetch, flashZone, hurtOtter
   };
 }

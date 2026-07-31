@@ -427,7 +427,7 @@ function endSlide(res) {
   // bleus. C'est ce qui donne un enjeu à la prudence — jusqu'ici on encaissait
   // les rochers sans fin, la descente n'était qu'un chronomètre.
   const ejectee = !!res.ejectee;
-  if (ejectee) s.health = clamp(s.health - DEGATS_EJECTION, 0, 100);
+  if (ejectee) { s.health = clamp(s.health - DEGATS_EJECTION, 0, 100); R.hurtOtter(); }
   s.fun = clamp(s.fun + (ejectee ? 2 : 8) + sc * 4, 0, 100);
   s.energy = clamp(s.energy - 10, 0, 100);
   s.hunger = clamp(s.hunger - 5, 0, 100);
@@ -741,6 +741,7 @@ function verifierMaitriseVallee() {
  */
 function capturee() {
   s.health = clamp(s.health - DEGATS_CAPTURE, 0, 100);
+  R.hurtOtter();
   s.fun = clamp(s.fun - 20, 0, 100);
   rec.captures = (rec.captures || 0) + 1;
   const nom = s.name || 'La loutre';
