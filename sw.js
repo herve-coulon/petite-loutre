@@ -1,6 +1,6 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v3.83.0';
+const VERSION = 'v3.84.0';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [
@@ -54,6 +54,10 @@ const PRECACHE = [
   './src/photocard.js',
   './src/minigame.js',
   './src/toboggan.js',
+  './src/garden.js',
+  './src/weather.js',
+  './src/creatures.js',
+  './src/bestiary.js',
   './src/render.js',
   './src/audio.js',
   './src/music.js',
