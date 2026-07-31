@@ -473,6 +473,7 @@ function endSlide(res) {
 
 function endGarden(res) {
   const sc = res.score;
+  ambient.stopGardenAmbient();
   s.fun = clamp(s.fun + 6 + sc * 3, 0, 100);
   s.energy = clamp(s.energy - 6, 0, 100);
   s.hunger = clamp(s.hunger - 3, 0, 100);
@@ -967,6 +968,11 @@ function barrerPassage(zoneId) {
 
 /** Change de zone : nouvelle carte, nouvelles loutres, on entre par le bon bord. */
 function goToZone(zoneId, px, py) {
+  // Si on quitte la zone jardin, arrêter l'ambiance dédiée
+  if (world.zone === 'jardin' && zoneId !== 'jardin') {
+    ambient.stopGardenAmbient();
+    if (mg && mg.mode === 'garden') { endGarden({ score: mg.score, flowers: 0, frogs: 0 }); }
+  }
   const p = safeEntry(zoneId, px, py);
   world.zone = zoneId;
   s.worldZone = zoneId;                 // pour que le profil sache où l'on est
@@ -989,6 +995,7 @@ function goToZone(zoneId, px, py) {
   // Auto-lancer le mini-jeu jardin quand on entre dans la zone jardin
   if (zoneId === 'jardin' && curLevel() >= UNLOCK_LEVEL.garden && s.energy >= 10 && !mg) {
     mg = newGarden(now());
+    ambient.startGardenAmbient();
     sfx.press();
     ui.log('Jardin ! Plante des graines, arrose-les, récolte les fleurs et attrape les grenouilles ! 🌸🐸');
     ui.updateHUD(s, mg, rec);
@@ -1256,10 +1263,10 @@ function onCanvasPointer(e) {
       // clic : récolte (fleur ou grenouille) ou arrosage
       const got = harvestAt(mg, x, y, pad);
       if (got) {
-        if (got.type === 'frog') { sfx.catch(); vibrate(10); feel('soft'); ui.toast('🐸 Grenouille attrapée ! +3'); }
-        else { sfx.eat(); vibrate(6); feel('soft'); ui.toast('🌸 Fleur récoltée ! +1'); }
+        if (got.type === 'frog') { sfx.gardenFrog(); vibrate(10); feel('soft'); ui.toast('🐸 Grenouille attrapée ! +3'); }
+        else { sfx.gardenHarvest(); vibrate(6); feel('soft'); ui.toast('🌸 Fleur récoltée ! +1'); }
       } else if (waterAt(mg, x, y)) {
-        sfx.wash(); vibrate(4); ui.toast('💧 Graine arrosée !');
+        sfx.gardenWater(); vibrate(4); ui.toast('💧 Graine arrosée !');
       }
     }
     else if (clickGame(mg, x, y, pad)) { R.splashAt(x, y); sfx.catch(); vibrate(8); feel('soft'); }

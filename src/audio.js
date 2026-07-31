@@ -127,5 +127,17 @@ export const sfx = {
   sad:    () => { beep(294, 0.12); beep(220, 0.2, 0.14); },
   catch:  () => beep(988, 0.06),
   warm:   () => beep(600 + Math.random() * 100, 0.05),
-  over:   D(() => { [392, 330, 262, 196].forEach((f, i) => beep(f, 0.18, i * 0.18, 'triangle')); })
+  over:   D(() => { [392, 330, 262, 196].forEach((f, i) => beep(f, 0.18, i * 0.18, 'triangle')); }),
+
+  // ── Jardin aquatique ──
+  // Arrosage : double goutte (sine aiguë qui tombe)
+  gardenWater:   () => { beep(900, 0.06, 0, 'sine', 0.06); beep(650, 0.08, 0.08, 'sine', 0.05); },
+  // Fleur qui éclot : trio ascendant doux (triangle, chaleur)
+  gardenBloom:   D(() => { beep(523, 0.1, 0, 'triangle', 0.05); beep(659, 0.1, 0.1, 'triangle', 0.05); beep(784, 0.14, 0.2, 'triangle', 0.04); }),
+  // Récolte : petit « pop » naturel (sine grave + clic)
+  gardenHarvest: D(() => { beep(330, 0.06, 0, 'sine', 0.06); beep(1800, 0.03, 0.04, 'square', 0.03); }),
+  // Grenouille attrapée : coasse inverse (fréquence descend + vibrato)
+  gardenFrog:    D(() => { beep(520, 0.08, 0, 'sine', 0.06); beep(380, 0.1, 0.07, 'sine', 0.05); }),
+  // Graine qui pousse : montée douce (sine, glissando ascendant)
+  gardenSprout:  () => { beep(280, 0.12, 0, 'sine', 0.04); beep(420, 0.1, 0.1, 'sine', 0.03); }
 };

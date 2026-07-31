@@ -225,3 +225,137 @@ export function setActive(want, weatherFn) {
 }
 
 export const isPlaying = () => active;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AMBIANCE JARDIN : lit sonore dédié au mini-jeu jardin aquatique.
+// Eau dormie qui clapote, roseaux qui chuchotent, grenouilles qui chantent,
+// gouttes qui tombent sur les feuilles de nénuphar.
+// ═══════════════════════════════════════════════════════════════════════════
+
+let gardenActive = false, gardenTimer = null;
+let gWater = null, gWaterFilt = null, gWaterLfo = null, gWaterGain = null;
+let gReed = null, gReedFilt = null, gReedGain = null;
+
+function startGardenBeds(ac) {
+  const bus = ambientBus(); if (!bus) return;
+
+  // Eau dormie : bruit brun filtré passe-bande (220 Hz) — plus grave et plus
+  // lent que la rivière (480 Hz). LFO à 0.08 Hz pour un clapotis très doux.
+  gWater = ac.createBufferSource(); gWater.buffer = noise(ac); gWater.loop = true;
+  gWaterFilt = ac.createBiquadFilter(); gWaterFilt.type = 'bandpass';
+  gWaterFilt.frequency.value = 220; gWaterFilt.Q.value = 1.2;
+  gWaterGain = ac.createGain(); gWaterGain.gain.value = 0.045;
+  gWaterLfo = ac.createOscillator(); gWaterLfo.frequency.value = 0.08;
+  const lfoAmt = ac.createGain(); lfoAmt.gain.value = 90;
+  gWaterLfo.connect(lfoAmt); lfoAmt.connect(gWaterFilt.frequency);
+  gWater.connect(gWaterFilt); gWaterFilt.connect(gWaterGain); gWaterGain.connect(bus);
+  gWater.start(); gWaterLfo.start();
+
+  // Roseaux : bruit brun filtré passe-haut (1800 Hz), très discret —
+  // le souffle du vent dans les tiges hautes. Gain modulé par un LFO lent
+  // pour simuler des rafales de quelques secondes.
+  gReed = ac.createBufferSource(); gReed.buffer = noise(ac); gReed.loop = true;
+  gReedFilt = ac.createBiquadFilter(); gReedFilt.type = 'highpass';
+  gReedFilt.frequency.value = 1800; gReedFilt.Q.value = 0.6;
+  gReedGain = ac.createGain(); gReedGain.gain.value = 0;
+  const reedLfo = ac.createOscillator(); reedLfo.frequency.value = 0.12;
+  const reedAmt = ac.createGain(); reedAmt.gain.value = 0.012;
+  reedLfo.connect(reedAmt); reedAmt.connect(gReedGain.gain);
+  gReed.connect(gReedFilt); gReedFilt.connect(gReedGain); gReedGain.connect(bus);
+  gReed.start(); reedLfo.start();
+}
+
+function stopGardenBeds() {
+  for (const n of [gWater, gWaterLfo, gReed]) { try { n && n.stop(); } catch (e) {} }
+  gWater = gWaterLfo = gReed = gWaterFilt = gWaterGain = gReedFilt = gReedGain = null;
+}
+
+// Événements transitoires jardin -------------------------------------------
+
+// Grenouille qui coasse : 2-3 bursts bas et courts, plus riche que la rainette
+// de l'ambiance globale. Deux « voix » possibles (grave et mi-grave).
+function gardenFrog(ac, bus) {
+  const t = ac.currentTime + Math.random() * 0.5;
+  const voice = Math.random() < 0.5 ? 320 : 420;    // grave ou mi-grave
+  const bursts = 2 + (Math.random() * 2 | 0);        // 2 ou 3 bursts
+  for (let b = 0; b < bursts; b++) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = voice + Math.random() * 30;
+    const bt = t + b * 0.15;
+    g.gain.setValueAtTime(0.0001, bt);
+    g.gain.exponentialRampToValueAtTime(0.055, bt + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, bt + 0.055);
+    o.connect(g); g.connect(bus);
+    o.start(bt); o.stop(bt + 0.065);
+  }
+}
+
+// Goutte d'eau sur un nénuphar : sinusoïde aiguë avec chute de fréquence
+// (plop réaliste). Deux gouttes proches pour un effet « pluie fine ».
+function waterDrop(ac, bus) {
+  const t = ac.currentTime + Math.random() * 0.8;
+  for (let i = 0; i < 2; i++) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine';
+    const ht = t + i * (0.3 + Math.random() * 0.4);
+    o.frequency.setValueAtTime(1200 + Math.random() * 400, ht);
+    o.frequency.exponentialRampToValueAtTime(400, ht + 0.08);
+    g.gain.setValueAtTime(0.0001, ht);
+    g.gain.exponentialRampToValueAtTime(0.035, ht + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, ht + 0.1);
+    o.connect(g); g.connect(bus);
+    o.start(ht); o.stop(ht + 0.12);
+  }
+}
+
+// Bourdonnement d'insecte (libellule ou abeille) : oscillement rapide entre
+// deux fréquences, court et discret, comme un passage au-dessus de l'eau.
+function insectBuzz(ac, bus) {
+  const t = ac.currentTime + Math.random() * 1.5;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'sawtooth';
+  const base = 180 + Math.random() * 80;
+  // oscille entre base et base*1.03 très rapidement -> bourdonnement
+  o.frequency.setValueAtTime(base, t);
+  for (let i = 0; i < 8; i++) {
+    const tt = t + i * 0.04;
+    o.frequency.linearRampToValueAtTime(base * (i % 2 === 0 ? 1.03 : 1), tt);
+  }
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(0.015, t + 0.03);
+  g.gain.setValueAtTime(0.015, t + 0.25);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+  o.connect(g); g.connect(bus);
+  o.start(t); o.stop(t + 0.4);
+}
+
+function tickGarden() {
+  const ac = audioCtx(); if (!ac || isMuted()) return;
+  const bus = ambientBus(); if (!bus) return;
+  // Grenouilles : 40% par tick (2.2s) — plus présentes que dans l'ambiance globale
+  if (Math.random() < 0.40) gardenFrog(ac, bus);
+  // Gouttes d'eau : 30% par tick
+  if (Math.random() < 0.30) waterDrop(ac, bus);
+  // Insectes : 15% par tick — rare, discret
+  if (Math.random() < 0.15) insectBuzz(ac, bus);
+}
+
+/** Allume l'ambiance jardin (à appeler au lancement du mini-jeu). */
+export function startGardenAmbient() {
+  if (gardenActive) return;
+  const ac = audioCtx();
+  if (!ac || ac.state !== 'running') return;
+  gardenActive = true;
+  startGardenBeds(ac);
+  tickGarden();
+  gardenTimer = setInterval(tickGarden, 2200);
+}
+
+/** Éteint l'ambiance jardin (à appeler à la fin du mini-jeu). */
+export function stopGardenAmbient() {
+  gardenActive = false;
+  if (gardenTimer) { clearInterval(gardenTimer); gardenTimer = null; }
+  stopGardenBeds();
+}
+
+export const isGardenPlaying = () => gardenActive;
