@@ -1258,10 +1258,10 @@ function onCanvasPointer(e) {
       // clic : récolte (fleur ou grenouille) ou arrosage
       const got = harvestAt(mg, x, y, pad);
       if (got) {
-        if (got.type === 'frog') { sfx.catch(); vibrate(10); feel('soft'); }
-        else { sfx.eat(); vibrate(6); feel('soft'); }
+        if (got.type === 'frog') { sfx.catch(); vibrate(10); feel('soft'); ui.toast('🐸 Grenouille attrapée ! +3'); }
+        else { sfx.eat(); vibrate(6); feel('soft'); ui.toast('🌸 Fleur récoltée ! +1'); }
       } else if (waterAt(mg, x, y)) {
-        sfx.wash(); vibrate(4);
+        sfx.wash(); vibrate(4); ui.toast('💧 Graine arrosée !');
       }
     }
     else if (clickGame(mg, x, y, pad)) { R.splashAt(x, y); sfx.catch(); vibrate(8); feel('soft'); }

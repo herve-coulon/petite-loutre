@@ -15,6 +15,8 @@ export const WATER_DROP_POINTS = 1;
 
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
+export const INTRO_DURATION = 3200;  // ms d'affichage de l'overlay d'intro
+
 export function newGame(now = Date.now()) {
   return {
     mode: 'garden',
@@ -25,6 +27,7 @@ export function newGame(now = Date.now()) {
     nextSeed: now + 600,
     nextFrog: now + 2000,
     startedAt: now,
+    introUntil: now + INTRO_DURATION,
     duree: GAME_DURATION,
     endsAt: now + GAME_DURATION,
     waterDrops: 0   // eau dépensée (score de précision)

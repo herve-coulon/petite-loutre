@@ -1920,6 +1920,54 @@ export function makeRenderer(cv) {
       ctx.fillText('score ' + mg.score, 34, 10);
       ctx.fillStyle = 'rgba(168,230,160,.75)';
       ctx.fillRect(0, 13, Math.round(CANVAS_W * (1 - gardenProgress(mg, now))), 2);
+
+      // indicateur d'action contextuel (bandeau sous le score)
+      const hasBloom = (mg.flowers || []).some(f => f.stage === 'bloom' && !f.harvested);
+      const hasFrog = (mg.frogs || []).some(f => !f.caught);
+      const hasSeed = (mg.flowers || []).some(f => f.stage === 'seed' || f.stage === 'sprout');
+      if (hasBloom || hasFrog) {
+        ctx.fillStyle = 'rgba(15,18,26,.65)'; ctx.fillRect(0, 15, CANVAS_W, 10);
+        ctx.fillStyle = '#ffe9a8'; ctx.font = '7px monospace';
+        const hint = hasFrog ? '🐸 touche la grenouille !' : '🌸 touche la fleur pour récolter';
+        ctx.fillText(hint, 6, 23);
+      } else if (hasSeed) {
+        ctx.fillStyle = 'rgba(15,18,26,.55)'; ctx.fillRect(0, 15, CANVAS_W, 10);
+        ctx.fillStyle = '#a8d8f0'; ctx.font = '7px monospace';
+        ctx.fillText('💧 touche les graines pour arroser', 6, 23);
+      }
+
+      // overlay d'intro : règles du jeu pendant 3 secondes
+      if (now < (mg.introUntil || 0)) {
+        const elapsed = now - mg.startedAt;
+        const fade = elapsed > 2400 ? Math.max(0, 1 - (elapsed - 2400) / 800) : 1;
+        ctx.fillStyle = 'rgba(10,18,30,' + (0.78 * fade).toFixed(2) + ')';
+        ctx.fillRect(20, 100, 120, 130);
+        ctx.strokeStyle = 'rgba(168,230,160,' + (0.6 * fade).toFixed(2) + ')';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(20, 100, 120, 130);
+        ctx.fillStyle = 'rgba(255,233,168,' + fade.toFixed(2) + ')';
+        ctx.font = '9px monospace'; ctx.textAlign = 'center';
+        ctx.fillText('🌿 JARDIN', 80, 118);
+        ctx.fillStyle = 'rgba(200,225,240,' + fade.toFixed(2) + ')';
+        ctx.font = '7px monospace';
+        const lines = [
+          'Des graines apparaissent',
+          'sur l\'eau.',
+          '',
+          '💧 Touche une graine',
+          '   pour l\'arroser.',
+          '🌸 Touche une fleur',
+          '   pour la récolter.',
+          '🐸 Attrape les',
+          '   grenouilles !',
+          '',
+          '25 secondes !'
+        ];
+        for (let i = 0; i < lines.length; i++) {
+          ctx.fillText(lines[i], 80, 132 + i * 9);
+        }
+        ctx.textAlign = 'left';
+      }
     }
 
     // jeton de nourriture (poisson) : posé sur la berge quand elle a faim, ou suivant
