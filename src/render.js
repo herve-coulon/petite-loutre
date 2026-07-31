@@ -413,11 +413,15 @@ export function makeRenderer(cv) {
       ctx.fillRect(ax + 1, ay - 1 - w, 2, 1);
       ctx.fillRect(ax + 1, ay + 1 + w, 2, 1);
     } else {
-      // luciole qui pulse doucement
-      const ax = 46 + Math.sin(frame / 41) * 34;
-      const ay = 72 + BERGE_SHIFT + Math.sin(frame / 17) * 6;
-      ctx.fillStyle = (frame >> 3) % 2 ? '#ffd94a' : '#f2913d';
-      ctx.fillRect(ax, ay, 2, 2);
+      // lucioles qui pulsent doucement (5 la nuit, plus vivant)
+      for (let i = 0; i < 5; i++) {
+        const ax = 26 + i * 28 + Math.sin((frame + i * 40) / 41) * 14;
+        const ay = 66 + BERGE_SHIFT + Math.sin((frame + i * 25) / 17) * 8;
+        const pulse = (frame >> (2 + i)) % 3;
+        ctx.fillStyle = pulse === 0 ? '#ffd94a' : pulse === 1 ? '#f2913d' : '#ffe980';
+        ctx.fillRect(ax, ay, 2, 2);
+        if (pulse === 0) { ctx.fillStyle = 'rgba(255,217,74,.3)'; ctx.fillRect(ax - 1, ay - 1, 4, 4); }
+      }
     }
 
     // poisson qui bondit hors de la rivière (jamais pendant la pêche : ce serait un leurre)
@@ -1615,6 +1619,30 @@ export function makeRenderer(cv) {
     }
 
     if (squashing || breathing) ctx.restore();
+
+    // halo lumineux nocturne : un radial gradient chaud autour de la loutre la nuit
+    if (c.night && s.stage !== 'egg' && !s.away && !s.gameOver && !mg) {
+      const cx = ox + 16, cy = GROUND_Y + bounce;
+      try {
+        const glow = ctx.createRadialGradient(cx, cy - 8, 4, cx, cy - 8, 52);
+        glow.addColorStop(0, 'rgba(255,210,110,.16)');
+        glow.addColorStop(0.5, 'rgba(255,200,90,.06)');
+        glow.addColorStop(1, 'rgba(255,200,90,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(cx - 54, cy - 60, 108, 72);
+      } catch (e) { /* gradient non dispo en test */ }
+    }
+
+    // reflet de la loutre dans l'eau (très translucide, miroir vertical)
+    if (s.stage !== 'egg' && !s.away && !s.gameOver && !mg && artOn) {
+      ctx.save();
+      ctx.globalAlpha = c.night ? 0.08 : 0.14;
+      ctx.translate(0, WATER_Y * 2 + 16);
+      ctx.scale(1, -1);
+      drawAnim(ctx, ART, 'idle', frameAt('idle', Date.now()), ox + 16, GROUND_Y + bounce, s.fur, false, s.stage);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
 
     // décompte éclosion (bascule en « ça craque ! » sur la toute fin)
     if (s.stage === 'egg') {
