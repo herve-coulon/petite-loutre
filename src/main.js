@@ -1319,7 +1319,7 @@ function onCanvasPointer(e) {
     }
 
     const box = R.otterBox(s.stage);
-    if (x >= box.x - 6 && x <= box.x + box.w + 6 && y >= box.y - 6 && y <= box.y + box.h + 8) { pet(); return; }
+    if (x >= box.x - 12 && x <= box.x + box.w + 12 && y >= box.y - 12 && y <= box.y + box.h + 14) { pet(); return; }
 
     // ailleurs sur la scène : on l'appelle vers le point touché (elle vient),
     // avec un petit plouf si on tapote l'eau

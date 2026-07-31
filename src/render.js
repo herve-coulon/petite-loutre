@@ -476,8 +476,8 @@ export function makeRenderer(cv) {
         const d = Math.abs(x - 80);
         const base = Math.sqrt(Math.max(0, 4900 - d * d)) * 0.55;
         for (let i = 0; i < cols.length; i++) {
-          const y = 130 - base + i * 2;
-          if (y > 75 && y < 140) { ctx.fillStyle = cols[i]; ctx.fillRect(x, y, 2, 2); }
+          const y = 90 - base + i * 2;
+          if (y > 30 && y < 95) { ctx.fillStyle = cols[i]; ctx.fillRect(x, y, 2, 2); }
         }
       }
       ctx.restore();
