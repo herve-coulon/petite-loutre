@@ -77,6 +77,8 @@ function setBar(id, v) {
   el.classList.toggle('low', v < 20);
   const bar = el.closest && (el.closest('.mg') || el.closest('.bar'));
   if (bar) bar.classList.toggle('crit', v < 20);       // alerte : glow
+  const gauge = el.closest && el.closest('.gauge');
+  if (gauge) gauge.setAttribute('aria-valuenow', Math.round(val));
   const prev = barPrev[id];
   if (prev !== undefined && v > prev + 0.5) {
     el.classList.remove('up');
@@ -486,11 +488,6 @@ export function updateHUD(s, mg, rec) {
   setTxt('hud-name', (s.name ? s.name.toUpperCase() : '???') + (tr && s.stage !== 'egg' ? ' ' + tr.emoji : ''));
   if (s.stage !== 'egg') paintBadge($('av-face-hud'), s, 58);
   const grumpy = !s.sick && !s.sleeping && (s.grumpyUntil || 0) > Date.now();
-  // stage/âge : plus affichés dans la barre du haut (maquette) mais gardés si présents
-  setTxt('hud-stage', s.away
-    ? 'CHEZ LE HÉRON 🪶'
-    : STAGES[s.stage] + (s.sick ? ' 🤒' : '') + (s.sleeping ? ' 💤' : '') + (grumpy ? ' 😾' : ''));
-  setTxt('hud-age', fmtAge(s));
 
   const isEgg = s.stage === 'egg';
   const isAway = !!s.away && !s.gameOver;

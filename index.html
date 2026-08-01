@@ -72,10 +72,10 @@
   <div id="playfield">
     <div id="stage">
       <div id="side-left" class="side">
-        <button id="b-place" class="sidebtn"><span class="ic">🏠</span><span class="lbl">Tanière</span></button>
-        <button id="b-world" class="sidebtn hidden"><span class="ic">🗺️</span><span class="lbl">Explorer</span></button>
+        <button id="b-place" class="sidebtn" aria-label="Tanière"><span class="ic">🏠</span><span class="lbl">Tanière</span></button>
+        <button id="b-world" class="sidebtn hidden" aria-label="Explorer"><span class="ic">🗺️</span><span class="lbl">Explorer</span></button>
         <button id="b-world-back" class="sidebtn hidden" aria-label="Retour à la berge"><span class="ic">🌊</span><span class="lbl">Rentrer</span></button>
-        <button id="b-gift" class="sidebtn"><span class="ic">🎁</span><span class="lbl">Cadeau</span><span class="badge">!</span></button>
+        <button id="b-gift" class="sidebtn" aria-label="Cadeau"><span class="ic">🎁</span><span class="lbl">Cadeau</span><span class="badge">!</span></button>
       </div>
       <div id="side-right" class="side">
         <button id="b-dive" class="roundbtn" aria-label="Plongée"><span class="ic">🤿</span></button>
@@ -155,7 +155,7 @@
     </div>
   </div>
 
-  <div id="ovl-over" class="ovl hidden">
+  <div id="ovl-over" class="ovl hidden" role="dialog" aria-modal="true" aria-label="Partie terminée">
     <p class="big">🌊</p>
     <p id="over-text"></p>
     <button class="act" id="btn-restart" style="padding:12px 22px;">RECOMMENCER</button>
@@ -323,7 +323,7 @@
   </div>
 
   <!-- Rencontre : amadouer une loutre sauvage pour l'enrôler -->
-  <div id="ovl-encounter" class="ovl hidden">
+  <div id="ovl-encounter" class="ovl hidden" role="dialog" aria-modal="true" aria-label="Rencontre">
     <div class="enc-card">
       <button class="ovl-x" aria-label="Fermer">✕</button>
       <span class="enc-face" id="enc-face" aria-hidden="true">🦦</span>

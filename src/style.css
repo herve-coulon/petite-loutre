@@ -102,7 +102,7 @@ button{font-family:inherit;}
 
 /* Équipement : quatre emplacements réunis, chacun nommé */
 .prof-equip{width:100%; max-width:340px; display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
-.prof-slot{position:relative; padding:9px 2px 7px; cursor:pointer;
+.prof-slot{position:relative; padding:10px 2px 8px; cursor:pointer;
   display:flex; flex-direction:column; align-items:center; gap:2px;
   background:var(--paper); border:2px solid var(--ink); border-radius:12px;
   box-shadow:var(--shadow); color:var(--ink); font-family:inherit;}
@@ -153,7 +153,7 @@ button.pm-cell.go:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,5
 
 .prof-tabs{width:100%; max-width:340px; display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
 .prof-tab{position:relative; display:flex; flex-direction:column; align-items:center; gap:3px;
-  padding:9px 2px; cursor:pointer; font-family:inherit; font-weight:700; font-size:9.5px; line-height:1.05;
+  padding:10px 2px; cursor:pointer; font-family:inherit; font-weight:700; font-size:9.5px; line-height:1.05;
   text-align:center; overflow-wrap:anywhere;
   background:var(--bar); color:#f3e9c8; border:2.5px solid var(--ink); border-radius:14px;
   box-shadow:var(--shadow);}
@@ -166,7 +166,7 @@ button.pm-cell.go:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,5
 .gang-name-in{width:100%; background:#fff8e6; border:2.5px solid var(--ink); color:var(--ink);
   border-radius:12px; padding:10px 12px; font-size:15px; font-family:inherit;}
 .g-emblems{display:flex; gap:8px; justify-content:center; flex-wrap:wrap;}
-.g-emblem{width:44px; height:44px; font-size:22px; cursor:pointer; font-family:inherit;
+.g-emblem{width:48px; height:48px; font-size:22px; cursor:pointer; font-family:inherit;
   background:var(--paper); border:2.5px solid var(--ink); border-radius:12px;}
 .g-emblem.on{background:var(--gold);}
 .gang-hdr{display:flex; align-items:center; gap:12px; padding:10px 14px;
@@ -337,7 +337,7 @@ button.pm-cell.go:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,5
 #side-left{left:8px;}
 #side-right{right:8px; align-items:flex-end;}
 .sidebtn{
-  position:relative; width:44px; height:44px; padding:0; cursor:pointer;
+  position:relative; width:48px; height:48px; padding:0; cursor:pointer;
   display:flex; align-items:center; justify-content:center;
   background:rgba(243,233,200,.94); border:2px solid var(--ink); border-radius:12px;
   box-shadow:var(--shadow); color:var(--ink);
@@ -352,7 +352,7 @@ button.pm-cell.go:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,5
 #side-left .sidebtn .lbl{ right:auto; left:50px; }
 .sidebtn:hover .lbl, .sidebtn:focus .lbl{ opacity:1; }
 .roundbtn{
-  position:relative; width:44px; height:44px; flex:none; padding:0; cursor:pointer;
+  position:relative; width:48px; height:48px; flex:none; padding:0; cursor:pointer;
   display:flex; align-items:center; justify-content:center; font-size:0;
   background:rgba(243,233,200,.94); border:2px solid var(--ink); border-radius:50%;
   box-shadow:var(--shadow), inset 0 0 0 2px var(--gold); color:var(--ink);

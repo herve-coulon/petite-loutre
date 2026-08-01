@@ -2,7 +2,7 @@
   "name": "Ma Petite Loutre",
   "short_name": "Loutre",
   "description": "Élève ta petite loutre pixel art en temps réel : nourris-la, joue avec elle, garde-la propre.",
-  "id": "./",
+  "id": "https://herve-coulon.github.io/petite-loutre/",
   "lang": "fr",
   "dir": "ltr",
   "start_url": "./",
@@ -12,6 +12,23 @@
   "background_color": "#20242f",
   "theme_color": "#22334C",
   "categories": ["games", "entertainment"],
+  "shortcuts": [
+    {
+      "name": "Nourrir",
+      "short_name": "Nourrir",
+      "url": "./?action=feed",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Ma Petite Loutre — jeu de garde d'animaux pixel art"
+    }
+  ],
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },

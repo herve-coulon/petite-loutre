@@ -1,7 +1,7 @@
 // Mini-jeu du jardin aquatique : logique pure.
 // On plante des graines sur l'eau, on les arrose, et on récolte les fleurs.
 // Les grenouilles sautent et rapportent des bonus si on les attrape.
-import { SEC } from './constants.js';
+import { SEC, clamp } from './constants.js';
 
 export const GAME_DURATION = 25 * SEC;
 export const SEED_INTERVAL = 1800;   // ms entre deux graines
@@ -12,8 +12,6 @@ export const FROG_LIVE = 1200;       // ms pendant laquelle une grenouille est v
 export const FROG_POINTS = 3;
 export const FLOWER_POINTS = 1;
 export const WATER_DROP_POINTS = 1;
-
-function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
 export const INTRO_DURATION = 3200;  // ms d'affichage de l'overlay d'intro
 
@@ -73,7 +71,7 @@ export function tickGame(mg, now = Date.now(), rnd = Math.random) {
 
   if (now >= mg.endsAt) {
     const harvested = mg.flowers.filter(f => f.harvested).length;
-    return { type: 'end', score: mg.score, flowers: harvested, frogs: mg.frogs.length };
+    return { type: 'end', score: mg.score, flowers: harvested, frogs: mg.frogs.filter(f => !f.caught).length };
   }
   return null;
 }
