@@ -729,9 +729,8 @@ input#name-input:focus{border-color:var(--teal);}
 .best-entry{display:flex; align-items:center; gap:10px; padding:8px 10px;
   background:var(--paper); border:2px solid var(--ink); border-radius:12px;
   box-shadow:0 3px 10px rgba(38,54,78,.18), 0 1px 3px rgba(0,0,0,.08); margin-bottom:6px;}
-.best-unknown{opacity:.55;}
-.best-sprite{width:48px; height:48px; flex-shrink:0; object-fit:contain;
-  image-rendering:pixelated; image-rendering:crisp-edges;}
+.best-unknown{opacity:.45;}
+.best-emoji{font-size:26px; line-height:1; flex-shrink:0;}
 .best-info{display:flex; flex-direction:column; gap:1px; min-width:0;}
 .best-info b{font-size:13px; color:var(--ink);}
 .best-desc{font-size:11px; color:rgba(38,54,78,.7);}

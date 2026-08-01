@@ -28,9 +28,8 @@ const ART = otterArt();
  */
 function usesArt(o) { return !!(o && o.stage && o.stage !== 'egg' && ART.ready); }
 
-// Bestiaire/faune pixel : « lapin » → clé sprite crLapin ; résolution d'une clé
-// de faune vers sa grille (faune d'ambiance, puis bestiaire, puis SPRITES p.ex. fish).
-const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+// Faune d'ambiance en pixel : résolution d'une clé (papillon, crLapin, fish…)
+// vers sa grille — faune d'ambiance, puis bestiaire, puis SPRITES (p.ex. fish).
 const faunaSprite = (key) => SPRITES_FAUNE[key] || SPRITES_BESTIAIRE[key] || SPRITES[key] || null;
 
 // Canvas PORTRAIT plein écran (ratio ~ écran mobile) : le ciel occupe le haut,
@@ -1495,19 +1494,20 @@ export function makeRenderer(cv) {
       if (fhat) drawSprite(fhat.rows, 112, fy - fhat.rows.length * 2 + 4, 2, null, true);
     }
 
-    // créatures du bestiaire sur la berge — sprites pixel (fin des emoji)
+    // créatures du bestiaire sur la berge (emoji — design préféré d'Hervé)
     if (fx.creatures) {
       for (const cr of fx.creatures) {
         const crx = Math.round(cr.x), cry = Math.round(cr.y + BERGE_SHIFT);
         const crData = creatureById(cr.id);
         if (!crData) continue;
-        const spr = SPRITES_BESTIAIRE['cr' + cap(cr.id)];
-        // halo rouge d'abord (SOUS le sprite) si agressif et en chasse/attaque
+        ctx.font = '12px system-ui,sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(crData.emoji, crx, cry);
+        ctx.textAlign = 'left';
+        // halo rouge si agressif et en mode chase/attack
         if (crData.aggressive && (cr.state === 'chase' || cr.state === 'attack')) {
           ctx.fillStyle = 'rgba(200,40,40,.18)';
-          ctx.fillRect(crx - 8, cry - 16, 16, 16);
+          ctx.fillRect(crx - 6, cry - 10, 12, 12);
         }
-        if (spr) drawSprite(spr, crx - (spr[0].length >> 1), cry - spr.length, 1, null, cr.lastDir < 0);
       }
     }
 

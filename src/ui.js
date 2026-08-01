@@ -13,7 +13,6 @@ import { traitById, bondLevel } from './personality.js';
 import { gangPower, fighterPower, MAX_MEMBERS } from './gang.js';
 import { makeFighter, encodeCard, TECHNIQUES, techniqueById, playerTechniques } from './battle.js';
 import { PASSIVE_TECHNIQUES, unlockedTechniques } from './skills.js';
-import { PAL, SPRITES_BESTIAIRE } from './sprites.js';   // bestiaire : fiches en pixel, plus d'emoji
 
 /** Échappe les caractères HTML dangereux pour un usage sûr dans innerHTML. */
 function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -566,25 +565,8 @@ export function hideAllOverlays() {
     .forEach(hideOverlay);
 }
 
-/** Rend une grille de sprite en image (data URL) pour les fiches du bestiaire.
- *  silhouette = tout en noir (créature pas encore découverte). */
-function spriteDataURL(grid, scale = 3, silhouette = false) {
-  if (!grid) return '';
-  const w = grid[0].length, h = grid.length;
-  const c = document.createElement('canvas');
-  c.width = w * scale; c.height = h * scale;
-  const x = c.getContext('2d');
-  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
-    const ch = grid[j][i];
-    if (ch === '.') continue;
-    x.fillStyle = silhouette ? '#20160f' : (PAL[ch] || '#20160f');
-    x.fillRect(i * scale, j * scale, scale, scale);
-  }
-  return c.toDataURL();
-}
-const bestSpriteFor = id => SPRITES_BESTIAIRE['cr' + id.charAt(0).toUpperCase() + id.slice(1)];
-
-/** Bestiaire : affiche les créatures découvertes. */
+/** Bestiaire : affiche les créatures découvertes (fiches en emoji — design
+ *  préféré d'Hervé ; le pixel avait été jugé trop laid). */
 export function renderBestiary(rec) {
   const list = $('bestiary-list');
   const cnt = $('bestiary-count');
@@ -598,15 +580,11 @@ export function renderBestiary(rec) {
   let html = '';
   for (const c of CREATURES) {
     const entry = rec.bestiary[c.id];
-    const spr = bestSpriteFor(c.id);
     if (!entry) {
-      // pas encore rencontrée : silhouette NOIRE du sprite (plus d'emoji ❓)
-      html += '<div class="best-entry best-unknown">' +
-        '<img class="best-sprite" alt="créature inconnue" src="' + spriteDataURL(spr, 3, true) + '">' +
-        '<span class="best-name">???</span></div>';
+      html += '<div class="best-entry best-unknown"><span class="best-emoji">❓</span><span class="best-name">???</span></div>';
     } else {
       html += '<div class="best-entry">' +
-        '<img class="best-sprite" alt="' + esc(c.name) + '" src="' + spriteDataURL(spr, 3, false) + '">' +
+        '<span class="best-emoji">' + c.emoji + '</span>' +
         '<div class="best-info"><b>' + esc(c.name) + '</b>' +
         '<span class="best-desc">' + esc(c.desc) + '</span>' +
         '<span class="best-stats">Vu ' + entry.seen + ' fois' + (entry.caught ? ' · Attrapé ' + entry.caught + 'x' : '') +
