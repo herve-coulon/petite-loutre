@@ -1,5 +1,5 @@
 // Rendu canvas 160x120 (mis à l'échelle en CSS, image-rendering: pixelated).
-import { PAL, SPRITES, SPRITES_MONDE, SPRITES_PORTRAITS } from './sprites.js';
+import { PAL, SPRITES, SPRITES_MONDE, SPRITES_PORTRAITS, SPRITES_BESTIAIRE, SPRITES_FAUNE } from './sprites.js';
 import { HATCH_MS, MIN, SEC, SEASON_FX } from './constants.js';
 import { hatById } from './accessories.js';
 import { furById } from './skins.js';
@@ -11,7 +11,7 @@ import { WATER_Y, TELL_MS, COMBO_STEP as FISH_COMBO_STEP, GOBE_MS as FISH_GOBE_M
 import { itemById, RARITIES, ITEMS } from './items.js';
 import { LANE_X, SLIDE_OTTER_Y, COMBO_STEP, GOBE_MS, VIES_MAX, slideProgress } from './toboggan.js';
 import { GROW_TIME as GARDEN_GROW, FLOWER_LIVE as GARDEN_LIVE, gardenProgress } from './garden.js';
-import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, FIND_ICON, FAUNE, groundTile, decorTile, zoneGates, zoneUnlocked, zoneReq } from './tilemap.js';
+import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, FIND_ICON, FAUNE, groundTile, decorTile, zoneGates, zoneUnlocked, zoneReq, pathEdge } from './tilemap.js';
 import { mix, skyColors } from './sky.js';   // ciel/décor : source unique heure→palette (jamais le CSS)
 import { otterArt, drawAnim, frameAt, animForMood, ANATOMY, ANIMS } from './otter-art.js';
 import { creatureById } from './creatures.js';
@@ -27,6 +27,11 @@ const ART = otterArt();
  * corps raccourci), donc du même trait — l'œuf, lui, reste peint à la main.
  */
 function usesArt(o) { return !!(o && o.stage && o.stage !== 'egg' && ART.ready); }
+
+// Bestiaire/faune pixel : « lapin » → clé sprite crLapin ; résolution d'une clé
+// de faune vers sa grille (faune d'ambiance, puis bestiaire, puis SPRITES p.ex. fish).
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const faunaSprite = (key) => SPRITES_FAUNE[key] || SPRITES_BESTIAIRE[key] || SPRITES[key] || null;
 
 // Canvas PORTRAIT plein écran (ratio ~ écran mobile) : le ciel occupe le haut,
 // l'eau le bas, la berge au milieu. La scène de base est dessinée pour un sol à
@@ -865,6 +870,28 @@ export function makeRenderer(cv) {
   }
 
   /**
+   * Liseré d'herbe DOUX sur les bords d'une case de terre du chemin : l'herbe
+   * déborde en dents fines sur la terre, ce qui casse l'« escalier » de tuiles
+   * carrées. Déterministe (aucun scintillement), couleurs plates du kit.
+   */
+  const EDGE_G1 = '#6cae53', EDGE_G2 = '#4f8b3a';   // herbe claire / ombre
+  function drawPathEdge(zone, cx, cy, dx, dy) {
+    const pe = pathEdge(zone, cx, cy);
+    if (!pe) return;
+    const T2 = TILE, LIP = 5;
+    const jag = (k) => LIP - ((cx * 13 + cy * 7 + k * 5 + pe.variant * 3) % 3);   // dent qui ondule
+    if (pe.n) for (let i = 0; i < T2; i++) { const h = jag(i); ctx.fillStyle = (i & 1) ? EDGE_G1 : EDGE_G2; ctx.fillRect(dx + i, dy, 1, h); }
+    if (pe.s) for (let i = 0; i < T2; i++) { const h = jag(i + 1); ctx.fillStyle = (i & 1) ? EDGE_G1 : EDGE_G2; ctx.fillRect(dx + i, dy + T2 - h, 1, h); }
+    if (pe.w) for (let j = 0; j < T2; j++) { const h = jag(j + 2); ctx.fillStyle = (j & 1) ? EDGE_G1 : EDGE_G2; ctx.fillRect(dx, dy + j, h, 1); }
+    if (pe.e) for (let j = 0; j < T2; j++) { const h = jag(j + 3); ctx.fillStyle = (j & 1) ? EDGE_G1 : EDGE_G2; ctx.fillRect(dx + T2 - h, dy + j, h, 1); }
+    ctx.fillStyle = EDGE_G2;                                   // coins sortants arrondis
+    if (pe.nw) ctx.fillRect(dx, dy, LIP, LIP);
+    if (pe.ne) ctx.fillRect(dx + T2 - LIP, dy, LIP, LIP);
+    if (pe.sw) ctx.fillRect(dx, dy + T2 - LIP, LIP, LIP);
+    if (pe.se) ctx.fillRect(dx + T2 - LIP, dy + T2 - LIP, LIP, LIP);
+  }
+
+  /**
    * Passe graphique de la TANIÈRE : mur de terre du terrier et plancher de bois
    * en tuiles, plus quelques meubles au sol sur les côtés (la loutre dort au
    * centre). Étagères, tapis, lanterne et nid restent peints : ils sont calés
@@ -968,7 +995,9 @@ export function makeRenderer(cv) {
 
     const zone = w.zone || 'clairiere';
     for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
-      blit(groundTile(zone, cx, cy), cx * TILE - camX, cy * TILE - camY);
+      const dx = cx * TILE - camX, dy = cy * TILE - camY;
+      blit(groundTile(zone, cx, cy), dx, dy);
+      drawPathEdge(zone, cx, cy, dx, dy);          // bords herbe/terre adoucis
     }
     // décor + loutres, triés par profondeur (y) pour que ça passe devant/derrière
     const figs = [];
@@ -1011,15 +1040,19 @@ export function makeRenderer(cv) {
     for (let i = 0; i < faune.length * 2; i++) {
       const g = (zone.charCodeAt(0) * 37 + i * 911) % 1000;
       const t = frame / 60 + i * 1.7;
-      const bx = (g * 3.1 + Math.sin(t / 3) * 90) % WORLD_W;
+      const drift = Math.sin(t / 3);                 // dérive horizontale : sens du regard
+      const bx = (g * 3.1 + drift * 90) % WORLD_W;
       const by = (g * 7.3 + Math.cos(t / 4) * 70) % WORLD_H;
       const sx = bx - camX, sy = by - camY;
       if (sx < -20 || sx > CANVAS_W + 20 || sy < -20 || sy > CANVAS_H + 20) continue;
+      const spr = faunaSprite(faune[i % faune.length]);
+      if (!spr) continue;
+      const half = spr[0].length >> 1;
       figs.push({ y: by, fn: () => {
         ctx.globalAlpha = 0.9;
-        ctx.font = '10px system-ui,sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText(faune[i % faune.length], Math.round(sx), Math.round(sy + Math.sin(t * 2) * 2));
-        ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+        // profil qui regarde à droite : on flippe quand la bestiole dérive vers la gauche
+        drawSprite(spr, Math.round(sx) - half, Math.round(sy + Math.sin(t * 2) * 2) - spr.length, 1, null, drift < 0);
+        ctx.globalAlpha = 1;
       } });
     }
 
@@ -1462,20 +1495,19 @@ export function makeRenderer(cv) {
       if (fhat) drawSprite(fhat.rows, 112, fy - fhat.rows.length * 2 + 4, 2, null, true);
     }
 
-    // créatures du bestiaire sur la berge
+    // créatures du bestiaire sur la berge — sprites pixel (fin des emoji)
     if (fx.creatures) {
       for (const cr of fx.creatures) {
         const crx = Math.round(cr.x), cry = Math.round(cr.y + BERGE_SHIFT);
         const crData = creatureById(cr.id);
         if (!crData) continue;
-        ctx.font = '12px system-ui,sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText(crData.emoji, crx, cry);
-        ctx.textAlign = 'left';
-        // halo rouge si agressif et en mode chase/attack
+        const spr = SPRITES_BESTIAIRE['cr' + cap(cr.id)];
+        // halo rouge d'abord (SOUS le sprite) si agressif et en chasse/attaque
         if (crData.aggressive && (cr.state === 'chase' || cr.state === 'attack')) {
           ctx.fillStyle = 'rgba(200,40,40,.18)';
-          ctx.fillRect(crx - 6, cry - 10, 12, 12);
+          ctx.fillRect(crx - 8, cry - 16, 16, 16);
         }
+        if (spr) drawSprite(spr, crx - (spr[0].length >> 1), cry - spr.length, 1, null, cr.lastDir < 0);
       }
     }
 

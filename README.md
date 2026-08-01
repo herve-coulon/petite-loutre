@@ -321,6 +321,14 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v3.88 : le bestiaire en pixel + chemin adouci. Les 8 créatures du bestiaire
+et les 28 bestioles d'ambiance passent de l'emoji à des grilles pixel 16 px
+(palette du kit, planche validée du designer) — fini l'emoji pour la faune et
+le bestiaire dans le monde (charte DA). Fiches du bestiaire en sprites, avec
+SILHOUETTE noire tant qu'une créature n'est pas rencontrée. Le chemin herbe/
+terre reçoit un liseré d'herbe doux (mapping pur `pathEdge`, testé) au lieu de
+l'escalier brut de tuiles. Hibou renommé « grand-duc » (cohérent avec son
+tempérament paisible). L'œuf gardait déjà le ton du kit (palOver au rendu).*
 v3.87 : une seule horloge, un seul peintre. Le ciel de la berge revient
 ENTIÈREMENT au canvas via une source unique heure→palette extraite dans son
 module pur `sky.js` (testée aux 4 heures repères 3 h / 7 h 30 / 12 h / 19 h 30 :

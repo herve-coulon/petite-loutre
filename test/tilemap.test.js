@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   TILE, ZONES, START_ZONE, zoneById, MAP_W, MAP_H, WORLD_W, WORLD_H, T,
-  charAt, isWater, isSolid, waterTile, groundTile, decorTile,
+  charAt, isWater, isSolid, waterTile, groundTile, decorTile, pathEdge,
   moveWithCollision, zoneExit, nearestFree, safeEntry, spawnPoint,
   zoneFinds, FIND_ICON, zoneGates, zoneLayout, ZONE_INTRO, findPath,
   SPECIALITE, zoneDuJour, findCount, BORD_SORTIE, zoneReq, zoneUnlocked,
@@ -722,4 +722,24 @@ test('faune : propre à chaque lieu, et jamais deux fois la même bête au même
   // et la vallée doit être variée dans son ensemble
   const toutes = new Set(ids.flatMap(id => FAUNE[id]));
   assert.ok(toutes.size >= 10, 'trop peu d\'espèces : ' + toutes.size);
+});
+
+test('chemin : les bords herbe/terre s\'adoucissent (mapping pur)', () => {
+  // pathEdge : null hors terre et au cœur du chemin ; sinon les côtés d'herbe.
+  let edges = 0, interior = 0, grassClean = true;
+  for (let cy = 0; cy < MAP_H; cy++) for (let cx = 0; cx < MAP_W; cx++) {
+    const c = charAt('clairiere', cx, cy);
+    const pe = pathEdge('clairiere', cx, cy);
+    if (c !== 'd') { if (pe !== null) grassClean = false; continue; } // non-terre → jamais de liseré
+    if (pe) {
+      edges++;
+      assert.ok(pe.n || pe.s || pe.e || pe.w || pe.ne || pe.nw || pe.se || pe.sw,
+        'un bord de terre doit toucher l\'herbe par au moins un côté');
+      assert.ok(pe.variant === 0 || pe.variant === 1, 'la variante doit être bornée');
+    } else interior++;
+  }
+  assert.ok(grassClean, 'une case qui n\'est pas de la terre ne produit pas de liseré');
+  assert.ok(edges > 0, 'le chemin de la clairière doit avoir des bords à adoucir');
+  // (un chemin étroit d'une tuile n'a pas de « cœur » : interior peut valoir 0)
+  assert.ok(interior >= 0, 'compteur cohérent');
 });

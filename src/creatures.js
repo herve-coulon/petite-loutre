@@ -7,7 +7,7 @@ export const CREATURES = [
   { id: 'castor',    emoji: '🦫', name: 'Castor ingénieur',   zone: 'lac',       aggressive: false, loot: 'bois',      xp: 4,  desc: 'Architecte des barrages, il ne veut que travailler.' },
   { id: 'ours',      emoji: '🐻', name: 'Ours brun',          zone: 'vallon',    aggressive: true,  loot: 'miel',      xp: 12, desc: 'Massif mais tranquille… s\'il ne se sent pas menacé.' },
   { id: 'sanglier',  emoji: '🐗', name: 'Sanglier sauvage',   zone: 'gorge',     aggressive: true,  loot: 'truffe',    xp: 10, desc: 'Grognon et costaud, il charge sans prévenir.' },
-  { id: 'hibou',     emoji: '🦉', name: 'Hibou tueur',        zone: 'sapiniere', aggressive: false, loot: 'plume',     xp: 5,  desc: 'Silencieux et observateur, il veille la nuit.' },
+  { id: 'hibou',     emoji: '🦉', name: 'Hibou grand-duc',    zone: 'sapiniere', aggressive: false, loot: 'plume',     xp: 5,  desc: 'Silencieux et observateur, il veille la nuit.' },
   { id: 'aigle',     emoji: '🦅', name: 'Aigle royal',        zone: 'cimes',     aggressive: true,  loot: 'serre',     xp: 15, desc: 'Seul au sommet, il plonge sur ses proies.' }
 ];
 

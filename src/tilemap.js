@@ -714,27 +714,28 @@ export function findCount(zone, dayKey) {
 }
 
 /**
- * LA FAUNE d'ambiance : de petites bêtes qui vaquent, propres à chaque lieu.
- * Purement décoratives — mais sans elles les zones restaient des prés vides où
- * seuls trois PNJ attendaient, immobiles. Une vallée doit grouiller un peu.
+ * LA FAUNE d'ambiance : petites bêtes qui vaquent, propres à chaque lieu. Ce
+ * sont des CLÉS de sprites pixel (SPRITES_FAUNE / SPRITES_BESTIAIRE / SPRITES),
+ * plus aucun emoji — le monde est peint au pixel (charte DA). Décoratives, mais
+ * sans elles les zones restaient des prés vides.
  */
 export const FAUNE = {
-  clairiere: ['🦋', '🐝', '🐞'],
-  foret:     ['🦋', '🐦', '🐌'],
-  cascade:   ['🐦', '🦋'],
-  roseaux:   ['🦗', '🐸', '🦆'],
-  lac:       ['🦆', '🐟', '🦢'],
-  vallon:    ['🦋', '🐝', '🐇'],
-  delta:     ['🦆', '🦀', '🐦'],
-  gorge:     ['🦇', '🦎'],
-  sapiniere: ['🐿️', '🐦', '🦉'],
-  lagon:     ['🐠', '🐢', '🦩'],
-  large:     ['🐋', '🐬', '🦈'],
-  caverne:   ['🦇', '🕷️', '🐛'],
-  mine:      ['🐀', '🦎', '🪲'],
-  glacier:   ['🐧', '🦭', '🐻‍❄️'],
-  cimes:     ['🦅', '🐐', '🦌'],
-  jardin:    ['🐸', '🦋', '🐝']
+  clairiere: ['papillon', 'abeille', 'coccinelle'],
+  foret:     ['papillon', 'oiseau', 'escargot'],
+  cascade:   ['oiseau', 'papillon'],
+  roseaux:   ['criquet', 'grenouille', 'canard'],
+  lac:       ['canard', 'fish', 'cygne'],
+  vallon:    ['papillon', 'abeille', 'crLapin'],
+  delta:     ['canard', 'crabe', 'oiseau'],
+  gorge:     ['chauvesouris', 'lezard'],
+  sapiniere: ['ecureuil', 'oiseau', 'crHibou'],
+  lagon:     ['poissontropical', 'tortue', 'flamant'],
+  large:     ['baleine', 'dauphin', 'requin'],
+  caverne:   ['chauvesouris', 'araignee', 'chenille'],
+  mine:      ['rat', 'lezard', 'scarabee'],
+  glacier:   ['manchot', 'phoque', 'ourspolaire'],
+  cimes:     ['crAigle', 'chevre', 'cerf'],
+  jardin:    ['grenouille', 'papillon', 'abeille']
 };
 
 /**
@@ -1018,6 +1019,29 @@ export function groundTile(zone, cx, cy) {
   if (c === '~') return waterTile(zone, cx, cy);
   if (c === 'd') return T.dirt;
   return ((cx + cy) % 7 === 0) ? T.grass2 : T.grass;   // herbe légèrement variée
+}
+
+const isDirt = (zone, cx, cy) => charAt(zone, cx, cy) === 'd';
+const isGrassGround = (zone, cx, cy) => { const c = charAt(zone, cx, cy); return c === '.' || c === ','; };
+
+/**
+ * TRANSITION herbe↔terre du chemin. Pour une case de TERRE en bordure d'herbe,
+ * dit quels côtés (n/s/e/o) et coins touchent l'herbe : le rendu y pose un liseré
+ * d'herbe doux, au lieu de l'escalier brut de tuiles carrées. PUR (testable) —
+ * `variant` casse la répétition sur les longues bordures. null si la case n'est
+ * pas de la terre, ou est au CŒUR du chemin (aucun bord d'herbe à adoucir).
+ */
+export function pathEdge(zone, cx, cy) {
+  if (!isDirt(zone, cx, cy)) return null;
+  const n = isGrassGround(zone, cx, cy - 1), s = isGrassGround(zone, cx, cy + 1);
+  const e = isGrassGround(zone, cx + 1, cy), w = isGrassGround(zone, cx - 1, cy);
+  // coins SORTANTS : herbe en diagonale alors que les deux côtés ortho sont terre
+  const ne = isGrassGround(zone, cx + 1, cy - 1) && !n && !e;
+  const nw = isGrassGround(zone, cx - 1, cy - 1) && !n && !w;
+  const se = isGrassGround(zone, cx + 1, cy + 1) && !s && !e;
+  const sw = isGrassGround(zone, cx - 1, cy + 1) && !s && !w;
+  if (!(n || s || e || w || ne || nw || se || sw)) return null;   // terre pleine : rien à adoucir
+  return { n, s, e, w, ne, nw, se, sw, variant: (cx * 7 + cy * 13) % 2 };
 }
 
 /** La tuile de DÉCOR posée sur le sol, ou null. */
