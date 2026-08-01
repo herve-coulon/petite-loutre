@@ -584,8 +584,8 @@ export function renderBestiary(rec) {
     } else {
       html += '<div class="best-entry">' +
         '<span class="best-emoji">' + c.emoji + '</span>' +
-        '<div class="best-info"><b>' + c.name + '</b>' +
-        '<span class="best-desc">' + c.desc + '</span>' +
+        '<div class="best-info"><b>' + esc(c.name) + '</b>' +
+        '<span class="best-desc">' + esc(c.desc) + '</span>' +
         '<span class="best-stats">Vu ' + entry.seen + ' fois' + (entry.caught ? ' · Attrapé ' + entry.caught + 'x' : '') +
         (c.aggressive ? ' · ⚠️ Agressif' : '') + '</span></div></div>';
     }
@@ -641,7 +641,7 @@ function sectionRows(list, items, unlocked, currentId, onPick, removable, rec, o
       : achetable ? '<span class="tag price' + (abordable ? '' : ' short') + '">💎 ' + prix + '</span>' : '';
     btn.innerHTML =
       '<span class="ic2">' + (ok ? it.icon : '🔒') + '</span>' +
-      '<div>' + it.name + '<small>' + sub + '</small></div>' + tag;
+      '<div>' + esc(it.name) + '<small>' + esc(sub) + '</small></div>' + tag;
     if (ok) btn.addEventListener('click', () => onPick(it.id));
     else if (abordable && onBuy) btn.addEventListener('click', () => onBuy(it.id));
     list.appendChild(btn);
@@ -678,7 +678,7 @@ function treasureRows(list, s, rec, onGear, onBuy) {
       : prix > 0 ? '<span class="tag price' + (abordable ? '' : ' short') + '">💎 ' + prix + '</span>' : '';
     btn.innerHTML =
       '<span class="ic2">' + (ok ? it.emoji : '🔒') + '</span>' +
-      '<div><b style="color:' + rar.color + '">' + it.name + '</b><small>' + sub + '</small></div>' + tag;
+      '<div><b style="color:' + esc(rar.color) + '">' + esc(it.name) + '</b><small>' + esc(sub) + '</small></div>' + tag;
     if (ok) btn.addEventListener('click', () => onGear(it.id));
     else if (abordable && onBuy) btn.addEventListener('click', () => onBuy(it.id));
     list.appendChild(btn);
@@ -889,7 +889,7 @@ export function renderAchievements(rec, s) {
       const div = document.createElement('div');
       div.className = 'row-item' + (done ? ' equipped' : '');
       div.style.cursor = 'default';
-      div.innerHTML = '<span class="ic2">' + q.icon + '</span><div>' + q.label +
+      div.innerHTML = '<span class="ic2">' + q.icon + '</span><div>' + esc(q.label) +
         '<small>' + (done ? 'Terminée ! +10 humeur' : prog + ' / ' + q.target) + '</small></div>' +
         (done ? '<span class="tag">✓</span>' : '');
       list.appendChild(div);
@@ -905,7 +905,7 @@ export function renderAchievements(rec, s) {
     div.style.cursor = 'default';
     div.innerHTML =
       '<span class="ic2">' + (ok ? a.icon : '🔒') + '</span>' +
-      '<div>' + a.name + '<small>' + a.desc + '</small></div>' +
+      '<div>' + esc(a.name) + '<small>' + esc(a.desc) + '</small></div>' +
       (ok ? '<span class="tag">✓</span>' : '');
     list.appendChild(div);
   }

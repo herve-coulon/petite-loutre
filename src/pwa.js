@@ -63,9 +63,12 @@ export function setupInstall(btn, hint) {
   btn.addEventListener('click', async () => {
     if (!deferred) return;
     deferred.prompt();
-    try { await deferred.userChoice; } catch (e) {}
-    deferred = null;
-    btn.classList.add('hidden');
+    const { outcome } = await deferred.userChoice.catch(() => ({}));
+    if (outcome === 'accepted') {
+      deferred = null;
+      btn.classList.add('hidden');
+    }
+    // Si dismissed, on garde le bouton pour une prochaine tentative
   });
   window.addEventListener('appinstalled', () => btn.classList.add('hidden'));
 

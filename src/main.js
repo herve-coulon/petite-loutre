@@ -53,6 +53,7 @@ import { pickTrait, traitById, isFavorite, favoriteLine, bondGain, bondLevel } f
 
 const $ = id => document.getElementById(id);
 const now = () => Date.now();
+const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const storage = (() => { try { return window.localStorage; } catch (e) { return null; } })();
 
 let s = null;
@@ -1290,6 +1291,12 @@ function onCanvasPointer(e) {
         // une zone. (Sans liaison de ce côté, le toucher reste ordinaire.)
         const sortie = sortieVisee(x, y);
         if (sortie) { bx = sortie.x; by = sortie.y; }
+        // Taper près de la loutre annule le déplacement en cours
+        const dx = bx - world.px, dy = by - world.py;
+        if (world.route && world.route.length && dx * dx + dy * dy < 400) {
+          world.route = null; world.walking = false;
+          return;
+        }
         // on CONTOURNE les obstacles : aller tout droit collait la loutre au
         // premier tronc venu, et certaines sorties devenaient inatteignables
         const route = findPath(world.zone, world.px, world.py, bx, by);
@@ -1744,7 +1751,7 @@ function gainXp(n) {
     let reward, rewardColor;
     if (gotItems.length) {
       const it = gotItems[gotItems.length - 1];
-      reward = '🎁 Trésor ' + RARITIES[it.rarity].label.toLowerCase() + '<br>' + it.emoji + ' <b>' + it.name + '</b>';
+      reward = '🎁 Trésor ' + RARITIES[it.rarity].label.toLowerCase() + '<br>' + it.emoji + ' <b>' + esc(it.name) + '</b>';
       rewardColor = RARITIES[it.rarity].color;
       ui.log('🏅 Niveau ' + L.level + ' ! Trésor ' + RARITIES[it.rarity].label.toLowerCase() + ' : ' + it.emoji + ' ' + it.name + ' ! Équipe-le dans 🎩.');
     } else if (opened.length) {
@@ -2565,6 +2572,26 @@ function boot() {
     const x = el.querySelector('.ovl-x');
     if (x) x.addEventListener('click', () => { sfx.press(); close(); });
   }
+  // Touche Échap pour fermer l'overlay visible
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    // Confirm : Échap = NON
+    const confirmEl = $('ovl-confirm');
+    if (confirmEl && !confirmEl.classList.contains('hidden')) {
+      sfx.press();
+      $('btn-confirm-no').click();
+      return;
+    }
+    for (const [id, close] of Object.entries(overlayClosers)) {
+      const el = $(id);
+      if (el && !el.classList.contains('hidden')) {
+        if (id === 'ovl-battle' && battle && !battle.over) return;
+        sfx.press();
+        close();
+        return;
+      }
+    }
+  });
 
   checkStreak(); // la visite du jour compte pour la série 🔥
   // Rappels : on répare un abonnement perdu (iOS le lâche parfois) plutôt que

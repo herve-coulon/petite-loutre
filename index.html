@@ -15,8 +15,24 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Loutre">
+<meta property="og:title" content="Ma Petite Loutre">
+<meta property="og:description" content="Élève ta petite loutre pixel art en temps réel.">
+<meta property="og:image" content="./icons/icon-512.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Ma Petite Loutre">
+<meta name="twitter:description" content="Un tamagotchi de rivière en pixel art.">
+<meta name="twitter:image" content="./icons/icon-512.png">
 <link rel="stylesheet" href="./src/fonts.css">
 <link rel="stylesheet" href="./src/style.css">
+<script>
+  // Sync theme-color with dark mode
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  const tc = document.querySelector('meta[name="theme-color"]');
+  function syncThemeColor(e) { if (tc) tc.content = e.matches ? '#0d1117' : '#22334C'; }
+  syncThemeColor(mq);
+  mq.addEventListener('change', syncThemeColor);
+</script>
 </head>
 <body>
 <div id="app">
@@ -85,7 +101,7 @@
         <button id="b-battle" class="roundbtn" aria-label="Combat"><span class="ic">⚔️</span><span class="badge"></span></button>
       </div>
     </div>
-    <p id="log">…</p>
+    <p id="log" aria-live="polite">…</p>
   </div>
 
   <!-- Bannière de quête -->
@@ -377,7 +393,7 @@
   <div id="ovl-confirm" class="ovl hidden" role="dialog" aria-modal="true" aria-label="Confirmation">
     <p id="confirm-text"></p>
     <div style="display:flex; gap:10px;">
-      <button class="act" id="btn-confirm-yes" style="padding:12px 18px;">OUI</button>
+      <button class="act danger" id="btn-confirm-yes" style="padding:12px 18px;">OUI</button>
       <button class="act ghost" id="btn-confirm-no" style="padding:12px 18px;">NON</button>
     </div>
   </div>
