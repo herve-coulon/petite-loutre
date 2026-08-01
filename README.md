@@ -321,6 +321,12 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v3.89 : preuves de saison. Le cadeau de saison ne se réclamait que sur le
+total de trésors à VIE — il tombait donc dès la 2e saison sans qu'on y ait
+joué. Désormais un compteur PAR saison (`treatsBySeason`) : une nouvelle
+saison n'offre son cadeau qu'après y avoir récolté un trésor. Migration douce
+one-shot pour les saves en cours de saison (on ne vole pas le cadeau déjà
+mérité), normalisation `{}` pour les autres.*
 v3.88 : le bestiaire en pixel + chemin adouci. Les 8 créatures du bestiaire
 et les 28 bestioles d'ambiance passent de l'emoji à des grilles pixel 16 px
 (palette du kit, planche validée du designer) — fini l'emoji pour la faune et

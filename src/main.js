@@ -14,7 +14,7 @@ import * as music from './music.js';
 import * as ambient from './ambient.js';
 import { XP, levelFromXp, titleFor } from './level.js';
 import { bumpQuest, completedQuests, ensureDaily, dayKey, isEligible } from './quests.js';
-import { giftClaimable, giftClaimed, claimSeasonGift } from './seasonpass.js';
+import { giftClaimable, giftClaimed, claimSeasonGift, addSeasonTreat } from './seasonpass.js';
 
 import {
   newState, saveState, loadState, clearSave,
@@ -845,7 +845,7 @@ function collectFind(f) {
     s.clean = clamp(s.clean + 10 * x2, 0, 100);    // l'écume de la cascade décrasse
     ui.log('💎 Une gemme dans l\'écume, et un bon rinçage au passage !' + bis);
   } else if (f.kind === 'coquillage') {
-    rec.treatsTotal = (rec.treatsTotal || 0) + x2;
+    addSeasonTreat(rec, x2);                        // total à vie + preuve de la saison courante
     s.lastTreat = 0;                               // la réserve recharge la friandise
     ui.log('🐚 Un beau coquillage : la friandise est de nouveau prête !' + bis);
   } else if (f.kind === 'tresor') {
@@ -1351,7 +1351,7 @@ function onCanvasPointer(e) {
         if (g.hunger) s.hunger = clamp(s.hunger + g.hunger, 0, 100);
         if (g.fun) s.fun = clamp(s.fun + g.fun, 0, 100);
         if (g.energy) s.energy = clamp(s.energy + g.energy, 0, 100);
-        rec.treatsTotal = (rec.treatsTotal || 0) + 1;
+        addSeasonTreat(rec, 1);                     // total à vie + preuve de la saison courante
         refreshGift(); // 1er trésor de saison -> le cadeau devient réclamable
         R.spawn('heart', s.stage); R.burst('sparkle', 8, s.stage);
         sfx.happy(); vibrate(12);

@@ -35,12 +35,28 @@ export function giftClaimed(rec, date = new Date()) {
 }
 
 /**
- * Réclamable si : pas encore pris cette saison ET la preuve de jeu est là
- * (au moins `GIFT_NEED_TREATS` trésor de saison récolté). Simple et tolérant.
+ * Enregistre un trésor de saison récolté : total à VIE (treatsTotal, pour les
+ * records/UI) ET compteur PAR (saison, année) (treatsBySeason). C'est ce dernier
+ * qui prouve qu'on a joué CETTE saison — sans lui, un cadeau tombait dès la
+ * saison suivante sur la foi du total à vie.
+ */
+export function addSeasonTreat(rec, n = 1, date = new Date()) {
+  if (!rec) return;
+  rec.treatsTotal = (rec.treatsTotal || 0) + n;
+  if (!rec.treatsBySeason || typeof rec.treatsBySeason !== 'object') rec.treatsBySeason = {};
+  const k = seasonGiftKey(date);
+  rec.treatsBySeason[k] = (rec.treatsBySeason[k] || 0) + n;
+}
+
+/**
+ * Réclamable si : pas encore pris cette (saison, année) ET la preuve de jeu est
+ * là POUR CETTE saison (au moins `GIFT_NEED_TREATS` trésor récolté sous la clé
+ * courante). Une nouvelle saison n'est donc PAS réclamable avant d'y avoir joué.
  */
 export function giftClaimable(rec, date = new Date()) {
   if (!rec || giftClaimed(rec, date)) return false;
-  return (rec.treatsTotal || 0) >= GIFT_NEED_TREATS;
+  const by = rec.treatsBySeason;
+  return !!(by && (by[seasonGiftKey(date)] || 0) >= GIFT_NEED_TREATS);
 }
 
 /**

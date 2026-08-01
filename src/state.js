@@ -2,6 +2,7 @@
 // Aucune dépendance DOM : le stockage est injecté.
 import { SAVE_KEY, H } from './constants.js';
 import { levelFromXp } from './level.js';
+import { seasonGiftKey, GIFT_NEED_TREATS } from './seasonpass.js';   // migration douce du cadeau de saison
 
 export const REC_KEY = 'petite_loutre_records_v1';
 const EXPORT_PREFIX = 'LOUTRE1.';
@@ -128,7 +129,8 @@ export function newRecords() {
     perfectSlides: 0,   // descentes sans toucher de rocher
     sleepsTotal: 0,
     treasures: 0,
-    treatsTotal: 0,     // trésors de saison récoltés
+    treatsTotal: 0,     // trésors de saison récoltés (total à vie — records/UI)
+    treatsBySeason: {}, // trésors récoltés par (saison, année) — preuve de jeu du cadeau
     gems: 0,            // gemmes 💎 — monnaie gagnée (cadeaux de saison…)
     items: [],          // trésors rares possédés (ids) — global, survit aux loutres
     wins: 0,
@@ -151,6 +153,16 @@ export function newRecords() {
 
 function normalizeRecords(o) {
   if (!o || o.v !== 1) return null;
+  // treatsBySeason (v3.89) : preuve de jeu PAR saison. AVANT d'appliquer les
+  // défauts, on migre en douceur une vieille save : si elle a déjà des trésors
+  // (donc a joué) mais pas encore ce champ, on lui crédite la saison COURANTE
+  // une seule fois — on ne lui vole pas le cadeau qu'elle était sur le point
+  // d'obtenir. Sinon (ou save neuve), map vide ; les saisons futures exigeront
+  // une vraie récolte.
+  if (o.treatsBySeason === undefined || typeof o.treatsBySeason !== 'object') {
+    o.treatsBySeason = (o.treatsTotal || 0) >= GIFT_NEED_TREATS
+      ? { [seasonGiftKey()]: o.treatsTotal } : {};
+  }
   const base = newRecords();
   for (const k of Object.keys(base)) {
     if (o[k] === undefined) o[k] = base[k];
