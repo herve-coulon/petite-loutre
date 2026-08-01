@@ -1296,9 +1296,17 @@ export function makeRenderer(cv) {
       const top = 46 + Math.round(Math.sin(x / 23) * 4 + Math.sin(x / 9) * 2);
       ctx.fillRect(x, top, 4, 58 - top);
     }
-    // brume d'horizon
-    ctx.fillStyle = c.night ? 'rgba(200,210,235,.05)' : 'rgba(255,255,255,.13)';
-    ctx.fillRect(0, 49, CANVAS_W, 8);
+    // brume d'horizon (gradient subtil)
+    const haze = ctx.createLinearGradient(0, 48, 0, 56);
+    if (haze) {
+      haze.addColorStop(0, 'rgba(255,255,255,.15)');
+      haze.addColorStop(0.5, 'rgba(255,255,255,.08)');
+      haze.addColorStop(1, 'transparent');
+      ctx.fillStyle = haze;
+    } else {
+      ctx.fillStyle = c.night ? 'rgba(200,210,235,.05)' : 'rgba(255,255,255,.13)';
+    }
+    ctx.fillRect(0, 48, CANVAS_W, 8);
 
     // collines + berge (proches)
     ctx.fillStyle = c.hill2;
@@ -1315,22 +1323,53 @@ export function makeRenderer(cv) {
       ctx.fillStyle = ((x >> 2) % 2) ? grassLo : grassHi;
       ctx.fillRect(x, 100 - bh, 1, bh);
     }
-    // bande humide plus foncée le long de la berge
-    ctx.fillStyle = mix(c.hill, '#0c2416', 0.42);
-    ctx.fillRect(0, 101, CANVAS_W, 3);
+    // texture d'herbe fine : brins supplémentaires pour plus de densité
+    const grassMid = mix(c.hill, '#1a3d24', 0.2);
+    for (let x = 0; x < CANVAS_W; x += 7) {
+      const bh = 1 + ((x * 17) % 2);
+      ctx.fillStyle = ((x >> 3) % 2) ? grassMid : grassHi;
+      ctx.fillRect(x, 100 - bh, 1, bh);
+    }
+    // bande humide plus foncée le long de la berge (gradient subtil)
+    const wgnd = ctx.createLinearGradient(0, 100, 0, 104);
+    if (wgnd) {
+      wgnd.addColorStop(0, 'transparent');
+      wgnd.addColorStop(0.4, mix(c.hill, '#0c2416', 0.35));
+      wgnd.addColorStop(1, mix(c.hill, '#0c2416', 0.48));
+      ctx.fillStyle = wgnd;
+    } else {
+      ctx.fillStyle = mix(c.hill, '#0c2416', 0.42);
+    }
+    ctx.fillRect(0, 100, CANVAS_W, 4);
     // petites fleurs éparses (sur les côtés, couleur selon la saison)
     const fcol = season.key === 'hiver' ? '#e4edf5' : season.key === 'automne' ? '#e5843a' : '#f2d24e';
     for (const [fx2, fy2] of [[16, 90], [30, 97], [110, 88], [132, 95], [146, 90]]) {
       ctx.fillStyle = fcol; ctx.fillRect(fx2, fy2, 2, 2);
       ctx.fillStyle = mix(fcol, '#ffffff', 0.45); ctx.fillRect(fx2, fy2, 1, 1);
+      // tige fine
+      ctx.fillStyle = mix(c.hill, '#1a3d24', 0.5);
+      ctx.fillRect(fx2, fy2 + 2, 1, 2);
     }
 
     // rivière animée — étendue jusqu'au bas de l'écran, plus profonde vers le bas
     const waterBot = CANVAS_H - BERGE_SHIFT;            // bas de l'eau (coords locales)
-    ctx.fillStyle = c.water; ctx.fillRect(0, 104, CANVAS_W, waterBot - 104);
-    ctx.fillStyle = mix(c.water, '#0a1830', 0.30); ctx.fillRect(0, waterBot - 46, CANVAS_W, 46);
-    ctx.fillStyle = mix(c.water, '#0a1830', 0.5); ctx.fillRect(0, waterBot - 18, CANVAS_W, 18);
+    // gradient de profondeur
+    const wg = ctx.createLinearGradient(0, 104, 0, waterBot);
+    if (wg) {
+      wg.addColorStop(0, c.water);
+      wg.addColorStop(0.5, mix(c.water, '#0a1830', 0.22));
+      wg.addColorStop(0.85, mix(c.water, '#0a1830', 0.45));
+      wg.addColorStop(1, mix(c.water, '#0a1830', 0.55));
+      ctx.fillStyle = wg;
+    } else {
+      ctx.fillStyle = c.water;
+    }
+    ctx.fillRect(0, 104, CANVAS_W, waterBot - 104);
+    // bord supérieur lumineux
     ctx.fillStyle = mix(c.water, '#ffffff', 0.4); ctx.fillRect(0, 104, CANVAS_W, 1);
+    // reflet de lumière diffusé sous la surface
+    ctx.fillStyle = mix(c.water, '#ffffff', 0.12);
+    ctx.fillRect(0, 105, CANVAS_W, 3);
     }   // --- fin du repli peint ---
     ctx.fillStyle = c.wave;
     const off = (frame >> 3) % 16;
@@ -1345,28 +1384,60 @@ export function makeRenderer(cv) {
       ctx.fillRect(x - off2 + 12, 110, 6, 1);
       ctx.fillRect(x - off2, 116, 5, 1);
     }
+    // 3e couche : ondulations très fines et lentes en profondeur
+    ctx.fillStyle = mix(c.wave, '#ffffff', 0.12);
+    const off3 = (frame >> 5) % 32;
+    for (let x = -32; x < CANVAS_W; x += 32) {
+      ctx.fillRect(x + off3, 120, 10, 1);
+      ctx.fillRect(x + off3 + 6, 124, 8, 1);
+    }
     // scintillement du soleil sur l'eau (le jour), aligné sous l'astre
     if (!c.night) {
       ctx.fillStyle = 'rgba(255,244,190,.5)';
-      for (let y = 105; y < 118; y += 2) {
-        if (((y + (frame >> 2)) >> 1) % 2) ctx.fillRect(130 + ((y * 3) % 5), y, 3, 1);
+      for (let y = 105; y < 120; y += 2) {
+        const shimmer = Math.sin((frame + y * 2) / 9) * 2;
+        if (((y + (frame >> 2)) >> 1) % 2) ctx.fillRect(130 + shimmer + ((y * 3) % 5), y, 3, 1);
+      }
+      // halo diffusé sous le scintillement
+      const sg = ctx.createRadialGradient(132, 110, 2, 132, 110, 18);
+      if (sg) {
+        sg.addColorStop(0, 'rgba(255,240,180,.12)');
+        sg.addColorStop(1, 'rgba(255,240,180,0)');
+        ctx.fillStyle = sg;
+        ctx.fillRect(114, 92, 36, 36);
       }
     }
     // reflet de la lune sur l'eau la nuit (scintille doucement)
     if (c.night) {
       ctx.fillStyle = 'rgba(230,230,210,.18)';
-      for (let y = 106; y < 120; y += 2) {
+      for (let y = 106; y < 122; y += 2) {
         const shimmer = Math.sin((frame + y * 3) / 11) * 3;
         if (((y + (frame >> 3)) >> 1) % 2) ctx.fillRect(86 + shimmer, y, 4, 1);
+      }
+      // halo lunaire diffusé
+      const mg = ctx.createRadialGradient(88, 112, 2, 88, 112, 16);
+      if (mg) {
+        mg.addColorStop(0, 'rgba(200,210,235,.1)');
+        mg.addColorStop(1, 'rgba(200,210,235,0)');
+        ctx.fillStyle = mg;
+        ctx.fillRect(72, 96, 32, 32);
       }
     }
     // nénuphars qui dérivent lentement sur la surface
     for (let i = 0; i < 3; i++) {
       const lx = ((i * 52 + 18 + (frame * 0.08 + i * 7) % 160) % 160);
       const ly = 108 + Math.sin((frame + i * 50) / 30) * 2;
+      // ombre portée douce sous le nénuphar
+      ctx.fillStyle = 'rgba(10,24,48,.12)';
+      ctx.fillRect(lx + 1, ly + 2, 5, 2);
       ctx.fillStyle = (i % 2) ? '#3f8a3f' : '#4a9e4a';
       ctx.fillRect(lx, ly, 5, 3);
       ctx.fillStyle = '#6fc96f'; ctx.fillRect(lx + 1, ly, 3, 1);
+      // petite fleur blanche sur un nénuphar
+      if (i === 1) {
+        ctx.fillStyle = '#f8f0d8';
+        ctx.fillRect(lx + 2, ly, 1, 1);
+      }
     }
     ctx.restore(); // fin de la berge décalée
 

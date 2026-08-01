@@ -37,7 +37,8 @@ function fakeCanvas(rects) {
     fillRect(x, y, w, h) { rects.push([x + this._tx, y + this._ty, w, h, this.fillStyle]); },
     fillText() {}, save() {}, restore() { this._tx = 0; this._ty = 0; },
     translate(a, b) { this._tx += a; this._ty += b; }, scale() {},
-    createRadialGradient() { return { addColorStop() {} }; }
+    createRadialGradient() { return { addColorStop() {} }; },
+    createLinearGradient() { return { addColorStop() {} }; }
   };
   return { getContext: () => ctx };
 }
