@@ -15,6 +15,7 @@ import { HATS } from '../src/accessories.js';
 import { VIES_MAX, DEGATS_EJECTION } from '../src/toboggan.js';
 import { COFFRE_ZONES, EPREUVE_ZONES } from '../src/tilemap.js';
 import { FURS, DECORS } from '../src/skins.js';
+import { duelInput } from '../src/battle.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const html = readFileSync(join(root, 'index.html'), 'utf8');
@@ -702,18 +703,13 @@ test('habitant : rend son service une fois par jour, puis se contente de bavarde
   assert.equal(L.state.fun, 20, 'ni pour l\'entrain');
 });
 
-// Le duel réflexe se gagne à la parade parfaite. Pour le test, on met la
-// championne au bord du K.O. et on arme une fenêtre de parade large calée sur
-// « maintenant » : le clic tombe pile, la riposte porte le coup de grâce, et le
-// gestionnaire d'entrée déclenche le dénouement (récompenses).
+// Le duel tour-par-tour se gagne en réduisant les PV de l'ennemi à 0.
+// Pour le test, on met la championne au bord du K.O. et on joue morsure.
 const gagnerLeDuel = () => {
   const b = L.battle; if (!b || b.over) return;
   b.foe.hp = 1;
-  b.phase = 'wind';
-  b.impactAt = Date.now();
-  b.windStart = b.impactAt - 500;
-  b.wPerfect = 600; b.wOk = 700;             // fenêtre large : la parade sera parfaite
-  $('bt-parry').dispatchEvent(new window.Event('click', { bubbles: true }));
+  b.phase = 'choose';
+  duelInput(b, 'morsure', performance.now());
 };
 
 test('épreuve : la championne propose son duel, et son trophée ne se gagne qu\'une fois', async () => {
@@ -740,6 +736,7 @@ test('épreuve : la championne propose son duel, et son trophée ne se gagne qu\
 
   const gemsAvant = L.records.gems || 0;
   gagnerLeDuel();
+  renderOnce(); // la boucle rAF détecte battle.over → onDuelOver
   assert.equal(L.battle.winner, 'me', 'victoire');
   assert.deepEqual(L.records.epreuves, ['clairiere'], 'épreuve inscrite au palmarès');
   assert.ok(L.records.gems > gemsAvant, 'récompensée en gemmes');
@@ -752,6 +749,7 @@ test('épreuve : la championne propose son duel, et son trophée ne se gagne qu\
   renderOnce();
   $('btn-confirm-yes').dispatchEvent(new window.Event('click', { bubbles: true }));
   gagnerLeDuel();
+  renderOnce();
   assert.equal(L.records.epreuves.length, 1, 'le trophée ne se gagne pas deux fois');
   assert.equal(L.records.gems, gemsApres, 'ni la prime de l\'épreuve');
 });

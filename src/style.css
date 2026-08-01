@@ -232,26 +232,32 @@ button.pm-cell.go:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(38,5
   overflow:hidden; text-overflow:ellipsis; max-width:100%;}
 .bt-vs{font-size:20px; padding-bottom:22px;}
 
-/* ── Duel réflexe : le télégraphe de parade ─────────────────────────────── */
-.bt-combo{min-height:20px; text-align:center; font-weight:800; font-size:14px;
-  letter-spacing:2px; color:#b8860b; margin:2px 0;}
-.bt-tele{position:relative; height:26px; margin:4px 0 8px; border:2px solid var(--ink);
-  border-radius:8px; background:var(--track); overflow:hidden;}
-.bt-tele.dim{opacity:.4;}
-.bt-tele.strike{background:rgba(242,193,78,.35);}
-.bt-tele-band{position:absolute; top:0; bottom:0;}
-.bt-tele-band.ok{background:rgba(95,201,224,.30);}          /* fenêtre de blocage */
-.bt-tele-band.perfect{background:rgba(79,139,118,.55);}     /* fenêtre parfaite */
-.bt-tele-line{position:absolute; top:-2px; bottom:-2px; width:3px; margin-left:-1px;
-  background:var(--ink);}                                    /* l'impact */
-.bt-tele-cursor{position:absolute; top:-3px; bottom:-3px; width:4px; margin-left:-2px;
-  background:#e5484d; box-shadow:0 0 4px #e5484d;}           /* le curseur qui balaie */
+/* ── Duel tour-par-tour : intention + grilles de techniques ── */
+.bt-combo{min-height:20px; text-align:center; font-weight:800; font-size:12px;
+  letter-spacing:1px; color:#b8860b; margin:2px 0;}
+.bt-intent{display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:8px 12px; margin:4px 0 8px; background:rgba(179,58,54,.12);
+  border:2px solid var(--ink); border-radius:10px;}
+.bt-intent-icon{font-size:24px; line-height:1;}
+.bt-intent-label{font-size:14px; font-weight:700; color:var(--ink);}
+.bt-techgrid{display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin:6px 0;}
+.bt-tech-btn{
+  display:flex; flex-direction:column; align-items:center; gap:1px;
+  padding:8px 4px; background:var(--paper); border:2px solid var(--ink);
+  border-radius:10px; cursor:pointer; box-shadow:var(--shadow);
+  font-family:inherit; transition:transform .07s ease;
+}
+.bt-tech-btn:active:not(:disabled){transform:translateY(2px); box-shadow:0 1px 0 rgba(38,54,78,.34);}
+.bt-tech-btn:disabled{opacity:.35; cursor:default;}
+.bt-tech-btn.empty{opacity:.25; background:var(--track);}
+.bt-tech-icon{font-size:20px; line-height:1;}
+.bt-tech-name{font-size:10px; font-weight:700; color:var(--ink); white-space:nowrap;}
+.bt-tech-pp{font-size:9px; color:var(--dim); font-weight:600;}
+.bt-tech-req{font-size:8px; color:var(--red); font-weight:700;}
 .bt-feedback{text-align:center; font-weight:700; min-height:30px;}
-.bt-feedback.perfect{color:#2e8b57;}
 .bt-feedback.hurt{color:#e5484d;}
-.bt-feedback.strike,.bt-feedback.open{color:#b8860b;}
-#bt-strike{background:rgba(242,193,78,.5);}
-#bt-parry:disabled,#bt-strike:disabled{opacity:.4;}
+.bt-feedback.strike{color:#2e8b57;}
+.bt-feedback.miss{color:var(--dim);}
 
 .bt-friend{margin-top:12px; text-align:left;}
 .bt-friend summary{cursor:pointer; font-size:12px; font-weight:700; color:var(--ink); padding:6px 0;}
@@ -733,4 +739,9 @@ input#name-input:focus{border-color:var(--teal);}
   .toast{background:rgba(30,34,51,.92); color:var(--txt);}
   .bt-tech-mine{color:var(--ink);}
   .bt-tech-list{color:rgba(212,220,232,.7);}
+  .bt-intent{background:rgba(179,58,54,.2); border-color:var(--ink);}
+  .bt-intent-label{color:var(--ink);}
+  .bt-tech-btn{background:rgba(30,34,51,.85); border-color:var(--ink);}
+  .bt-tech-name{color:var(--ink);}
+  .bt-feedback.miss{color:var(--dim);}
 }

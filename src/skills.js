@@ -1,69 +1,35 @@
-// Techniques de combat : ce que la loutre APPREND à force de se battre et
-// d'explorer. Module PUR — il ne connaît ni le DOM ni l'état courant, seulement
-// les records globaux (donc les techniques survivent au changement de loutre).
-//
-// Le duel est volontairement dur (v3.62). Les techniques sont la réponse à cette
-// dureté : on ne devient pas meilleur en appuyant mieux sur les boutons du
-// premier jour, on le devient en JOUANT — chaque palier rend une championne un
-// peu plus abordable.
+// Techniques passives : déblocage par progression + buffs de combat.
+// Les techniques d'ATTAQUE sont dans battle.js ; celles-ci sont des
+// talents passifs qui modifient les formules du nouveau duel tour-par-tour.
 import { COFFRE_ZONES, EPREUVE_ZONES } from './tilemap.js';
 import { levelFromXp } from './level.js';
 
-/**
- * Chaque technique est passive et modifie une règle précise du duel.
- * `effet` est lu par battle.js ; rien ici ne touche au jeu directement.
- */
-export const TECHNIQUES = [
+export const PASSIVE_TECHNIQUES = [
   {
     id: 'riposte', icon: '↩️', name: 'Riposte affûtée',
     cond: 'Remporter 5 duels',
-    desc: 'Tes parades ripostent 50 % plus fort.',
+    desc: 'Tes attaques font 20% de dégâts en plus.',
     test: r => (r.wins || 0) >= 5,
-    effet: { riposte: 1.5 }
-  },
-  {
-    id: 'depart', icon: '⚡', name: 'Départ lancé',
-    cond: 'Livrer 15 duels',
-    desc: 'Tu entames chaque duel avec un cran de combo — l\'ouverture vient plus vite.',
-    test: r => (r.battles || 0) >= 15,
-    effet: { comboDepart: 1 }
-  },
-  {
-    id: 'percee', icon: '💥', name: 'Percée',
-    cond: 'Battre 3 championnes de la vallée',
-    desc: 'Tes frappes d\'ouverture font bien plus mal.',
-    test: r => (r.epreuves || []).length >= 3,
-    effet: { frappe: 1.35 }
+    effet: { force: 1.2 }
   },
   {
     id: 'cuirasse', icon: '🛡️', name: 'Cuirasse',
     cond: 'Remporter 20 duels',
-    desc: 'Tu encaisses 15 % de dégâts en moins.',
+    desc: 'Tu encaisses 15% de dégâts en moins.',
     test: r => (r.wins || 0) >= 20,
     effet: { encaisse: 0.85 }
   },
   {
     id: 'souffle', icon: '🌬️', name: 'Second souffle',
-    cond: 'Ouvrir 4 coffres de la vallée',
-    desc: 'Sous 25 % de PV, un coup fatal est encaissé sans dommage — une fois par duel.',
+    cond: 'Ouvrir 4 coffres',
+    desc: 'Sous 25% PV, un coup fatal est encaissé une fois par duel.',
     test: r => (r.chests || []).length >= 4,
     effet: { secondSouffle: true }
   },
   {
-    id: 'maitrise', icon: '🏞️', name: 'Maîtrise de la vallée',
-    cond: 'Tous les coffres ET toutes les championnes',
-    desc: 'Ta fenêtre de parade s\'élargit : parer devient bien plus facile.',
-    test: r => (r.chests || []).length >= COFFRE_ZONES.length
-      && (r.epreuves || []).length >= EPREUVE_ZONES.length,
-    effet: { fenetre: 1.35 }
-  },
-  // ── Techniques de MINI-JEU ──────────────────────────────────────────────
-  // Les mini-jeux sont durcis (v3.64) : sans contrepartie ils décourageraient.
-  // Ces trois-là s'obtiennent en jouant, comme celles du duel.
-  {
     id: 'oeil', icon: '🎣', name: 'Œil de pêcheuse',
     cond: 'Jouer 20 parties de pêche',
-    desc: 'Tu attrapes les poissons de plus loin (tolérance élargie).',
+    desc: 'Tu attrapes les poissons de plus loin.',
     test: r => (r.gamesTotal || 0) >= 20,
     effet: { pad: 4 }
   },
@@ -76,33 +42,30 @@ export const TECHNIQUES = [
   },
   {
     id: 'endurance', icon: '⏳', name: 'Endurance',
-    cond: 'Jouer 60 parties (pêche et toboggan confondus)',
-    desc: 'Tes mini-jeux durent 20 % plus longtemps.',
+    cond: 'Jouer 60 parties (pêche et toboggan)',
+    desc: 'Tes mini-jeux durent 20% plus longtemps.',
     test: r => ((r.gamesTotal || 0) + (r.slidesTotal || 0)) >= 60,
     effet: { duree: 1.2 }
   },
   {
     id: 'veterane', icon: '🎖️', name: 'Vétérane',
     cond: 'Atteindre le niveau 20',
-    desc: 'Tes coups de queue frappent 10 % plus fort.',
+    desc: 'Tes coups frappent 10% plus fort.',
     test: r => levelFromXp(r.xp || 0).level >= 20,
     effet: { force: 1.1 }
   }
 ];
 
-export const techniqueById = id => TECHNIQUES.find(t => t.id === id) || null;
+export const techniqueById = id => PASSIVE_TECHNIQUES.find(t => t.id === id) || null;
 
-/** Les techniques acquises, dans l'ordre de la liste. */
+/** Les techniques acquises, dans l'ordre. */
 export function unlockedTechniques(rec) {
   const r = rec || {};
-  return TECHNIQUES.filter(t => t.test(r)).map(t => t.id);
+  return PASSIVE_TECHNIQUES.filter(t => t.test(r)).map(t => t.id);
 }
 
 /**
- * Les effets cumulés à appliquer aux MINI-JEUX. Séparé des buffs de duel : un
- * mini-jeu n'a que faire d'une riposte, et un duel d'une tolérance au toucher.
- * `equip` est le bonus d'équipement porté — sa `chance` fait jaillir plus de
- * poissons dorés, ce qui donne enfin un rôle aux trésors hors du combat.
+ * Effets cumulés pour les mini-jeux.
  */
 export function jeuBuffs(rec, equip) {
   const out = { pad: 0, duree: 1, amorti: false, chance: (equip && equip.luck) || 1 };
@@ -116,20 +79,14 @@ export function jeuBuffs(rec, equip) {
 }
 
 /**
- * Les effets cumulés à appliquer au duel. Les multiplicateurs se multiplient,
- * les seuils prennent la valeur la plus avantageuse, les drapeaux s'allument.
- * Renvoie un objet plat, consommé par newBattle.
+ * Effets cumulés pour le duel (multiplicateurs, protections, etc.).
  */
 export function combatBuffs(rec) {
   const out = {};
   for (const id of unlockedTechniques(rec)) {
     const e = techniqueById(id).effet;
-    if (e.riposte) out.riposte = (out.riposte || 1) * e.riposte;      // ×dégâts de riposte
-    if (e.force) out.force = (out.force || 1) * e.force;              // ×tous mes dégâts
-    if (e.frappe) out.frappe = (out.frappe || 1) * e.frappe;         // ×dégâts d'ouverture
-    if (e.encaisse) out.encaisse = (out.encaisse || 1) * e.encaisse; // ×dégâts subis (<1)
-    if (e.fenetre) out.fenetre = Math.max(out.fenetre || 1, e.fenetre); // ×largeur de parade
-    if (e.comboDepart) out.comboDepart = (out.comboDepart || 0) + e.comboDepart;
+    if (e.force) out.force = (out.force || 1) * e.force;
+    if (e.encaisse) out.encaisse = (out.encaisse || 1) * e.encaisse;
     if (e.secondSouffle) out.secondSouffle = true;
   }
   return out;

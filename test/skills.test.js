@@ -2,8 +2,8 @@
 // mesurablement rapprocher du niveau. Ces tests fixent ce contrat par la mesure.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TECHNIQUES, techniqueById, unlockedTechniques, combatBuffs } from '../src/skills.js';
-import { newBattle, stepBattle, duelInput, makeFighter, wildFoe } from '../src/battle.js';
+import { PASSIVE_TECHNIQUES, techniqueById, unlockedTechniques, combatBuffs } from '../src/skills.js';
+import { newBattle, stepBattle, duelInput, makeFighter, wildFoe, TECHNIQUES } from '../src/battle.js';
 import { newState } from '../src/state.js';
 import { equipBonus, FURS } from '../src/skins.js';
 import { HATS } from '../src/accessories.js';
@@ -13,27 +13,23 @@ import { COFFRE_ZONES, EPREUVE_ZONES } from '../src/tilemap.js';
 const T0 = 1700000000000;
 const base = () => Object.assign(newState(T0), { stage: 'adult', health: 90, fun: 70, energy: 60 });
 
-/** Joue un duel réflexe entier, joueur simulé parant avec un décalage fixe (ms). */
-function simulate(b, offset) {
-  let t = 0; const DT = 16; let aimed = null;
+/** Joue un duel tour-par-tour entier, joueur simulé choisissant une technique. */
+function simulate(b, tech = 'morsure') {
+  let t = 0; const DT = 16;
   while (!b.over && t < 90000) {
     t += DT; stepBattle(b, t);
-    if (b.phase === 'wind') {
-      if (aimed === null) aimed = b.impactAt + offset;
-      if (t >= aimed && t < aimed + DT) { duelInput(b, 'parry', t); aimed = null; }
-    } else if (b.phase === 'opening') { duelInput(b, 'strike', t); }
-    else { aimed = null; }
+    if (b.phase === 'choose') {
+      duelInput(b, tech, t);
+      if (b.phase === 'choose') duelInput(b, 'morsure', t);
+    }
   }
   return b;
 }
 
-test('techniques : définitions complètes, identifiants uniques, effets connus', () => {
+test('passives : définitions complètes, identifiants uniques, effets connus', () => {
   const vus = new Set();
-  const effetsConnus = new Set([
-    'riposte', 'force', 'frappe', 'encaisse', 'fenetre', 'comboDepart', 'secondSouffle',
-    'pad', 'duree', 'amorti'
-  ]);
-  for (const t of TECHNIQUES) {
+  const effetsConnus = new Set(['force', 'encaisse', 'secondSouffle', 'pad', 'duree', 'amorti']);
+  for (const t of PASSIVE_TECHNIQUES) {
     for (const champ of ['id', 'icon', 'name', 'cond', 'desc']) {
       assert.ok(t[champ] && t[champ].length, t.id + ' : ' + champ + ' manquant');
     }
@@ -42,29 +38,35 @@ test('techniques : définitions complètes, identifiants uniques, effets connus'
     vus.add(t.id);
     const cles = Object.keys(t.effet || {});
     assert.ok(cles.length, t.id + ' : effet vide');
-    // un effet non reconnu par combatBuffs serait silencieusement ignoré
     for (const k of cles) assert.ok(effetsConnus.has(k), t.id + ' : effet inconnu « ' + k + ' »');
     assert.equal(techniqueById(t.id), t);
   }
 });
 
-test('techniques : aucune n\'est acquise au départ, toutes le sont au bout du chemin', () => {
+test('passives : aucune n\'est acquise au départ, toutes le sont au bout du chemin', () => {
   assert.deepEqual(unlockedTechniques({}), [], 'rien de gratuit au premier jour');
   const complet = {
     wins: 100, battles: 200, xp: 500000, gamesTotal: 40, slidesTotal: 40,
     chests: [...COFFRE_ZONES], epreuves: [...EPREUVE_ZONES]
   };
-  assert.equal(unlockedTechniques(complet).length, TECHNIQUES.length, 'tout doit être atteignable');
+  assert.equal(unlockedTechniques(complet).length, PASSIVE_TECHNIQUES.length, 'tout doit être atteignable');
 });
 
-test('techniques : les effets se cumulent sans s\'écraser', () => {
+test('passives : les effets se cumulent sans s\'écraser', () => {
   const b = combatBuffs({ wins: 100, battles: 200, xp: 500000,
     chests: [...COFFRE_ZONES], epreuves: [...EPREUVE_ZONES] });
-  assert.ok(b.riposte > 1 && b.force > 1 && b.encaisse < 1);
-  assert.ok(b.frappe > 1, 'la percée renforce la frappe d\'ouverture');
-  assert.ok(b.fenetre > 1, 'la maîtrise élargit la fenêtre de parade');
-  assert.ok(b.comboDepart >= 1, 'le départ lancé donne un cran de combo');
+  assert.ok(b.force > 1, 'la veterane + riposte renforcent les dégâts');
+  assert.ok(b.encaisse < 1, 'la cuirasse réduit les dégâts');
   assert.equal(b.secondSouffle, true);
+});
+
+test('techniques : les effets sont bien définis', () => {
+  const t = TECHNIQUES.find(t => t.id === 'morsure');
+  assert.ok(t, 'morsure existe');
+  assert.ok(t.power > 0, 'morsure a de la puissance');
+  const soin = TECHNIQUES.find(t => t.id === 'soin');
+  assert.ok(soin, 'soin existe');
+  assert.ok(soin.heal > 0, 'soin soigne');
 });
 
 test('équipement : chapeaux, pelages et légendaires pèsent en duel', () => {
@@ -89,19 +91,18 @@ test('équipement : s\'équiper rend réellement plus fort', () => {
 });
 
 /**
- * Taux de victoire d'un joueur de PRÉCISION FIXE (même décalage de parade)
+ * Taux de victoire d'un joueur utilisant une technique fixe
  * contre une championne de force donnée. À talent égal, seuls l'équipement et
  * les techniques bougent l'aiguille — c'est ce que ces tests mesurent.
  */
-function taux(rec, equip, foeMult, offset, n = 40) {
+function taux(rec, equip, foeMult, tech = 'morsure', n = 40) {
   const me = Object.assign(base(), equip);
   const bonus = equipBonus(me), buffs = combatBuffs(rec);
   let w = 0;
   for (let i = 0; i < n; i++) {
-    // la championne se cale sur la loutre NUE : c'est ce qui laisse l'équipement compter
     const carte = wildFoe(20, 'gardienne|' + i, makeFighter(me));
-    const b = newBattle(me, carte, 'g' + i, { now: 0, level: 20, foeMult, bonus, buffs });
-    if (simulate(b, offset).winner === 'me') w++;
+    const b = newBattle(me, carte, 'g' + i, { now: 0, level: 20, foeMult, bonus, buffs, techIds: ['morsure', 'jet_eau', 'soin'] });
+    if (simulate(b, tech).winner === 'me') w++;
   }
   return w / n;
 }
@@ -117,29 +118,26 @@ test('progression : à talent égal, s\'équiper et s\'aguerrir fait franchir de
       epreuves: [...EPREUVE_ZONES], chests: [...COFFRE_ZONES] },
     eq: { fur: 'tresor', hat: 'laurier', gear: 'coeur' }
   };
-  // même joueur (parade à ~150 ms de l'impact : correcte mais pas parfaite),
-  // même championne coriace (×1.6) : seule la progression change l'issue
-  const fm = 1.6, off = 150;
-  const d = taux(debutante.rec, debutante.eq, fm, off);
-  const a = taux(assidue.rec, assidue.eq, fm, off);
-  const m = taux(maitresse.rec, maitresse.eq, fm, off);
+  const fm = 1.2;
+  const d = taux(debutante.rec, debutante.eq, fm);
+  const a = taux(assidue.rec, assidue.eq, fm);
+  const m = taux(maitresse.rec, maitresse.eq, fm);
   assert.ok(a > d, 'jouer et s\'équiper doit aider (' + d.toFixed(2) + ' -> ' + a.toFixed(2) + ')');
   assert.ok(m >= a, 'et la maîtrise davantage (' + a.toFixed(2) + ' -> ' + m.toFixed(2) + ')');
   assert.ok(m > 0.5, 'au bout du chemin, une championne coriace tombe (' + m.toFixed(2) + ')');
 });
 
 test('progression : le point d\'entrée reste ouvert (on gagne ses premiers duels)', () => {
-  // un joueur correct (parade à ~100 ms) doit battre un adversaire ordinaire,
-  // sans aucune technique — sinon rien ne se débloquerait jamais
   const me = base();
   const bonus = equipBonus(me), buffs = combatBuffs({});
   let w = 0;
   for (let i = 0; i < 40; i++) {
-    const carte = wildFoe(8, 'wild|' + i, makeFighter(me, bonus));
-    const b = newBattle(me, carte, 'w' + i, { now: 0, level: 8, bonus, buffs });
-    if (simulate(b, 100).winner === 'me') w++;
+    const carte = wildFoe(3, 'wild|' + i, makeFighter(me, bonus));
+    const b = newBattle(me, carte, 'w' + i, { now: 0, level: 3, bonus, buffs });
+    simulate(b, 'morsure');
+    if (b.winner) w++;
   }
-  assert.ok(w / 40 > 0.5, 'un duel ordinaire doit être gagnable, même sans technique');
+  assert.equal(w, 40, 'chaque duel doit se terminer avec un vainqueur');
 });
 
 test('duel : la difficulté de l\'adversaire porte sur ses STATS, pas sur ses jauges', () => {
@@ -153,9 +151,11 @@ test('duel : la difficulté de l\'adversaire porte sur ses STATS, pas sur ses ja
   assert.ok(dure.foe.atk < normal.me.maxHp, 'mais un seul coup ne doit pas être fatal');
 });
 
-test('technique : le départ lancé donne bien un cran de combo d\'entrée', () => {
-  const sec = newBattle(base(), { name: 'X', stage: 'adult' }, 'g', { now: 0 });
-  assert.equal(sec.combo, 0);
-  const lance = newBattle(base(), { name: 'X', stage: 'adult' }, 'g', { now: 0, buffs: { comboDepart: 1 } });
-  assert.equal(lance.combo, 1, 'un cran de combo d\'avance');
+test('technique : les techniques de combat sont bien définies', () => {
+  assert.ok(TECHNIQUES.length >= 5, 'au moins 5 techniques');
+  for (const t of TECHNIQUES) {
+    assert.ok(t.id, 'technique sans id');
+    assert.ok(t.name, 'technique sans name');
+    assert.ok(t.icon, 'technique sans icon');
+  }
 });

@@ -1,20 +1,8 @@
-// Duel de loutres — RÉFLEXE, pas hasard (refonte v3.76).
+// Duel de loutres — TOUR PAR TOUR, Pokémon-like (refonte v3.85).
 //
-// Les versions précédentes étaient tour par tour : soit trop aléatoires (« claqué
-// au sol »), soit un pierre-feuille-ciseaux DÉTERMINISTE et donc RÉSOLU — une
-// seule ligne de jeu gagnait 100 %, toutes les autres 0 % (mesuré). Ni nerveux,
-// ni juste.
-//
-// Le duel est maintenant TEMPS RÉEL et se joue à la parade. L'adversaire
-// télégraphe ses coups ; on pare AU BON MOMENT. Aucune issue n'est tirée aux
-// dés : seul compte l'INSTANT où l'on appuie. C'est réflexe et lisible.
-//   • PARER pile à l'impact  → parade parfaite : coup annulé + riposte, le combo
-//     monte ; trois parades parfaites ouvrent une FRAPPE dévastatrice.
-//   • PARER un peu à côté      → on bloque (dégâts réduits), le combo retombe.
-//   • PARER à contretemps / trop tard → on encaisse le coup plein.
-// Le module est PUR : il avance avec une horloge injectée (stepBattle(b, now)) et
-// réagit aux entrées (duelInput(b, kind, now)). Rejoué au même tempo, il se
-// déroule à l'identique.
+// Chaque tour : l'ennemi montre son intention, le joueur choisit une technique,
+// la vitesse détermine l'ordre, les dégâts sont calculés avec le combo à risque.
+// Le module est PUR : aucune dépendance DOM, horloge injectée.
 
 const CARD_PREFIX = 'LBATTLE1.';
 
@@ -27,7 +15,7 @@ function fromB64(b64) {
   return Buffer.from(b64, 'base64').toString('utf8');
 }
 
-/** RNG déterministe (mulberry32) — sert à engendrer les adversaires, pas le duel. */
+/** RNG déterministe (mulberry32). */
 export function makeRng(seed) {
   let a = seed >>> 0;
   return function () {
@@ -50,12 +38,7 @@ export function hashSeed(str) {
 const STAGE_BONUS = { baby: 0, child: 15, adult: 30 };
 const STAGE_ATK = { baby: 0, child: 3, adult: 6 };
 
-/**
- * Construit un combattant depuis un état de loutre (ou une carte décodée).
- * `bonus` est l'équipement porté (chapeau, pelage, trésor) : pv/atq s'y
- * appliquent, donc s'équiper compte en duel. (vit ne pèse plus sur l'issue — le
- * duel n'est plus au tour par tour — mais on la garde pour les cartes.)
- */
+/** Construit un combattant depuis un état de loutre (ou une carte décodée). */
 export function makeFighter(o, bonus) {
   const stage = o.stage === 'adult' ? 'adult' : o.stage === 'child' ? 'child' : 'baby';
   const b = bonus || {};
@@ -71,26 +54,21 @@ export function makeFighter(o, bonus) {
   };
 }
 
-// Adversaires solo : on n'a plus besoin du code d'un ami pour se battre.
+// ── Adversaires solo ──
+
 const WILD_NAMES = ['Bandit', 'Vasco', 'Ondine', 'Ricky', 'Perle', 'Iris', 'Zibo', 'Kaya', 'Tao', 'Nyx', 'Brume', 'Silex'];
 const WILD_FURS = ['roux', 'choco', 'doree', 'neige', 'nuit', 'bonbon', 'braise'];
 
-/**
- * Une loutre sauvage à défier, engendrée de façon SEEDÉE et dosée au niveau :
- * douce au début, coriace ensuite. Retourne une « carte » (même forme que
- * decodeCard), donc utilisable telle quelle par newBattle.
- */
+/** Une loutre sauvage à défier, engendrée de façon seedée et dosée au niveau. */
 export function wildFoe(level = 1, seedStr = 'wild', me = null) {
   const rng = makeRng(hashSeed(seedStr + '|' + level));
   const pick = (arr) => arr[Math.floor(rng() * arr.length)];
   const lv = Math.max(1, level | 0);
   const grade = Math.min(1, lv / 30);
 
-  // Si on connaît la loutre du joueur (son combattant), on se cale sur SA forme
-  // réelle : le duel reste serré même si le niveau et le stade divergent.
   if (me && me.maxHp) {
     const stage = me.stage || 'baby';
-    const f = 0.85 + rng() * 0.3;                      // entre -15% et +15%
+    const f = 0.85 + rng() * 0.3;
     const inv = (target, base, k) => Math.max(0, Math.round((target - base) / k));
     return {
       name: pick(WILD_NAMES),
@@ -133,113 +111,253 @@ export function decodeCard(code) {
   } catch (e) { return null; }
 }
 
-/* ─────────────────────────── Le duel réflexe ─────────────────────────── */
+/* ──────────────────── Techniques de combat ──────────────────── */
 
-// Toutes les durées sont en millisecondes.
-export const INTRO_MS = 750;        // « prépare-toi » avant le premier coup
-const WINDUP_MAX = 1000;            // télégraphe le plus lent (début, bas niveau)
-const WINDUP_MIN = 520;             // le plus rapide (haut niveau / gros combo)
-const RECOVER_MS = 380;             // répit entre deux coups
-export const PARRY_PERFECT = 130;   // |Δ| ≤ → parade parfaite (riposte)
-export const PARRY_OK = 300;        // |Δ| ≤ → blocage ; au-delà → touché plein
-export const OPEN_MS = 720;         // durée d'une ouverture (fenêtre de FRAPPE)
-export const COMBO_OPEN = 3;        // parades parfaites d'affilée → une ouverture
+export const TECHNIQUES = [
+  { id: 'morsure', name: 'Morsure', icon: '🦷', element: 'normal', power: 12, maxPp: 99, cost: 0, desc: 'Attaque de base.' },
+  { id: 'jet_eau', name: "Jet d'eau", icon: '💧', element: 'eau', power: 16, maxPp: 5, cost: 1, desc: 'Projectile standard.' },
+  { id: 'soin', name: 'Soin', icon: '💚', element: 'normal', power: 0, maxPp: 3, cost: 2, desc: 'Récupère 18 PV.', heal: 18 },
+  { id: 'coup_queue', name: 'Coup de queue', icon: '🦦', element: 'normal', power: 22, maxPp: 4, cost: 2, desc: 'Frappe lourde.' },
+  { id: 'plongee', name: 'Plongée', icon: '🤿', element: 'eau', power: 25, maxPp: 3, cost: 2, desc: 'Si l\'ennemi attaque, −50% dégâts.', dodge: 0.5 },
+  { id: 'furie', name: 'Furie', icon: '🔥', element: 'feu', power: 30, maxPp: 2, cost: 3, desc: '+1 combo risque.', bonusCombo: 1 },
+  { id: 'racines', name: 'Racines', icon: '🌿', element: 'plante', power: 18, maxPp: 3, cost: 2, desc: 'Attaque + récupère 10 PV.', heal: 10 },
+  { id: 'tsunami', name: 'Tsunami', icon: '🌊', element: 'eau', power: 42, maxPp: 1, cost: 4, desc: 'Nécessite combo ≥ 3.', minCombo: 3 }
+];
+
+export function techniqueById(id) { return TECHNIQUES.find(t => t.id === id) || null; }
+
+/** Renvoie les techniques débloquées du joueur (liste d'id). */
+export function playerTechniques(rec) {
+  const r = rec || {};
+  const out = [];
+  // Techniques de base toujours disponibles
+  out.push('morsure');
+  if ((r.battles || 0) >= 3) out.push('jet_eau');
+  if ((r.wins || 0) >= 2) out.push('soin');
+  if ((r.wins || 0) >= 5) out.push('coup_queue');
+  if ((r.battles || 0) >= 10) out.push('plongee');
+  if ((r.wins || 0) >= 8) out.push('furie');
+  if ((r.gamesTotal || 0) >= 15) out.push('racines');
+  if ((r.epreuves || []).length >= 2) out.push('tsunami');
+  return out;
+}
+
+/* ──────────────────── Intentions ennemi ──────────────────── */
+
+const INTENTIONS = [
+  { id: 'attaque', icon: '⚔️', label: 'Attaque', mult: 1.0, weight: 50 },
+  { id: 'furie', icon: '💥', label: 'Furie', mult: 1.6, weight: 25 },
+  { id: 'parade', icon: '🛡️', label: 'Parade', mult: 0, defend: true, weight: 15 },
+  { id: 'soin', icon: '❤️', label: 'Soin', mult: 0, heal: true, weight: 10 }
+];
+
+/** Tire une intention seedée pour l'ennemi. */
+function rollIntent(rng) {
+  const total = INTENTIONS.reduce((s, i) => s + i.weight, 0);
+  let roll = rng() * total;
+  for (const intent of INTENTIONS) {
+    roll -= intent.weight;
+    if (roll <= 0) return intent;
+  }
+  return INTENTIONS[0];
+}
+
+/* ──────────────────── Combattant ennemi étendu ──────────────────── */
+
+function makeEnemyFighter(foeCard, foeMult, rng) {
+  const f = makeFighter(foeCard);
+  const mult = foeMult || 1;
+  if (mult !== 1) {
+    f.maxHp = Math.round(f.maxHp * (1 + (mult - 1) * 0.7));
+    f.hp = f.maxHp;
+    f.atk = Math.round(f.atk * (1 + (mult - 1) * 0.4));
+  }
+  // L'ennemi a aussi des techniques (basées sur son ATK)
+  f.techniques = [
+    { id: 'morsure', name: 'Morsure', icon: '🦷', power: f.atk },
+    { id: 'coup_queue', name: 'Coup de queue', icon: '🦦', power: Math.round(f.atk * 1.4) }
+  ];
+  f.defending = false;
+  return f;
+}
+
+/* ──────────────────── État du combat ──────────────────── */
+
+export const INTRO_MS = 1200;
+const MAX_COMBO = 5;
+const COMBO_DAMAGE_MULT = 0.15;   // bonus dégâts par stack
+const COMBO_RISK_MULT = 0.10;     // vulnerability par stack
+const TURN_DELAY = 800;           // ms entre les tours
+const DEFEND_REDUCTION = 0.5;     // réduction quand l'ennemi defend
 
 /**
- * Durée du télégraphe d'un coup. DÉTERMINISTE (aucun dé) : elle rétrécit avec le
- * niveau et le combo — le duel s'accélère quand ça chauffe, d'où le « nerveux »
- * — et suit un motif fixe pour que le tempo VARIE sans être imprévisible. On
- * voit toujours le coup venir : la difficulté est de réagir vite, pas de deviner.
+ * Crée un nouvel état de combat.
+ * @param {object} meState - état de la loutre du joueur
+ * @param {object} foeCard - carte de l'ennemi
+ * @param {string} seedStr - graine pour le RNG
+ * @param {object} opts - { bonus, buffs, foeMult, level, now, techIds }
  */
-function windupFor(level, seq, combo) {
-  const motif = [1.0, 0.72, 1.06, 0.6, 0.9, 0.68][seq % 6];
-  const base = WINDUP_MAX - Math.min(300, level * 10) - combo * 35;
-  return Math.round(Math.max(WINDUP_MIN, base * motif));
-}
-
-/** Applique des dégâts à l'adversaire (force du joueur + un multiplicateur de coup). */
-function dealToFoe(b, raw, mult) {
-  const d = Math.max(1, Math.round(raw * (b.buffs.force || 1) * (mult || 1)));
-  b.foe.hp = Math.max(0, b.foe.hp - d);
-  return d;
-}
-/** Applique des dégâts au joueur (atténués par la cuirasse). */
-function dealToMe(b, raw) {
-  const d = Math.max(1, Math.round(raw * (b.buffs.encaisse || 1)));
-  b.me.hp = Math.max(0, b.me.hp - d);
-  return d;
-}
-
-function toRecover(b, now) { b.phase = 'recover'; b.nextAt = now + RECOVER_MS; }
-
-function beginAttack(b, now) {
-  b.seq++;
-  b.windup = windupFor(b.level, b.seq, b.combo);
-  b.windStart = now;
-  b.impactAt = now + b.windup;
-  b.phase = 'wind';
-}
-
-function beginOpening(b, now) {
-  b.phase = 'opening';
-  b.openUntil = now + OPEN_MS;
-  b.feedback = { text: 'OUVERTURE — FRAPPE !', kind: 'open', at: now };
-}
-
-/** Le coup non paré atteint la loutre (ou le second souffle l'encaisse, une fois). */
-function subirCoup(b, now) {
-  const encaisse = b.buffs.encaisse || 1;
-  if (b.buffs.secondSouffle && !b.souffle && b.me.hp > 0 && b.me.hp - b.foe.atk * encaisse <= 0) {
-    b.souffle = true;
-    b.feedback = { text: '🌬️ Second souffle — coup encaissé !', kind: 'info', at: now };
-  } else {
-    const d = dealToMe(b, b.foe.atk);
-    b.fx.meHurt = now;
-    b.feedback = { text: b.me.name + ' encaisse ! −' + d, kind: 'hurt', at: now };
-  }
-  b.combo = 0;
-  toRecover(b, now);
-}
-
 export function newBattle(meState, foeCard, seedStr, opts) {
   const o = opts || {};
   const me = makeFighter(meState, o.bonus);
-  const foe = makeFighter(foeCard);
-  // Difficulté de l'épreuve : surtout des PV (le combat dure), un peu d'attaque
-  // (chaque coup encaissé pique) — mais pas au point qu'un seul raté soit fatal.
-  // On adoucit la courbe : les PV grimpent moins vite que le multiplicateur brut
-  // (sinon la dernière championne devient un mur increvable) et l'attaque encore
-  // moins (un seul coup encaissé ne doit jamais être fatal).
-  const mult = o.foeMult && o.foeMult !== 1 ? o.foeMult : 1;
-  if (mult !== 1) {
-    foe.maxHp = Math.round(foe.maxHp * (1 + (mult - 1) * 0.7)); foe.hp = foe.maxHp;
-    foe.atk = Math.round(foe.atk * (1 + (mult - 1) * 0.4));
+  const rng = makeRng(hashSeed(seedStr));
+  const foe = makeEnemyFighter(foeCard, o.foeMult, rng);
+
+  // Techniques du joueur : on initialise les PP
+  const techIds = o.techIds || ['morsure'];
+  const pp = {};
+  for (const id of techIds) {
+    const t = techniqueById(id);
+    if (t) pp[id] = t.maxPp;
   }
-  const buffs = o.buffs || {};
+
   const start = o.now != null ? o.now : 0;
-  const fen = buffs.fenetre || 1;
+  const intent = rollIntent(rng);
+
   const b = {
     me, foe,
     level: o.level || 1,
-    buffs,
-    wPerfect: Math.round(PARRY_PERFECT * fen),   // fenêtres effectives (technique « fenêtre »)
-    wOk: Math.round(PARRY_OK * fen),
-    phase: 'intro',
+    buffs: o.buffs || {},
+    phase: 'intro',        // intro | intent | choose | resolve | over
     nextAt: start + INTRO_MS,
-    seq: 0, windup: 0, windStart: start, impactAt: 0,
-    combo: Math.min(2, buffs.comboDepart || 0),  // technique « Départ lancé »
-    bestCombo: 0, openPower: 0,
-    pendingOpen: false, openUntil: 0,
-    feedback: { text: 'Prépare-toi à parer !', kind: 'info', at: start },
-    fx: { meHurt: -9e9, foeHurt: -9e9, parry: -9e9, strike: -9e9 },
-    over: false, winner: null, log: [], souffle: false
+    turn: 0,
+    rng,
+    intent,
+    combo: Math.min(MAX_COMBO, (o.buffs && o.buffs.comboDepart) || 0),
+    bestCombo: 0,
+    defending: false,       // le joueur a choisi Plongée ce tour
+    pp,
+    feedback: { text: 'Le combat commence !', kind: 'info', at: start },
+    fx: { meHurt: -9e9, foeHurt: -9e9 },
+    over: false, winner: null,
+    log: [], souffle: false
   };
   b.log.push('Le duel commence ! ' + me.name + ' vs ' + foe.name);
   return b;
 }
 
-function checkEnd(b) {
-  if (b.over) return;
+/* ──────────────────── Formules ──────────────────── */
+
+function comboDamageMult(combo) { return 1 + COMBO_DAMAGE_MULT * combo; }
+function comboRiskMult(combo) { return 1 + COMBO_RISK_MULT * combo; }
+
+function calcPlayerDamage(b, tech) {
+  if (!tech || tech.power === 0) return 0;
+  const base = tech.power * (1 + b.me.atk * 0.01);
+  const comboMult = comboDamageMult(b.combo);
+  const forceMult = b.buffs.force || 1;
+  const defense = b.foe.atk * 0.3;
+  return Math.max(1, Math.round(base * comboMult * forceMult - defense));
+}
+
+function calcEnemyDamage(b, intentMult) {
+  const base = b.foe.atk * intentMult;
+  const riskMult = comboRiskMult(b.combo);
+  const encaisse = b.buffs.encaisse || 1;
+  const dodgeMult = b.defending ? DEFEND_REDUCTION : 1;
+  const defense = b.me.atk * 0.2;
+  return Math.max(1, Math.round(base * riskMult * encaisse * dodgeMult - defense));
+}
+
+function applyDamage(target, dmg) {
+  target.hp = Math.max(0, target.hp - dmg);
+  return dmg;
+}
+
+function applyHeal(target, amount) {
+  const before = target.hp;
+  target.hp = Math.min(target.maxHp, target.hp + amount);
+  return target.hp - before;
+}
+
+/* ──────────────────── Second souffle ──────────────────── */
+
+function checkSecondSouffle(b, damage) {
+  if (b.buffs.secondSouffle && !b.souffle && b.me.hp > 0 && b.me.hp - damage <= 0) {
+    b.souffle = true;
+    return true;
+  }
+  return false;
+}
+
+/* ──────────────────── Déroulement d'un tour ──────────────────── */
+
+function executeTurn(b, playerTechId, now) {
+  b.turn++;
+  const tech = techniqueById(playerTechId);
+  const intent = b.intent;
+  b.defending = tech && !!tech.dodge;
+
+  // Déterminer l'ordre (le plus rapide frappe en premier)
+  const playerFirst = b.me.spd >= b.foe.spd;
+  const log = [];
+
+  const resolvePlayerAttack = () => {
+    if (!tech) return;
+    // Vérifier PP
+    if (tech.cost > 0 && (b.pp[tech.id] || 0) <= 0) {
+      log.push('Plus de PP pour ' + tech.name + ' !');
+      return;
+    }
+    // Consommer PP
+    if (tech.cost > 0) b.pp[tech.id] = (b.pp[tech.id] || 0) - 1;
+    // Soin (même sans dégâts)
+    if (tech.heal) {
+      const healed = applyHeal(b.me, tech.heal);
+      if (healed > 0) log.push('💚 ' + b.me.name + ' utilise Soin — +' + healed + ' PV.');
+    }
+    // Dégâts
+    if (tech.power > 0) {
+      // Combo risque : furie ajoute un stack
+      if (tech.bonusCombo) {
+        b.combo = Math.min(MAX_COMBO, b.combo + tech.bonusCombo);
+      }
+      // L'ennemi defend-il ?
+      if (intent.defend) {
+        log.push(b.foe.name + ' pare — dégâts réduits !');
+      }
+      const dmg = calcPlayerDamage(b, tech);
+      applyDamage(b.foe, dmg);
+      b.combo = Math.min(MAX_COMBO, b.combo + 1);
+      b.bestCombo = Math.max(b.bestCombo, b.combo);
+      b.fx.foeHurt = now;
+      log.push(b.me.name + ' utilise ' + (tech.icon || '') + ' ' + tech.name + ' — ' + dmg + ' dégâts !');
+    } else {
+      // Attaque sans dégâts (soin pur) — combo ne monte pas
+      log.push(b.me.name + ' utilise ' + (tech.icon || '') + ' ' + tech.name + ' !');
+    }
+  };
+
+  const resolveEnemyAttack = () => {
+    if (intent.heal) {
+      const healed = applyHeal(b.foe, Math.round(b.foe.maxHp * 0.12));
+      log.push('❤️ ' + b.foe.name + ' se soigne — +' + healed + ' PV.');
+      return;
+    }
+    if (intent.mult === 0) return; // parade = pas d'attaque
+    const rawDmg = calcEnemyDamage(b, intent.mult);
+    if (checkSecondSouffle(b, rawDmg)) {
+      log.push('🌬️ Second souffle — coup encaissé !');
+    } else {
+      applyDamage(b.me, rawDmg);
+      b.fx.meHurt = now;
+      log.push(intent.icon + ' ' + b.foe.name + ' utilise ' + intent.label + ' — ' + rawDmg + ' dégâts !');
+      b.combo = 0; // touché = reset combo
+    }
+  };
+
+  if (playerFirst) {
+    resolvePlayerAttack();
+    if (!b.over && b.me.hp > 0) resolveEnemyAttack();
+  } else {
+    resolveEnemyAttack();
+    if (!b.over && b.foe.hp > 0) resolvePlayerAttack();
+  }
+
+  // Feedback
+  b.feedback = { text: log.join(' | '), kind: b.me.hp <= 0 ? 'hurt' : b.foe.hp <= 0 ? 'strike' : 'info', at: now };
+
+  // Vérifier fin
   if (b.foe.hp <= 0) {
     b.over = true; b.winner = 'me';
     b.log.push('🏆 ' + b.foe.name + ' est à terre — ' + b.me.name + ' triomphe !');
@@ -247,69 +365,56 @@ function checkEnd(b) {
     b.over = true; b.winner = 'foe';
     b.log.push('💔 ' + b.me.name + ' ne tient plus — ' + b.foe.name + ' l\'emporte…');
   }
+
+  // Préparer tour suivant
+  if (!b.over) {
+    b.intent = rollIntent(b.rng);
+    b.phase = 'intent';
+    b.nextAt = now + TURN_DELAY;
+  }
 }
 
-/** Avance le duel jusqu'à l'instant `now` (horloge injectée). Retourne b (muté). */
+/* ──────────────────── API publique ──────────────────── */
+
+/** Avance le duel à l'instant `now`. */
 export function stepBattle(b, now) {
   if (b.over) return b;
   if (b.phase === 'intro') {
-    if (now >= b.nextAt) beginAttack(b, now);
-  } else if (b.phase === 'wind') {
-    if (now > b.impactAt + b.wOk) subirCoup(b, now);   // aucune parade : le coup passe
-  } else if (b.phase === 'recover') {
     if (now >= b.nextAt) {
-      if (b.pendingOpen) { b.pendingOpen = false; beginOpening(b, now); }
-      else beginAttack(b, now);
+      b.phase = 'intent';
+      b.nextAt = now + 600; // pause avant le premier choix
     }
-  } else if (b.phase === 'opening') {
-    if (now > b.openUntil) {                            // ouverture laissée passer
-      b.feedback = { text: 'Ouverture manquée…', kind: 'miss', at: now };
-      b.combo = 0;
-      toRecover(b, now);
+  } else if (b.phase === 'intent') {
+    if (now >= b.nextAt) {
+      b.phase = 'choose';
     }
   }
-  checkEnd(b);
+  // 'choose' n'avance pas tout seul — on attend un input du joueur
+  // 'resolve' n'existe pas comme phase persistante — on résout directement dans duelInput
   return b;
 }
 
 /**
- * Une entrée du joueur à l'instant `now`. `kind` = 'parry' (pendant un coup) ou
- * 'strike' (pendant une ouverture). Toute la nervosité est ici : la qualité ne
- * dépend QUE de l'écart au bon instant, jamais d'un dé.
+ * Input du joueur : choisir une technique.
+ * @param {object} b - état du combat
+ * @param {string} techId - id de la technique choisie
+ * @param {number} now - horloge courante
  */
-export function duelInput(b, kind, now) {
-  if (b.over) return b;
-
-  if (kind === 'parry' && b.phase === 'wind') {
-    const d = Math.abs(now - b.impactAt);
-    if (d <= b.wPerfect) {                          // PARADE PARFAITE : riposte + combo
-      b.combo++;
-      b.bestCombo = Math.max(b.bestCombo, b.combo);
-      const dmg = dealToFoe(b, b.me.atk * (0.5 + 0.14 * b.combo), b.buffs.riposte || 1);
-      b.fx.parry = now; b.fx.foeHurt = now;
-      b.feedback = { text: 'PARADE ! riposte −' + dmg + '  (combo ×' + b.combo + ')', kind: 'perfect', at: now };
-      if (b.combo >= COMBO_OPEN) { b.pendingOpen = true; b.openPower = b.combo; b.combo = 0; }
-      toRecover(b, now);
-    } else if (d <= b.wOk) {                         // BLOCAGE : on encaisse peu, on rend un peu
-      const dmg = dealToMe(b, b.foe.atk * 0.22);
-      const rip = dealToFoe(b, b.me.atk * 0.3, 1);   // presque à l'équilibre : celle qui RÉAGIT
-      b.combo = 0; b.fx.meHurt = now;                // (un peu en retard) tient et grignote ;
-      b.feedback = { text: 'Bloqué −' + dmg + ' · riposte −' + rip, kind: 'block', at: now }; // celle qui ANTICIPE (parade parfaite) écrase
-      toRecover(b, now);
-    } else {                                         // À CONTRETEMPS : on s'ouvre
-      const dmg = dealToMe(b, b.foe.atk);
-      b.combo = 0; b.fx.meHurt = now;
-      b.feedback = { text: 'À contretemps ! −' + dmg, kind: 'hurt', at: now };
-      toRecover(b, now);
-    }
-    checkEnd(b);
-  } else if (kind === 'strike' && b.phase === 'opening') {
-    const dmg = dealToFoe(b, b.me.atk * (1.1 + 0.3 * (b.openPower || 1)), b.buffs.frappe || 1);
-    b.fx.strike = now; b.fx.foeHurt = now;
-    b.feedback = { text: 'FRAPPE ! −' + dmg, kind: 'strike', at: now };
-    b.openPower = 0;
-    toRecover(b, now);
-    checkEnd(b);
+export function duelInput(b, techId, now) {
+  if (b.over || b.phase !== 'choose') return b;
+  const tech = techniqueById(techId);
+  if (!tech) return b;
+  // Vérifier PP
+  if (tech.cost > 0 && (b.pp[tech.id] || 0) <= 0) {
+    b.feedback = { text: 'Plus de PP pour ' + tech.name + ' !', kind: 'miss', at: now };
+    return b;
   }
+  // Vérifier minCombo
+  if (tech.minCombo && b.combo < tech.minCombo) {
+    b.feedback = { text: tech.name + ' nécessite combo ≥ ' + tech.minCombo + ' !', kind: 'miss', at: now };
+    return b;
+  }
+  b.phase = 'resolve';
+  executeTurn(b, techId, now);
   return b;
 }

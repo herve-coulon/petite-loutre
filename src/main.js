@@ -33,8 +33,8 @@ import { registerSW, setupInstall, requestPersistentStorage, isIOS, isStandalone
 import { unlockedHats, hatById } from './accessories.js';
 import { unlockedFurs, unlockedDecors, equipBonus, furById, decorById } from './skins.js';
 import { newAchievements } from './achievements.js';
-import { encodeCard, decodeCard, newBattle, stepBattle, duelInput, wildFoe, makeFighter } from './battle.js';
-import { combatBuffs, jeuBuffs, unlockedTechniques, techniqueById } from './skills.js';
+import { encodeCard, decodeCard, newBattle, stepBattle, duelInput, wildFoe, makeFighter, playerTechniques, techniqueById } from './battle.js';
+import { combatBuffs, jeuBuffs, unlockedTechniques } from './skills.js';
 import { chasseurRode, newChasseur, stepChasseur, DEGATS_CAPTURE } from './chasseur.js';
 import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
 import {
@@ -2020,14 +2020,14 @@ function loop() {
       persist();
     }
   }
-  // Le DUEL RÉFLEXE avance en temps réel : le moteur fait naître et tomber les
-  // coups au fil de l'horloge, et l'arène se redessine (curseur du télégraphe)
-  // à chaque image tant que le combat tourne.
+  // Le DUEL TOUR-PAR-TOUR avance en temps réel : le moteur fait naître et tomber les
+  // coups au fil de l'horloge, et l'arène se redessine à chaque image tant que le
+  // combat tourne.
   if (battle && !battle.over) {
     stepBattle(battle, now());
     ui.updateBattleUI(battle, now());
-    if (battle.over) onDuelOver();
   }
+  if (battle && battle.over) onDuelOver();
   R.render(s, mg, frame, {
     wobble: s && now() < wobbleUntil,
     diving: diving(),
@@ -2127,10 +2127,9 @@ function boot() {
   /** Lance un combat contre la carte donnée. */
   const startBattle = (card, seed, foeMult) => {
     if (!card) return;
-    // l'équipement porté ET les techniques apprises entrent dans le duel réflexe.
-    // now() amorce l'horloge : la boucle rAF avance ensuite le duel image par image.
+    const techIds = playerTechniques(rec);
     battle = newBattle(s, card, seed,
-      { bonus: equipBonus(s), buffs: combatBuffs(rec), foeMult: foeMult || 1, level: curLevel(), now: now() });
+      { bonus: equipBonus(s), buffs: combatBuffs(rec), foeMult: foeMult || 1, level: curLevel(), now: now(), techIds });
     battleDone = false;
     rec.battles++;
     persistRec();
@@ -2166,22 +2165,20 @@ function boot() {
     if (!card) { ui.toast('❌ Code de combat invalide'); return; }
     startBattle(card, encodeCard(s) + $('bt-foecode').value.trim());
   });
-  // Une entrée du joueur dans le duel réflexe : parer (pendant un coup) ou
-  // frapper (pendant une ouverture). La boucle rAF fait avancer le temps ; ici
-  // on ne fait que dater l'appui. Le dénouement est traité par onDuelOver().
-  const duelAct = (kind) => {
+  // Sélection d'une technique dans le duel tour-par-tour.
+  const duelAct = (techId) => {
     if (!battle || battle.over) return;
-    duelInput(battle, kind, now());
+    duelInput(battle, techId, now());
     vibrate(6);
     const fk = battle.feedback && battle.feedback.kind;
-    if (fk === 'perfect' || fk === 'strike') { sfx.catch(); feel('soft'); }
+    if (fk === 'strike') { sfx.catch(); feel('soft'); }
     else if (fk === 'hurt') { sfx.sad(); ui.shake(); }
     else sfx.press();
     ui.updateBattleUI(battle, now());
     if (battle.over) onDuelOver();
   };
-  $('bt-parry').addEventListener('click', () => duelAct('parry'));
-  $('bt-strike').addEventListener('click', () => duelAct('strike'));
+  // Les boutons de technique sont créés dynamiquement par updateBattleUI
+  ui.setDuelAct(duelAct);
 
   $('b-mute').addEventListener('click', () => {
     s.mute = !s.mute; setMuted(s.mute); syncMusic(); persist(); ui.updateHUD(s, mg, rec);
