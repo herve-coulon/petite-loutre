@@ -1427,23 +1427,24 @@ function onCanvasPointer(e) {
 
 // Gestes de glissement : la balle qu'on lance, ou le poisson qu'on donne. Le doigt
 // pilote le jeton ; on convertit les coords écran -> coords canvas.
-// Convertit un pointeur écran -> coordonnées du canvas (0..W, 0..H), en tenant
-// compte d'object-fit (cover/contain) et d'object-position : sinon, plein écran
-// « cover » rogne l'image et le repère se décale (perte de précision au glisser).
+// Convertit un pointeur écran -> coordonnées logiques du canvas (0..CANVAS_W, 0..CANVAS_H),
+// en tenant compte d'object-fit (cover/contain), d'object-position et du HiDPI
+// (cv.width/cv.height peuvent être multipliés par le devicePixelRatio).
 function canvasXY(e) {
   const r = cv.getBoundingClientRect();
   const cs = getComputedStyle(cv);
   const fit = cs.objectFit;
-  let scaleX = r.width / cv.width, scaleY = r.height / cv.height, s = null;
+  const W = CANVAS_W, H = CANVAS_H;
+  let scaleX = r.width / W, scaleY = r.height / H, s = null;
   if (fit === 'cover') s = Math.max(scaleX, scaleY);
   else if (fit === 'contain') s = Math.min(scaleX, scaleY);
   if (s) {
     const pos = cs.objectPosition.split(' ');
     const px = (parseFloat(pos[0]) || 0) / 100, py = (parseFloat(pos[1]) || 0) / 100;
-    const left = (r.width - cv.width * s) * px, top = (r.height - cv.height * s) * py;
+    const left = (r.width - W * s) * px, top = (r.height - H * s) * py;
     return { x: (e.clientX - r.left - left) / s, y: (e.clientY - r.top - top) / s };
   }
-  return { x: (e.clientX - r.left) * (cv.width / r.width), y: (e.clientY - r.top) * (cv.height / r.height) };
+  return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
 }
 function onCanvasMove(e) {
   if (draggingBall) { const p = canvasXY(e); R.dragBall(p.x, p.y); return; }
