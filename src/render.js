@@ -231,6 +231,11 @@ function mix(a, b, t) {
 
 export function makeRenderer(cv) {
   const ctx = cv.getContext('2d');
+  // HiDPI : on rend à la résolution native de l'écran pour un pixel art net.
+  const dpr = Math.max(1, Math.min(typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1, 3));
+  cv.width = CANVAS_W * dpr;
+  cv.height = CANVAS_H * dpr;
+  ctx.scale(dpr, dpr);
   let particles = [];
   let squashUntil = 0;
   let vignette = null; // dégradé de vignettage, créé une fois (taille fixe)
@@ -1871,45 +1876,47 @@ export function makeRenderer(cv) {
       for (const f of (mg.flowers || [])) {
         const age = now - f.plantedAt;
         if (f.stage === 'seed') {
-          // petite graine brune
+          // graine brune — plus grosse pour être visible et touchable
           ctx.fillStyle = '#8b6914';
-          ctx.fillRect(f.x + 2, f.y + 2, 3, 2);
+          ctx.fillRect(f.x, f.y, 5, 4);
+          ctx.fillStyle = '#a07818';
+          ctx.fillRect(f.x + 1, f.y + 1, 3, 2);
         } else if (f.stage === 'sprout') {
-          // tige verte
+          // tige verte avec deux petites feuilles
           ctx.fillStyle = '#4a8c2a';
-          ctx.fillRect(f.x + 2, f.y - 2, 1, 5);
-          ctx.fillRect(f.x, f.y - 3, 5, 2);
+          ctx.fillRect(f.x + 2, f.y - 4, 2, 8);
+          ctx.fillRect(f.x, f.y - 5, 6, 3);
         } else if (f.stage === 'bloom') {
-          // fleur colorée
+          // fleur colorée — plus grande et plus visible
           const hue = (f.x * 7 + f.y * 3) % 360;
           ctx.fillStyle = 'hsl(' + hue + ',70%,60%)';
-          ctx.fillRect(f.x, f.y - 5, 6, 4);
+          ctx.fillRect(f.x - 1, f.y - 7, 8, 6);
           ctx.fillStyle = 'hsl(' + hue + ',80%,75%)';
-          ctx.fillRect(f.x + 1, f.y - 4, 4, 2);
+          ctx.fillRect(f.x, f.y - 6, 6, 3);
           // tige
           ctx.fillStyle = '#3a7a1a';
-          ctx.fillRect(f.x + 2, f.y - 1, 1, 5);
+          ctx.fillRect(f.x + 2, f.y - 1, 2, 6);
         } else if (f.stage === 'wilted' && !f.harvested) {
           ctx.fillStyle = 'rgba(120,100,60,.5)';
-          ctx.fillRect(f.x + 1, f.y - 2, 4, 3);
+          ctx.fillRect(f.x + 1, f.y - 3, 6, 4);
         }
       }
 
-      // grenouilles
+      // grenouilles — plus grosses pour être attrapables au doigt
       for (const fr of (mg.frogs || [])) {
         if (fr.caught) continue;
         ctx.fillStyle = '#3a9a2a';
-        ctx.fillRect(fr.x, fr.y, 7, 5);
+        ctx.fillRect(fr.x, fr.y, 10, 7);
         ctx.fillStyle = '#2a7a1a';
-        ctx.fillRect(fr.x + 1, fr.y - 1, 2, 2);
-        ctx.fillRect(fr.x + 4, fr.y - 1, 2, 2);
+        ctx.fillRect(fr.x + 1, fr.y - 1, 3, 2);
+        ctx.fillRect(fr.x + 6, fr.y - 1, 3, 2);
         // yeux
         ctx.fillStyle = '#ffe';
-        ctx.fillRect(fr.x + 1, fr.y, 2, 2);
-        ctx.fillRect(fr.x + 4, fr.y, 2, 2);
+        ctx.fillRect(fr.x + 1, fr.y, 3, 3);
+        ctx.fillRect(fr.x + 6, fr.y, 3, 3);
         ctx.fillStyle = '#111';
-        ctx.fillRect(fr.x + 2, fr.y, 1, 1);
-        ctx.fillRect(fr.x + 5, fr.y, 1, 1);
+        ctx.fillRect(fr.x + 2, fr.y + 1, 1, 1);
+        ctx.fillRect(fr.x + 7, fr.y + 1, 1, 1);
       }
 
       // bandeau : temps, score

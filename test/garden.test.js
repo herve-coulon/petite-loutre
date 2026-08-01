@@ -69,10 +69,10 @@ describe('garden', () => {
   it('tickGame fait apparaître des graines et des grenouilles', () => {
     const g = newGame(1000);
     const rnd = () => 0.5;
-    // nextSeed = 1600, nextFrog = 3000
-    tickGame(g, 1700, rnd);
+    // nextSeed = 1600, nextFrog = 3000, intro finit à 4200
+    tickGame(g, 4500, rnd);
     assert.ok(g.flowers.length > 0, 'une graine est apparue');
-    tickGame(g, 3500, rnd);
+    tickGame(g, 5500, rnd);
     assert.ok(g.frogs.length > 0, 'une grenouille est apparue');
   });
 });

@@ -13,6 +13,9 @@ import { traitById, bondLevel } from './personality.js';
 import { gangPower, fighterPower, MAX_MEMBERS } from './gang.js';
 import { makeFighter, encodeCard, OPEN_MS, COMBO_OPEN } from './battle.js';
 import { TECHNIQUES, unlockedTechniques } from './skills.js';
+
+/** Échappe les caractères HTML dangereux pour un usage sûr dans innerHTML. */
+function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 import { equipBonus } from './skins.js';
 import { paintOtter, paintBadge } from './render.js';
 import { ZONES, ZONE_INTRO, FIND_ICON, SPECIALITE, COFFRE_ZONES, EPREUVE_ZONES, zoneDuJour, zoneLayout, zoneUnlocked, zoneReq } from './tilemap.js';
@@ -48,7 +51,7 @@ export function celebrate({ kicker, big, title, reward, rewardColor }) {
   $('cheer-big').textContent = big != null ? big : '';
   $('cheer-title').textContent = title || '';
   const r = $('cheer-reward');
-  r.innerHTML = reward || '';
+  r.innerHTML = reward || '';  // reward est contrôlé (items.js, constants), pas de risque XSS
   r.style.color = rewardColor || 'var(--dim)';
   const el = $('ovl-cheer');
   el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); // relance l'anim
@@ -597,7 +600,7 @@ export function renderBestiary(rec) {
 export function showStory(beat, onDone) {
   $('story-emoji').textContent = beat.emoji || '✨';
   $('story-title').textContent = beat.title || '';
-  $('story-body').innerHTML = (beat.lines || []).map(l => '<p>' + l + '</p>').join('');
+  $('story-body').innerHTML = (beat.lines || []).map(l => '<p>' + esc(l) + '</p>').join('');
   $('story-body').scrollTop = 0;
   const btn = $('btn-story-next');
   btn.textContent = beat.cta || 'CONTINUER';
@@ -852,7 +855,7 @@ export function renderAchievements(rec, s) {
     const prog = bl.max ? '❤️' : ' (' + bl.cur + '/' + bl.next + ')';
     const cLine = document.createElement('p');
     cLine.className = 'small'; cLine.id = 'char-line';
-    cLine.innerHTML = '🦦 <b>' + (s.name || 'Ta loutre') + '</b> · ' + tr.name + ' ' + tr.emoji +
+    cLine.innerHTML = '🦦 <b>' + esc(s.name || 'Ta loutre') + '</b> · ' + tr.name + ' ' + tr.emoji +
       ' · Lien : ' + bl.name + ' 💛' + prog;
     list.appendChild(cLine);
   }

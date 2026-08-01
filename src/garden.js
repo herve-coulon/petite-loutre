@@ -55,8 +55,8 @@ export function tickGame(mg, now = Date.now(), rnd = Math.random) {
   // Grenouilles qui disparaissent
   mg.frogs = mg.frogs.filter(f => now - f.appearedAt < FROG_LIVE);
 
-  // Apparition de nouvelles graines
-  if (now >= mg.nextSeed && now < mg.endsAt - 1000) {
+  // Apparition de nouvelles graines (pas pendant l'intro)
+  if (now >= mg.nextSeed && now < mg.endsAt - 1000 && now >= mg.startedAt + INTRO_DURATION) {
     const spots = waterSpots(mg);
     if (spots.length > 0) {
       const spot = spots[(rnd() * spots.length) | 0];
@@ -84,7 +84,7 @@ export function waterAt(mg, x, y) {
   for (const f of mg.flowers) {
     if (f.stage === 'seed' || f.stage === 'sprout') {
       const dx = f.x - x, dy = f.y - y;
-      if (Math.abs(dx) < 16 && Math.abs(dy) < 16) {
+      if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
         // Arrosage : avance la pousse
         f.plantedAt -= 600;
         mg.waterDrops++;
@@ -96,7 +96,7 @@ export function waterAt(mg, x, y) {
 }
 
 /** Récolte une fleur en bloom ou une grenouille. */
-export function harvestAt(mg, x, y, pad = 12) {
+export function harvestAt(mg, x, y, pad = 18) {
   if (!mg) return false;
   // Fleurs en fleur
   for (const f of mg.flowers) {
