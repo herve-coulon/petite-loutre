@@ -321,3 +321,10 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v3.87 : une seule horloge, un seul peintre. Le ciel de la berge revient
+ENTIÈREMENT au canvas via une source unique heure→palette extraite dans son
+module pur `sky.js` (testée aux 4 heures repères 3 h / 7 h 30 / 12 h / 19 h 30 :
+ciel et sol racontent toujours la même heure). Le dark mode ne repeint plus le
+monde (fini le ciel de nuit sur une herbe de plein jour) — il ne touche que
+l'UI. Frictions de v3.86 vérifiées déjà résolues (créatures bien sous le HUD,
+pas de chip boussole parasite).*

@@ -760,8 +760,9 @@ input#name-input:focus{border-color:var(--teal);}
   #log{color:var(--txt); background:rgba(13,17,23,.7); backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);}
   .jauge .track{background:rgba(40,46,66,.6);}
   #hud{color:var(--txt);}
-  #screenwrap{background:#0d1117;}
-  canvas#cv{background:#0d1117;}
+  /* Le monde (berge : ciel, eau, sol) est peint UNIQUEMENT par le canvas via
+     skyColors() — le dark mode ne doit JAMAIS le repeindre, sinon un ciel de
+     nuit se posait sur une herbe de plein jour. Le dark mode ne touche que l'UI. */
   .fill{filter:brightness(.85);}
   .coach-target{border-color:var(--gold);}
   .toast{background:rgba(30,34,51,.92); backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px); color:var(--txt);}

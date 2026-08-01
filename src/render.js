@@ -12,6 +12,7 @@ import { itemById, RARITIES, ITEMS } from './items.js';
 import { LANE_X, SLIDE_OTTER_Y, COMBO_STEP, GOBE_MS, VIES_MAX, slideProgress } from './toboggan.js';
 import { GROW_TIME as GARDEN_GROW, FLOWER_LIVE as GARDEN_LIVE, gardenProgress } from './garden.js';
 import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, FIND_ICON, FAUNE, groundTile, decorTile, zoneGates, zoneUnlocked, zoneReq } from './tilemap.js';
+import { mix, skyColors } from './sky.js';   // ciel/décor : source unique heure→palette (jamais le CSS)
 import { otterArt, drawAnim, frameAt, animForMood, ANATOMY, ANIMS } from './otter-art.js';
 import { creatureById } from './creatures.js';
 
@@ -221,13 +222,6 @@ export function squashScale(t) {
 }
 
 const CONFETTI_COLS = ['#e5484d', '#f2c14e', '#5fc9e0', '#8ad05f', '#e8608a', '#ffffff'];
-
-/** Mélange deux couleurs hex (#rrggbb), t=0 -> a, t=1 -> b. Pour la brume/perspective. */
-function mix(a, b, t) {
-  const pa = [1, 3, 5].map(i => parseInt(a.slice(i, i + 2), 16));
-  const pb = [1, 3, 5].map(i => parseInt(b.slice(i, i + 2), 16));
-  return '#' + pa.map((v, i) => Math.round(v + (pb[i] - v) * t).toString(16).padStart(2, '0')).join('');
-}
 
 export function makeRenderer(cv) {
   const ctx = cv.getContext('2d');
@@ -585,45 +579,7 @@ export function makeRenderer(cv) {
     // 'neutre' : le sprite de base suffit
   }
 
-  // 4 palettes fixes : nuit, aube, jour, crépuscule. Le ciel fond doucement
-  // entre elles sur des fenêtres de ~1h30 au lieu de couper brutallement.
-  const SKY_PALETTES = [
-    { h: 0,  sky: '#1b2440', hill: '#2c4433', hill2: '#233828', water: '#1e3a5f', wave: '#31558a' }, // nuit (pleine à 3h)
-    { h: 7,  sky: '#f2b28c', hill: '#5f9e4a', hill2: '#4a8340', water: '#4a6fae', wave: '#7d9fd4' }, // aube (pleine à 7h30)
-    { h: 12, sky: '#9fd9e8', hill: '#7ac74f', hill2: '#5aa63d', water: '#3f7fd1', wave: '#7db4e8' }, // jour (plein à 12h)
-    { h: 19, sky: '#f2b28c', hill: '#5f9e4a', hill2: '#4a8340', water: '#4a6fae', wave: '#7d9fd4' }, // crépuscule (plein à 19h30)
-  ];
-  function skyColors(now) {
-    const h = now.getHours() + now.getMinutes() / 60;
-    // Trouve les deux palettes encadrantes et interpole
-    for (let i = 0; i < SKY_PALETTES.length - 1; i++) {
-      const a = SKY_PALETTES[i], b = SKY_PALETTES[i + 1];
-      if (h >= a.h && h < b.h) {
-        const t = (h - a.h) / (b.h - a.h);
-        return {
-          sky: mix(a.sky, b.sky, t), hill: mix(a.hill, b.hill, t),
-          hill2: mix(a.hill2, b.hill2, t), water: mix(a.water, b.water, t),
-          wave: mix(a.wave, b.wave, t), night: h >= 21 || h < 7
-        };
-      }
-    }
-    // Au-delà de 19h → fondre du crépuscule (19h) vers la nuit (21h) puis nuit pleine
-    if (h >= 19) {
-      if (h < 21) {
-        const t = (h - 19) / 2;
-        const a = SKY_PALETTES[3], b = SKY_PALETTES[0];
-        return {
-          sky: mix(a.sky, b.sky, t), hill: mix(a.hill, b.hill, t),
-          hill2: mix(a.hill2, b.hill2, t), water: mix(a.water, b.water, t),
-          wave: mix(a.wave, b.wave, t), night: true
-        };
-      }
-      return { sky: '#1b2440', hill: '#2c4433', hill2: '#233828', water: '#1e3a5f', wave: '#31558a', night: true };
-    }
-    // Avant 0h → nuit pleine (entre 21h et 0h on est dans le premier cas)
-    return { sky: '#1b2440', hill: '#2c4433', hill2: '#233828', water: '#1e3a5f', wave: '#31558a', night: true };
-  }
-
+  // Le ciel/décor vient de src/sky.js (source unique heure→palette, testée à part).
   // La saison repeint la berge (et la rivière l'hiver) par-dessus l'heure du jour.
   function applySeason(c, season) {
     const t = season && (c.night ? season.night : season.day);
@@ -1284,8 +1240,12 @@ export function makeRenderer(cv) {
       cloud((150 - (d * 0.16) % 200 + 200) % 200 - 20, 84, 14);
     }
 
-    // --- BERGE (collines, herbe, eau) : dessinée pour un sol à y=96 puis
-    //     décalée vers le bas ; l'eau s'étend jusqu'au bas de l'écran. ---
+    // ═══ SECTION BERGE — REPÈRE UNIQUE (à respecter, cf. règle d'or « Coordonnées ») ═══
+    // Tout se dessine dans le repère « scène de base » : sol à y=96, ciel au-dessus,
+    // eau en dessous ; puis un SEUL translate(0, BERGE_SHIFT=144) décale l'ensemble
+    // vers le bas pour remplir l'écran. Donc : coordonnée écran = coordonnée de base
+    // + 144 sous ce translate. Ne pas empiler d'autres décalages ici (c'est ce qui
+    // faisait « 5 commits pour placer un arc-en-ciel »).
     const tiled = drawBergeTiles(c, season, frame);   // sol + rivière en tuiles
     ctx.save(); ctx.translate(0, BERGE_SHIFT);
     if (!tiled) {   // --- repli peint (atlas pas encore chargé) ---
