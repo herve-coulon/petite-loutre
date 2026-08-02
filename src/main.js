@@ -831,6 +831,12 @@ function collectFind(f) {
   const honneur = zoneDuJour(dayKey()) === (s.worldZone || START_ZONE);
   const x2 = honneur ? 2 : 1;
   const bis = honneur ? ' (lieu du jour ×2 !)' : '';
+  // Avant/après : on diffe les gains concrets pour afficher « +points » sur place,
+  // pile là où la loutre a ramassé l'asset (cf. world.floats plus bas).
+  const snap = {
+    xp: rec.xp || 0, gems: rec.gems || 0, fish: rec.fishTotal || 0, treat: rec.treatsTotal || 0,
+    hunger: s.hunger, fun: s.fun, energy: s.energy, clean: s.clean, health: s.health
+  };
   if (f.kind === 'poisson') {
     rec.fishTotal = (rec.fishTotal || 0) + x2;
     quest('fish', x2);
@@ -895,6 +901,24 @@ function collectFind(f) {
     rec.gems = (rec.gems || 0) + 3 * x2;
     tryDrop(3.5 * x2);                                 // …et les meilleures chances de trésor
     ui.log('⭐ ' + name + ' cueille une étoile au toit du monde !' + bis);
+  }
+  // « +points gagnés » qui s'envole depuis l'asset ramassé : on lit les deltas
+  // réels (jamais deux chiffres qui divergeraient des vrais gains).
+  const parts = [];
+  const dxp = (rec.xp || 0) - snap.xp;               if (dxp > 0) parts.push('+' + dxp + ' XP');
+  const dgem = (rec.gems || 0) - snap.gems;          if (dgem > 0) parts.push('+' + dgem + ' 💎');
+  const dfish = (rec.fishTotal || 0) - snap.fish;    if (dfish > 0) parts.push('+' + dfish + ' 🐟');
+  const dtreat = (rec.treatsTotal || 0) - snap.treat; if (dtreat > 0) parts.push('+' + dtreat + ' 🐚');
+  const dhun = Math.round(s.hunger - snap.hunger);   if (dhun > 0) parts.push('+' + dhun + ' 🍖');
+  const dfun = Math.round(s.fun - snap.fun);         if (dfun > 0) parts.push('+' + dfun + ' 😊');
+  const dene = Math.round(s.energy - snap.energy);   if (dene > 0) parts.push('+' + dene + ' ⚡');
+  const dcln = Math.round(s.clean - snap.clean);     if (dcln > 0) parts.push('+' + dcln + ' 🫧');
+  const dhp = Math.round(s.health - snap.health);    if (dhp > 0) parts.push('+' + dhp + ' ❤️');
+  if (world) {
+    (world.floats = world.floats || []).push({
+      x: f.x, y: f.y, txt: parts.join('  ') || '✨', born: frame
+    });
+    if (world.floats.length > 8) world.floats.shift();   // garde-fou : jamais d'accumulation
   }
   R.spawn && R.spawn('sparkle', s.stage);
   sfx.eat(); vibrate(10);
@@ -1139,6 +1163,9 @@ function stepWorld() {
       }
     }
   }
+  // on oublie les « +points » envolés (au-delà de leur durée de vie à l'écran)
+  if (world.floats && world.floats.length)
+    world.floats = world.floats.filter(fl => frame - fl.born <= 56);
 }
 
 /** Largeur de la lisière d'écran qui veut dire « je pars par là ». */

@@ -714,28 +714,27 @@ export function findCount(zone, dayKey) {
 }
 
 /**
- * LA FAUNE d'ambiance : petites bêtes qui vaquent, propres à chaque lieu. Ce
- * sont des CLÉS de sprites pixel (SPRITES_FAUNE / SPRITES_BESTIAIRE / SPRITES),
- * plus aucun emoji — le monde est peint au pixel (charte DA). Décoratives, mais
- * sans elles les zones restaient des prés vides.
+ * LA FAUNE d'ambiance : de petites bêtes qui vaquent, propres à chaque lieu.
+ * Purement décoratives — mais sans elles les zones restaient des prés vides.
+ * En EMOJI (design préféré d'Hervé ; le pixel avait été jugé trop laid).
  */
 export const FAUNE = {
-  clairiere: ['papillon', 'abeille', 'coccinelle'],
-  foret:     ['papillon', 'oiseau', 'escargot'],
-  cascade:   ['oiseau', 'papillon'],
-  roseaux:   ['criquet', 'grenouille', 'canard'],
-  lac:       ['canard', 'fish', 'cygne'],
-  vallon:    ['papillon', 'abeille', 'crLapin'],
-  delta:     ['canard', 'crabe', 'oiseau'],
-  gorge:     ['chauvesouris', 'lezard'],
-  sapiniere: ['ecureuil', 'oiseau', 'crHibou'],
-  lagon:     ['poissontropical', 'tortue', 'flamant'],
-  large:     ['baleine', 'dauphin', 'requin'],
-  caverne:   ['chauvesouris', 'araignee', 'chenille'],
-  mine:      ['rat', 'lezard', 'scarabee'],
-  glacier:   ['manchot', 'phoque', 'ourspolaire'],
-  cimes:     ['crAigle', 'chevre', 'cerf'],
-  jardin:    ['grenouille', 'papillon', 'abeille']
+  clairiere: ['🦋', '🐝', '🐞'],
+  foret:     ['🦋', '🐦', '🐌'],
+  cascade:   ['🐦', '🦋'],
+  roseaux:   ['🦗', '🐸', '🦆'],
+  lac:       ['🦆', '🐟', '🦢'],
+  vallon:    ['🦋', '🐝', '🐇'],
+  delta:     ['🦆', '🦀', '🐦'],
+  gorge:     ['🦇', '🦎'],
+  sapiniere: ['🐿️', '🐦', '🦉'],
+  lagon:     ['🐠', '🐢', '🦩'],
+  large:     ['🐋', '🐬', '🦈'],
+  caverne:   ['🦇', '🕷️', '🐛'],
+  mine:      ['🐀', '🦎', '🪲'],
+  glacier:   ['🐧', '🦭', '🐻‍❄️'],
+  cimes:     ['🦅', '🐐', '🦌'],
+  jardin:    ['🐸', '🦋', '🐝']
 };
 
 /**

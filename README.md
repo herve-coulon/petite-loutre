@@ -321,6 +321,7 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v3.90.0 : toute la faune d'ambiance repasse en emoji (comme le bestiaire en v3.89.1) — le pixel de la faune était jugé laid, on garde le design d'origine ; les blocs `SPRITES_BESTIAIRE`/`SPRITES_FAUNE` et les couleurs `V`/`v` désormais inutiles sont retirés. Et surtout : dès qu'on ramasse un asset bonus (trouvaille), les points gagnés s'affichent sur place — un « +N XP / +N 💎 / +N 🐟… » chiffré (deltas réels) qui s'envole depuis la trouvaille et s'estompe. Chemin adouci et hibou « grand-duc » conservés.*
 v3.89.1 : bestiaire remis en emoji — le pixel des 8 créatures (panneau + berge) a été jugé trop laid, retour au design précédent. La faune d'ambiance reste en pixel et le chemin adouci conservé.*
 v3.89 : preuves de saison. Le cadeau de saison ne se réclamait que sur le
 total de trésors à VIE — il tombait donc dès la 2e saison sans qu'on y ait

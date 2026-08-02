@@ -1,5 +1,5 @@
 // Rendu canvas 160x120 (mis à l'échelle en CSS, image-rendering: pixelated).
-import { PAL, SPRITES, SPRITES_MONDE, SPRITES_PORTRAITS, SPRITES_BESTIAIRE, SPRITES_FAUNE } from './sprites.js';
+import { PAL, SPRITES, SPRITES_MONDE, SPRITES_PORTRAITS } from './sprites.js';
 import { HATCH_MS, MIN, SEC, SEASON_FX } from './constants.js';
 import { hatById } from './accessories.js';
 import { furById } from './skins.js';
@@ -27,10 +27,6 @@ const ART = otterArt();
  * corps raccourci), donc du même trait — l'œuf, lui, reste peint à la main.
  */
 function usesArt(o) { return !!(o && o.stage && o.stage !== 'egg' && ART.ready); }
-
-// Faune d'ambiance en pixel : résolution d'une clé (papillon, crLapin, fish…)
-// vers sa grille — faune d'ambiance, puis bestiaire, puis SPRITES (p.ex. fish).
-const faunaSprite = (key) => SPRITES_FAUNE[key] || SPRITES_BESTIAIRE[key] || SPRITES[key] || null;
 
 // Canvas PORTRAIT plein écran (ratio ~ écran mobile) : le ciel occupe le haut,
 // l'eau le bas, la berge au milieu. La scène de base est dessinée pour un sol à
@@ -1039,19 +1035,15 @@ export function makeRenderer(cv) {
     for (let i = 0; i < faune.length * 2; i++) {
       const g = (zone.charCodeAt(0) * 37 + i * 911) % 1000;
       const t = frame / 60 + i * 1.7;
-      const drift = Math.sin(t / 3);                 // dérive horizontale : sens du regard
-      const bx = (g * 3.1 + drift * 90) % WORLD_W;
+      const bx = (g * 3.1 + Math.sin(t / 3) * 90) % WORLD_W;
       const by = (g * 7.3 + Math.cos(t / 4) * 70) % WORLD_H;
       const sx = bx - camX, sy = by - camY;
       if (sx < -20 || sx > CANVAS_W + 20 || sy < -20 || sy > CANVAS_H + 20) continue;
-      const spr = faunaSprite(faune[i % faune.length]);
-      if (!spr) continue;
-      const half = spr[0].length >> 1;
       figs.push({ y: by, fn: () => {
         ctx.globalAlpha = 0.9;
-        // profil qui regarde à droite : on flippe quand la bestiole dérive vers la gauche
-        drawSprite(spr, Math.round(sx) - half, Math.round(sy + Math.sin(t * 2) * 2) - spr.length, 1, null, drift < 0);
-        ctx.globalAlpha = 1;
+        ctx.font = '10px system-ui,sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(faune[i % faune.length], Math.round(sx), Math.round(sy + Math.sin(t * 2) * 2));
+        ctx.textAlign = 'left'; ctx.globalAlpha = 1;
       } });
     }
 
@@ -1144,6 +1136,27 @@ export function makeRenderer(cv) {
     }
     figs.push({ y: w.py, fn: () => drawFigure(s, w.px - camX, w.py - camY, frame, w.walking, w.facing < 0) });
     figs.sort((a, b) => a.y - b.y).forEach(f => f.fn());
+
+    // « +points gagnés » : les gains chiffrés s'envolent depuis la trouvaille
+    // ramassée (posés par collectFind dans w.floats). Ils montent et s'estompent.
+    const FLOAT_LIFE = 54;
+    for (const fl of (w.floats || [])) {
+      const age = frame - fl.born;
+      if (age < 0 || age > FLOAT_LIFE) continue;
+      const k = age / FLOAT_LIFE;
+      const fxp = fl.x - camX, fyp = fl.y - camY - 10 - k * 22;
+      if (fxp < -50 || fxp > CANVAS_W + 50) continue;
+      ctx.save();
+      ctx.globalAlpha = k < 0.15 ? k / 0.15 : (1 - Math.max(0, (k - 0.7) / 0.3));
+      ctx.font = 'bold 9px system-ui,sans-serif';
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(18,32,46,.85)';
+      ctx.strokeText(fl.txt, Math.round(fxp), Math.round(fyp));
+      ctx.fillStyle = '#ffe9a8';
+      ctx.fillText(fl.txt, Math.round(fxp), Math.round(fyp));
+      ctx.textAlign = 'left';
+      ctx.restore();
+    }
 
     // LISIÈRES : sur chaque bord relié, une étiquette collée au bord de
     // l'ÉCRAN — et la toucher suffit à partir (cf. sortieVisee dans main.js).
