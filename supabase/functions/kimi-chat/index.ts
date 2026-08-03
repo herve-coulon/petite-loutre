@@ -16,6 +16,9 @@ const DEFAULT_MODEL = "kimi-k2.7";
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_TOKENS = 1024;
 const CACHE_TTL_HOURS = Number(Deno.env.get("KIMI_CACHE_TTL_HOURS") ?? "24");
+// Plafond de coût MENSUEL (É6) : au-delà, on refuse l'appel API — le client
+// retombe sur les dialogues écrits. Réglable via secret Supabase.
+const MONTHLY_TOKEN_CAP = Number(Deno.env.get("KIMI_MONTHLY_TOKEN_CAP") ?? "1500000");
 
 interface Message {
   role: string;
@@ -105,7 +108,22 @@ serve(async (req) => {
       );
     }
 
-    // 2. Cache miss : appel API Kimi
+    // 2. Cache miss : d'abord le plafond de coût MENSUEL. Au-delà, on refuse
+    //    proprement (429) — le client bascule sur les dialogues écrits.
+    const month = now.slice(0, 7); // 'YYYY-MM'
+    const { data: monthUsage } = await supabase
+      .from("kimi_usage")
+      .select("total_tokens")
+      .eq("month", month)
+      .single();
+    if (monthUsage && Number(monthUsage.total_tokens) >= MONTHLY_TOKEN_CAP) {
+      return new Response(
+        JSON.stringify({ error: "monthly_budget_exceeded", overBudget: true }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 3. Appel API Kimi
     if (!KIMI_API_KEY) {
       return new Response(JSON.stringify({ error: "KIMI_API_KEY not configured" }), {
         status: 500,
@@ -158,6 +176,13 @@ serve(async (req) => {
     if (insertError) {
       console.error("kimi cache insert error:", insertError);
     }
+
+    // 4. Comptabilise les tokens du mois pour le plafond de coût (best-effort).
+    const { error: usageError } = await supabase.rpc("kimi_usage_add", {
+      p_month: month,
+      p_tokens: usage.total_tokens ?? 0,
+    });
+    if (usageError) console.error("kimi usage add error:", usageError);
 
     return new Response(
       JSON.stringify({ ...apiJson, cached: false }),

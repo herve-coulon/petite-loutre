@@ -37,6 +37,8 @@ import { newAchievements } from './achievements.js';
 import { encodeCard, decodeCard, newBattle, stepBattle, duelInput, wildFoe, makeFighter, playerTechniques, techniqueById } from './battle.js';
 import { combatBuffs, jeuBuffs, unlockedTechniques, PASSIVE_TECHNIQUES } from './skills.js';
 import { isoWeekKey, crueOfWeek, medalFor, claimCrueRewards } from './crue.js';
+import { askKimi } from './kimi-client.js';
+import { buildDialoguePrompt, cleanDialogueLines } from './dialogue.js';
 import { chasseurRode, newChasseur, stepChasseur, DEGATS_CAPTURE } from './chasseur.js';
 import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
 import {
@@ -748,7 +750,45 @@ function parlerAuPnj(pnj) {
   quest('habitantTalk');
   persist(); persistRec();
   ui.updateHUD(s, mg, rec);
-  ui.showStory({ emoji: pnj.emoji, title: pnj.nom + ' — ' + pnj.role, lines: lignes, cta: 'MERCI !' });
+  presentPnj(pnj, lignes, pnj.mots.length);
+}
+
+/**
+ * Présente l'habitant : dialogues ÉCRITS par défaut. Si « Dialogues vivants » est
+ * activé (opt-in, hors ligne exclu) on tente une salutation générée (Kimi) — mais
+ * uniquement pour REMPLACER la salutation d'accroche, jamais les lignes de gain/
+ * conseil (on ne perd jamais d'info utile). Repli COMPLET sur l'écrit si le réseau,
+ * le budget ou la latence (> 2 s) font défaut : le jeu ne se dégrade jamais.
+ */
+function presentPnj(pnj, lignes, flavorCount) {
+  enhanceWithLiving(pnj, lignes, flavorCount).then(finalLines => {
+    ui.showStory({ emoji: pnj.emoji, title: pnj.nom + ' — ' + pnj.role, lines: finalLines, cta: 'MERCI !' });
+  });
+}
+function dialogueContext(pnj) {
+  const w = weatherFor(new Date());
+  return {
+    otterName: s.name || 'la loutre',
+    trait: s.trait || null,
+    season: seasonFor(new Date()),
+    weather: w ? w.type : null,
+    zoneName: (zoneById(s.worldZone || pnj.zone || START_ZONE) || {}).name || null,
+    level: curLevel()
+  };
+}
+async function enhanceWithLiving(pnj, lignes, flavorCount) {
+  if (!s || s.livingDialogues !== true) return lignes;                       // opt-in only
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return lignes; // hors ligne
+  try {
+    const msgs = buildDialoguePrompt(pnj, dialogueContext(pnj));
+    const gen = await Promise.race([
+      askKimi(msgs, { temperature: 0.85, maxTokens: 120 }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('kimi-timeout')), 2000))  // latence > 2 s
+    ]);
+    const lines = cleanDialogueLines(gen && gen.content);
+    if (lines.length) return lines.concat(lignes.slice(flavorCount));         // garde gains/conseils
+  } catch (_) { /* repli COMPLET sur les dialogues écrits (réseau/budget/latence) */ }
+  return lignes;
 }
 
 /**
@@ -2540,6 +2580,16 @@ function boot() {
     persist();
     ui.toast(s.telemetry ? '📊 Statistiques anonymes activées.' : '📊 Statistiques anonymes désactivées.');
   });
+  const livingLabel = () => { const b = $('b-living'); if (b) b.textContent = '🗣️ DIALOGUES VIVANTS : ' + (s && s.livingDialogues ? 'OUI' : 'NON'); };
+  $('b-living').addEventListener('click', () => {
+    sfx.press();
+    s.livingDialogues = !s.livingDialogues;
+    livingLabel();
+    persist();
+    ui.toast(s.livingDialogues
+      ? '🗣️ Dialogues vivants activés — les habitants improvisent (en ligne).'
+      : '🗣️ Dialogues vivants coupés — retour aux dialogues écrits.');
+  });
   $('b-reset').addEventListener('click', () => {
     ui.askConfirm('Recommencer avec un nouvel œuf ? La loutre actuelle sera perdue (chapeaux et succès conservés).', () => {
       clearSave(storage);
@@ -2809,6 +2859,7 @@ function boot() {
     updateA11yLabels();
     $('b-push').textContent = '🔔 RAPPELS : ' + (s && s.push ? 'OUI' : 'NON');
     $('b-telemetry').textContent = '📊 STATISTIQUES ANONYMES : ' + (s && s.telemetry !== false ? 'OUI' : 'NON');
+    livingLabel();
     ui.showOverlay('ovl-set');
   };
 

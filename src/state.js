@@ -27,6 +27,7 @@ export function newState(now = Date.now(), rnd = Math.random) {
     bigText: false,      // accessibilité : texte agrandi
     reduceMotion: false, // accessibilité : animations réduites (init. sur la pref OS au boot)
     questCollapsed: false, // bandeau de quêtes replié (É4) — laisse respirer l'eau
+    livingDialogues: false, // « Dialogues vivants » (É6) : habitants génératifs — OFF par défaut (en ligne, opt-in)
     push: false,
     hat: null,
     fur: 'roux',
@@ -65,6 +66,7 @@ function normalizeState(o) {
   if (typeof o.bigText !== 'boolean') o.bigText = false;
   if (typeof o.reduceMotion !== 'boolean') o.reduceMotion = false;
   if (typeof o.questCollapsed !== 'boolean') o.questCollapsed = false;
+  if (typeof o.livingDialogues !== 'boolean') o.livingDialogues = false;   // É6 : off par défaut
   if (typeof o.push !== 'boolean') o.push = false;
   if (typeof o.away !== 'boolean') o.away = false;
   for (const k of ['awayAt', 'awayCare', 'awayNextCare']) {

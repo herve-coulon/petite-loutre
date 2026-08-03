@@ -1,16 +1,16 @@
 {
   "name": "petite-loutre",
-  "version": "3.93.0",
+  "version": "3.94.0",
   "description": "Ma Petite Loutre — tamagotchi pixel art en temps réel, PWA installable sur mobile",
   "type": "module",
   "private": true,
   "scripts": {
     "start": "python3 -m http.server 8080 || npx serve .",
     "test": "npm run test:sim && npm run test:dom && npm run test:visual",
-    "test:sim": "node --test test/sim.test.js test/features.test.js test/battle.test.js test/polish.test.js test/story.test.js test/seasons.test.js test/toboggan.test.js test/items.test.js test/audio.test.js test/personality.test.js test/world.test.js test/gang.test.js test/seasonpass.test.js test/tilemap.test.js test/peche.test.js test/otter-art.test.js test/skills.test.js test/chasseur.test.js test/quests.test.js test/telemetry.test.js test/kimi-cache.test.js test/weather.test.js test/garden.test.js test/creatures.test.js test/sky.test.js test/hidpi-hotfix.test.js test/water-berge.test.js test/economy.test.js test/crue.test.js",
+    "test:sim": "node --test test/sim.test.js test/features.test.js test/battle.test.js test/polish.test.js test/story.test.js test/seasons.test.js test/toboggan.test.js test/items.test.js test/audio.test.js test/personality.test.js test/world.test.js test/gang.test.js test/seasonpass.test.js test/tilemap.test.js test/peche.test.js test/otter-art.test.js test/skills.test.js test/chasseur.test.js test/quests.test.js test/telemetry.test.js test/kimi-cache.test.js test/weather.test.js test/garden.test.js test/creatures.test.js test/sky.test.js test/hidpi-hotfix.test.js test/water-berge.test.js test/economy.test.js test/crue.test.js test/dialogue.test.js",
     "test:dom": "node --test test/smoke.test.js",
     "test:visual": "node --test test/visual.test.js",
-    "coverage": "c8 --reporter text --reporter html node --test test/sim.test.js test/features.test.js test/battle.test.js test/polish.test.js test/story.test.js test/seasons.test.js test/toboggan.test.js test/items.test.js test/audio.test.js test/personality.test.js test/world.test.js test/gang.test.js test/seasonpass.test.js test/tilemap.test.js test/peche.test.js test/otter-art.test.js test/skills.test.js test/chasseur.test.js test/quests.test.js test/telemetry.test.js test/kimi-cache.test.js test/weather.test.js test/garden.test.js test/creatures.test.js test/hidpi-hotfix.test.js test/water-berge.test.js test/economy.test.js test/crue.test.js test/visual.test.js",
+    "coverage": "c8 --reporter text --reporter html node --test test/sim.test.js test/features.test.js test/battle.test.js test/polish.test.js test/story.test.js test/seasons.test.js test/toboggan.test.js test/items.test.js test/audio.test.js test/personality.test.js test/world.test.js test/gang.test.js test/seasonpass.test.js test/tilemap.test.js test/peche.test.js test/otter-art.test.js test/skills.test.js test/chasseur.test.js test/quests.test.js test/telemetry.test.js test/kimi-cache.test.js test/weather.test.js test/garden.test.js test/creatures.test.js test/hidpi-hotfix.test.js test/water-berge.test.js test/economy.test.js test/crue.test.js test/dialogue.test.js test/visual.test.js",
     "version:check": "node scripts/check-version.mjs",
     "version:bump": "node scripts/bump-version.mjs",
     "icons": "python3 scripts/gen-icons.py"

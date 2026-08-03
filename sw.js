@@ -1,6 +1,6 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v3.93.0';
+const VERSION = 'v3.94.0';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [
@@ -71,6 +71,7 @@ const PRECACHE = [
   './src/telemetry.js',
   './src/kimi-cache-key.js',
   './src/kimi-client.js',
+  './src/dialogue.js',
   './assets/otter/silver_idle_strip.png',
   './assets/otter/silver_walk_strip.png',
   './assets/otter/silver_swim_strip.png',

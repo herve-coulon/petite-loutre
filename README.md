@@ -321,6 +321,20 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v3.94.0 : les Dialogues vivants (É6 — Option A). `kimi-client.js` avait un client
+mais aucun consommateur : il en a un désormais. Quand le réglage ⚙️ « Dialogues
+vivants » est activé (OFF par défaut, opt-in, nécessite une connexion), les habitants
+de la vallée improvisent leur accueil via Kimi, avec le contexte de l'instant (nom &
+personnalité de la loutre, saison, météo, lieu, niveau — module pur `dialogue.js`).
+Repli COMPLET sur les dialogues écrits dès que le réseau, le budget ou la latence
+(> 2 s) font défaut : la salutation générée ne remplace que l'accroche, jamais les
+lignes de gain/conseil, et hors ligne rien ne change — le jeu ne dépend JAMAIS du
+réseau (règle d'or 6). Côté serveur, l'Edge Function `kimi-chat` gagne un PLAFOND de
+coût MENSUEL (`kimi_usage` + `KIMI_MONTHLY_TOKEN_CAP`) : au-delà, elle refuse en 429
+et le client bascule sur l'écrit. Migration douce (`s.livingDialogues`). Tests purs
+`dialogue.test.js` (prompt contextuel, robustesse, nettoyage). Vérifié navigateur :
+réglage présent (OFF par défaut), bascule + persistance, zéro erreur console. 472
+tests. (À déployer côté Supabase : `kimi-chat` + migration `kimi_usage`.)*
 v3.93.0 : LA CRUE — le rendez-vous HEBDOMADAIRE (É5b, cœur du step). Chaque semaine
 ISO, un module pur `crue.js` tire — de façon déterministe, seedée par la semaine —
 un lieu de la vallée envahi, une météo qui l'habille (Crue d'orage/brume/canicule…),
