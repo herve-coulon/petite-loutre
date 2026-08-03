@@ -38,6 +38,10 @@ function fakeCanvas(rects) {
     fillText() {}, save() {}, restore() { this._tx = 0; this._ty = 0; },
     setTransform() { this._tx = 0; this._ty = 0; },   // ré-ancrage dpr (hotfix HiDPI)
     translate(a, b) { this._tx += a; this._ty += b; }, scale() {},
+    // tracés vectoriels (remous de nage/plongée, ondes…) : no-op mais présents
+    strokeStyle: '', lineWidth: 1, textAlign: 'left', globalAlpha: 1,
+    beginPath() {}, ellipse() {}, stroke() {}, strokeRect() {}, strokeText() {}, rotate() {},
+    clearRect() {}, drawImage() {}, measureText() { return { width: 10 }; },
     createRadialGradient() { return { addColorStop() {} }; },
     createLinearGradient() { return { addColorStop() {} }; }
   };

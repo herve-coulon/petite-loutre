@@ -436,6 +436,13 @@ export function renderDailies(s, rec) {
     return;
   }
   el.classList.remove('hidden');
+  // Repli persisté (É4) : replié, la bannière tient sur une ligne discrète.
+  el.classList.toggle('collapsed', !!s.questCollapsed);
+  const tg = $('quest-toggle');
+  if (tg) {
+    tg.textContent = s.questCollapsed ? '▸' : '▾';
+    tg.setAttribute('aria-label', s.questCollapsed ? 'Déplier les objectifs' : 'Replier les objectifs');
+  }
   // Contexte de filtrage : même logique que questCtx() dans main.js
   const niveau = Math.max(levelFromXp((rec && rec.xp) || 0).level, (rec && rec.levelReached) || 1);
   const unlocked2 = [];

@@ -321,6 +321,19 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v3.91.0 : l'eau rendue à la berge. La rivière était décorative — elle devient
+vivante et jouable. (1) Nage idle : de temps en temps la loutre part barboter
+SEULE dans la rivière puis remonte, calée sur la ligne d'eau (rendu swim du kit,
+branche autonome comme la plongée). (2) Rivière au doigt : toucher l'eau lance un
+galet qui ricoche (3 rebonds amortis + éclaboussures), donne un petit +fun
+(cooldown court seedé au jour, anti-spam), et déclenche la pêche/plongée — le
+bouton 🤿 reste. (3) L'UI laisse respirer l'eau : bandeau de quêtes REPLIABLE
+(chevron ▾/▸, état persisté `questCollapsed`) et barre d'actions qui s'estompe à
+40 % après 5 s sans interaction (elle se réveille au moindre geste). Mesure : au
+repos, l'eau occupe ≈ 26 % de l'écran 390×780 (bande y≈573→780), contre ~6 %
+avant — la barre translucide et le bandeau replié la découvrent. Tests neufs
+(`water-berge.test.js`) : nage idle sans crash sur longue session, galet peint
+puis disparu (pas d'accumulation), `questCollapsed` défaut/persisté. 457 tests.*
 v3.90.1 (HOTFIX mobile) : après un retour d'absence, tout le monde pouvait se
 tasser dans le tiers haut-gauche de l'écran (ratio 1/dpr) jusqu'au rechargement —
 l'échelle HiDPI se perdait en cours de session quand une paire `save/restore`

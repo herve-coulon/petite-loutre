@@ -26,6 +26,7 @@ export function newState(now = Date.now(), rnd = Math.random) {
     volume: 0.7,   // volume maître 0..1 (réglé dans ⚙️)
     bigText: false,      // accessibilité : texte agrandi
     reduceMotion: false, // accessibilité : animations réduites (init. sur la pref OS au boot)
+    questCollapsed: false, // bandeau de quêtes replié (É4) — laisse respirer l'eau
     push: false,
     hat: null,
     fur: 'roux',
@@ -63,6 +64,7 @@ function normalizeState(o) {
   if (typeof o.volume !== 'number' || o.volume < 0 || o.volume > 1) o.volume = 0.7;
   if (typeof o.bigText !== 'boolean') o.bigText = false;
   if (typeof o.reduceMotion !== 'boolean') o.reduceMotion = false;
+  if (typeof o.questCollapsed !== 'boolean') o.questCollapsed = false;
   if (typeof o.push !== 'boolean') o.push = false;
   if (typeof o.away !== 'boolean') o.away = false;
   for (const k of ['awayAt', 'awayCare', 'awayNextCare']) {

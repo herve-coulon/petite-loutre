@@ -213,6 +213,8 @@ export function paintBadge(cv, o, diam = 58) {
 
 /* ---------------- Game feel : squash & stretch (fonction pure, testée) ---------------- */
 export const SQUASH_MS = 320;
+// Nage idle (É4) : durée d'une baignade spontanée dans la rivière (~5-6 s à 60 fps).
+export const SWIM_IDLE_FRAMES = 340;
 /** Enveloppe d'écrasement : t=0 écrasée, rebond étiré amorti, t>=1 repos exact. */
 export function squashScale(t) {
   if (!(t >= 0) || t >= 1) return { sx: 1, sy: 1 };
@@ -236,6 +238,8 @@ export function makeRenderer(cv) {
   let reduced = false; // accessibilité : mouvement réduit -> moins de particules/tremblements
   let idleAnim = null;                              // {kind, start} — petite manie en cours
   let nextIdleAt = 400 + Math.random() * 700;       // en frames
+  let swimIdle = null;                              // {start} — baignade spontanée dans la rivière
+  let nextSwimAt = 700 + Math.random() * 900;       // en frames avant la 1re baignade
   let jumpFish = null;                              // {x, dir, start} — poisson qui saute
   let nextJumpAt = 300 + Math.random() * 500;
   let jumpFish2 = null;                             // 2e poisson
@@ -363,6 +367,17 @@ export function makeRenderer(cv) {
   }
   function splashAt(x, y) {
     particles.push({ x, y, vx: 0, vy: -0.6, life: 20, kind: 'splash' });
+  }
+
+  /** Galet qui ricoche (É4) : lancé en travers de la rivière, il rebondit 3 fois
+   *  sur la ligne d'eau (amorti), une éclaboussure à chaque contact. */
+  function ricochet(x) {
+    const dir = x < CANVAS_W / 2 ? 1 : -1;   // lancé vers le large (le centre de l'eau)
+    particles.push({
+      x, y: WATER_Y - 6, vx: dir * 2.2, vy: -1.1, g: 0.14,
+      life: 90, kind: 'ricochet', waterY: WATER_Y, bounces: 0
+    });
+    splashAt(x, WATER_Y);                    // plouf du lancer
   }
 
   /** Rafale généreuse : confettis qui retombent, étincelles qui montent… */
@@ -1587,6 +1602,37 @@ export function makeRenderer(cv) {
     if (!idleAnim && calm && frame >= nextIdleAt && ball.state === 'idle') idleAnim = { kind: pickIdle(), start: frame };
     const yawning = !!idleAnim && idleAnim.kind === 'baille';
 
+    // ── Nage idle (É4) : de temps en temps la loutre part barboter SEULE dans la
+    //    rivière, puis remonte sur la berge — l'eau vit sans qu'on lui demande.
+    //    Branche autonome (comme la plongée) : on dessine la nage calée sur la
+    //    ligne d'eau puis on rend la main, sans toucher au dessin berge complexe.
+    //    Coupée en mouvement réduit et quand la balle est en jeu.
+    const canSwimIdle = calm && !idleAnim && ball.state === 'idle' && !reduced && !s.away;
+    if (swimIdle && (!canSwimIdle || frame - swimIdle.start >= SWIM_IDLE_FRAMES)) {
+      swimIdle = null;
+      nextSwimAt = frame + 1000 + Math.floor(Math.random() * 1400);   // ~16-40 s de répit
+    }
+    if (!swimIdle && canSwimIdle && frame >= nextSwimAt) swimIdle = { start: frame };
+    if (swimIdle) {
+      const t = Date.now();
+      const cx = Math.round(CANVAS_W / 2 + Math.sin(t / 2400) * 40);  // va-et-vient d'une rive à l'autre
+      const cy = WATER_Y + 22;                                        // bien DANS la rivière
+      const sous = Math.sin(t / 1700) < -0.6;                         // par moments elle passe sous l'eau
+      if (usesArt(s) && !sous) {
+        drawAnim(ctx, ART, 'swim', frameAt('swim', t), cx, cy, s.fur, Math.cos(t / 2400) < 0, s.stage);
+      } else {
+        // repli (atlas non chargé / sous l'eau) : un remous concentrique
+        ctx.strokeStyle = 'rgba(210,240,255,.55)'; ctx.lineWidth = 1;
+        const r = 4 + ((frame >> 2) % 8);
+        ctx.beginPath(); ctx.ellipse(cx, cy - 2, r, r * 0.35, 0, 0, 6.283); ctx.stroke();
+      }
+      // sillage : deux traits d'eau clairs derrière elle
+      ctx.fillStyle = 'rgba(255,255,255,.28)';
+      ctx.fillRect(cx - 22, cy + 6, 8, 1); ctx.fillRect(cx + 14, cy + 8, 8, 1);
+      drawParticles();
+      return;
+    }
+
     // loutre / œuf
     const eggSpr = SPRITES.egg;
     // éclosion : plus l'œuf approche, plus il se fissure et tremble tout seul
@@ -2303,6 +2349,16 @@ export function makeRenderer(cv) {
         ctx.fillStyle = p.col; ctx.fillText(p.txt, 0, 0);
         ctx.restore();
         ctx.globalAlpha = 1; ctx.textAlign = 'left';
+      } else if (p.kind === 'ricochet') {
+        // rebond sur la ligne d'eau : on inverse vy (amorti) jusqu'à 3 sauts
+        if (p.y >= p.waterY && p.vy > 0) {
+          if (++p.bounces <= 3) {
+            p.vy = -p.vy * 0.5; p.y = p.waterY;
+            particles.push({ x: p.x, y: p.waterY, vx: 0, vy: -0.6, life: 12, kind: 'splash' });
+          } else { p.life = 0; }
+        }
+        ctx.fillStyle = '#6b6f76';
+        ctx.fillRect(Math.round(p.x), Math.round(p.y - 1), 2, 2);
       } else if (p.kind === 'ring') {
         const age = (p.max || 15) - p.life, rad = Math.round(3 + age * 1.5);
         ctx.fillStyle = 'rgba(255,255,255,' + (p.life / (p.max || 15) * 0.55).toFixed(2) + ')';
@@ -2372,7 +2428,7 @@ export function makeRenderer(cv) {
   function hurtOtter() { hurtUntil = Date.now() + 600; }
 
   return {
-    render, spawn, splashAt, burst, squash, xpText, pop, ring, setReduced, otterBox, callTo,
+    render, spawn, splashAt, ricochet, burst, squash, xpText, pop, ring, setReduced, otterBox, callTo,
     ballGrabbable, grabBall, dragBall, throwBall, consumeFetch, flashZone, hurtOtter
   };
 }

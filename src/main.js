@@ -21,7 +21,7 @@ import {
   loadRecords, saveRecords, exportSave, importSave
 } from './state.js';
 import { stepSim, simulateOffline, ageMs } from './sim.js';
-import { newGame, tickGame, clickGame } from './minigame.js';
+import { newGame, tickGame, clickGame, WATER_Y } from './minigame.js';
 import { newSlide, tickSlide, setSlideLane, laneAt, DEGATS_EJECTION } from './toboggan.js';
 import { newGame as newGarden, tickGame as tickGarden, waterAt, harvestAt } from './garden.js';
 import { spawnCreatures, tickCreatures, checkAttack } from './creatures.js';
@@ -1442,14 +1442,46 @@ function onCanvasPointer(e) {
     const box = R.otterBox(s.stage);
     if (x >= box.x - 12 && x <= box.x + box.w + 12 && y >= box.y - 12 && y <= box.y + box.h + 14) { pet(); return; }
 
-    // ailleurs sur la scène : on l'appelle vers le point touché (elle vient),
-    // avec un petit plouf si on tapote l'eau
-    if (y >= 60 && !s.sleeping) {
-      R.callTo(x);
-      hintDone('callwater');
-      if (y >= 104) { R.splashAt(x, 108); sfx.chirp(); vibrate(6); }
-    }
+    // TOUCHER L'EAU (É4) : un galet qui ricoche, et la pêche (plongée) se lance
+    // en touchant la rivière — le bouton 🤿 reste, l'eau devient jouable au doigt.
+    if (y >= WATER_Y && !s.sleeping) { tapWater(x); return; }
+
+    // ailleurs sur la berge : on l'appelle vers le point touché (elle vient)
+    if (y >= 60 && !s.sleeping) { R.callTo(x); hintDone('callwater'); }
   }
+}
+
+// Cooldown court « seedé » par le jour : le ricochet reste réactif mais le petit
+// gain de fun ne se ferme pas (anti-spam), sans être mécaniquement constant.
+let lastRicochet = 0;
+function ricochetCD() {
+  const j = dayKey();
+  const h = j.split('').reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+  return 520 + (h % 360);   // 520..879 ms, stable sur la journée
+}
+function tapWater(x) {
+  R.ricochet(x);
+  sfx.chirp(); vibrate(6);
+  hintDone('callwater');
+  const t = now();
+  if (t - lastRicochet > ricochetCD()) {
+    lastRicochet = t;
+    s.fun = clamp(s.fun + 3, 0, 100);   // le jeu de l'eau, ça met de bonne humeur
+    persist(); ui.updateHUD(s, mg, rec);
+  }
+  // la pêche/plongée se déclenche au toucher de l'eau si elle est disponible
+  if (unlocked('dive') && !busy() && !s.divingUntil) actDive();
+}
+
+// Barre d'actions : elle s'efface à demi après 5 s sans interaction (l'eau respire),
+// et redevient franche au moindre toucher. Les boutons restent cliquables (opacité).
+let actionbarTimer = 0;
+function wakeActionbar() {
+  const ab = $('actionbar');
+  if (!ab) return;
+  ab.classList.remove('dim');
+  clearTimeout(actionbarTimer);
+  actionbarTimer = setTimeout(() => ab.classList.add('dim'), 5000);
 }
 
 // Gestes de glissement : la balle qu'on lance, ou le poisson qu'on donne. Le doigt
@@ -2492,6 +2524,20 @@ function boot() {
   // la bannière de quête ouvre le détail (quêtes + succès)
   $('quest').addEventListener('click', openAch);
   $('quest').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') openAch(); });
+  // …et le chevron la replie/déplie (état persisté), sans ouvrir le détail (É4)
+  const qtg = $('quest-toggle');
+  if (qtg) qtg.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!s) return;
+    s.questCollapsed = !s.questCollapsed;
+    sfx.press(); vibrate(6);
+    persist();
+    ui.renderDailies(s, rec);
+  });
+  // barre d'actions qui s'estompe au repos, se réveille au moindre geste (É4)
+  ['pointerdown', 'keydown'].forEach(ev =>
+    document.addEventListener(ev, wakeActionbar, { passive: true }));
+  wakeActionbar();
   $('btn-ach-close').addEventListener('click', () => ui.hideOverlay('ovl-ach'));
   $('btn-day-share').addEventListener('click', async () => {
     if (!s) return;
