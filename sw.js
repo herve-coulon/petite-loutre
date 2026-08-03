@@ -1,6 +1,6 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v3.90.0';
+const VERSION = 'v3.90.1';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [
@@ -59,6 +59,7 @@ const PRECACHE = [
   './src/creatures.js',
   './src/bestiary.js',
   './src/sky.js',
+  './src/theme-color.js',
   './src/render.js',
   './src/audio.js',
   './src/music.js',

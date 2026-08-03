@@ -36,6 +36,7 @@ function fakeCanvas(rects) {
     fillStyle: '', font: '', _tx: 0, _ty: 0,
     fillRect(x, y, w, h) { rects.push([x + this._tx, y + this._ty, w, h, this.fillStyle]); },
     fillText() {}, save() {}, restore() { this._tx = 0; this._ty = 0; },
+    setTransform() { this._tx = 0; this._ty = 0; },   // ré-ancrage dpr (hotfix HiDPI)
     translate(a, b) { this._tx += a; this._ty += b; }, scale() {},
     createRadialGradient() { return { addColorStop() {} }; },
     createLinearGradient() { return { addColorStop() {} }; }

@@ -69,6 +69,9 @@ function captureCanvas() {
     fillText() {}, strokeText() {},
     save() { stack.push([this._tx, this._ty]); },
     restore() { const s = stack.pop(); this._tx = s ? s[0] : 0; this._ty = s ? s[1] : 0; },
+    // setTransform absolu : ré-ancrage dpr de chaque frame (cf. hotfix HiDPI).
+    // L'échelle est ignorée par ce mock (comme scale) ; on remet la translation à 0.
+    setTransform() { this._tx = 0; this._ty = 0; },
     translate(a, b) { this._tx += a; this._ty += b; },
     scale() {},
     createLinearGradient() { const g = { _c: '#000000', addColorStop(_, c) { this._c = c; } }; return g; },

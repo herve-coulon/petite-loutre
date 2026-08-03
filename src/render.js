@@ -1222,6 +1222,13 @@ export function makeRenderer(cv) {
 
   function render(s, mg, frame, fx) {
     fx = fx || {};
+    // HOTFIX HiDPI (v3.90.1) : on RÉ-ANCRE l'échelle dpr au début de CHAQUE frame.
+    // Un restore() orphelin (paire save/restore conditionnelle dont le prédicat
+    // bascule dans la frame — souffle/squash) pouvait dépiler l'état de base et
+    // faire perdre le ctx.scale(dpr) pour toutes les frames suivantes : tout le
+    // monde se tassait dans le tiers haut-gauche (ratio 1/dpr) jusqu'au reload.
+    // setTransform est absolu (ne s'empile pas) → le renderer devient auto-réparant.
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     lastFrame = frame;
     const now = new Date();
     const season = seasonInfo(now);

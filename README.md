@@ -321,6 +321,17 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v3.90.1 (HOTFIX mobile) : après un retour d'absence, tout le monde pouvait se
+tasser dans le tiers haut-gauche de l'écran (ratio 1/dpr) jusqu'au rechargement —
+l'échelle HiDPI se perdait en cours de session quand une paire `save/restore`
+conditionnelle (souffle/squash) se déséquilibrait. Fix : la passe de rendu
+RÉ-ANCRE l'échelle en tête de CHAQUE frame (`ctx.setTransform(dpr,0,0,dpr,0,0)`),
+le renderer devient auto-réparant quel que soit un déséquilibre passé ; audit des
+paires conditionnelles (prédicat mémorisé une fois, jamais recalculé entre save et
+restore). Au passage, console propre au boot : le script inline de index.html
+(refusé par la CSP `script-src 'self'`) devient `src/theme-color.js`, et la fonte
+`data:` est autorisée par `font-src 'self' data:`. Deux tests neufs : équilibre
+save/restore sur une frame qui franchit la fin d'un squash, et ré-ancrage dpr=3.*
 v3.90.0 : toute la faune d'ambiance repasse en emoji (comme le bestiaire en v3.89.1) — le pixel de la faune était jugé laid, on garde le design d'origine ; les blocs `SPRITES_BESTIAIRE`/`SPRITES_FAUNE` et les couleurs `V`/`v` désormais inutiles sont retirés. Et surtout : dès qu'on ramasse un asset bonus (trouvaille), les points gagnés s'affichent sur place — un « +N XP / +N 💎 / +N 🐟… » chiffré (deltas réels) qui s'envole depuis la trouvaille et s'estompe. Chemin adouci et hibou « grand-duc » conservés.*
 v3.89.1 : bestiaire remis en emoji — le pixel des 8 créatures (panneau + berge) a été jugé trop laid, retour au design précédent. La faune d'ambiance reste en pixel et le chemin adouci conservé.*
 v3.89 : preuves de saison. Le cadeau de saison ne se réclamait que sur le
