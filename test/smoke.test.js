@@ -1,6 +1,6 @@
 // Smoke test : boot complet de l'app dans jsdom (canvas et timers stubbés).
 // Vérifie le parcours joueur réel : adoption -> éclosion -> soins -> fin -> restart.
-import { test, before } from 'node:test';
+import { test, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -58,6 +58,10 @@ before(async () => {
 const $ = id => document.getElementById(id);
 const tick = () => tickFns.forEach(f => f());
 const renderOnce = () => { const cbs = rafCbs.splice(0); cbs.forEach(cb => cb(0)); };
+
+// É5 : le repas se paie en poisson. Ces smoke tests vérifient les FLUX (soins, XP,
+// tutoriel…), pas l'économie — on garde donc toujours de quoi manger.
+beforeEach(() => { if (L && L.records) L.records.fish = 999; });
 
 test('boot : écran d intro visible, un rendu passe sans erreur', () => {
   assert.ok(!$('ovl-intro').classList.contains('hidden'));
@@ -145,7 +149,7 @@ test('caractère : personnalité au baptême, lien qui grandit, action favorite 
 test('actions : manger, laver, dodo, soigner', () => {
   L.state.hunger = 50;
   $('b-feed').click();
-  assert.equal(Math.round(L.state.hunger), 80);
+  assert.equal(Math.round(L.state.hunger), 84);   // 50 + MEAL_HUNGER(34) : le vrai poisson rassasie mieux
 
   L.state.clean = 40; L.state.poops = [1, 2];
   $('b-wash').click();

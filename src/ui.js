@@ -117,8 +117,8 @@ export function renderLevel(rec) {
   const streakEl = $('streak'); if (streakEl) streakEl.classList.toggle('hidden', st < 2); // flamme dès 2 jours
 
   // Compteurs (poissons réels ; coquillages/gemmes mappés sur des stats existantes)
-  setTxt('fish-num', fmtNum(rec && rec.fishTotal));
-  setTxt('shell-num', fmtNum(rec && rec.treatsTotal));
+  setTxt('fish-num', fmtNum(rec && rec.fish));      // 🐟 portefeuille dépensable (repas/recrutement/troc)
+  setTxt('shell-num', fmtNum(rec && rec.shells));   // 🐚 portefeuille dépensable (troc)
   setTxt('gem-num', fmtNum(rec && rec.gems));
 
   // Badge Succès : nombre de succès débloqués (caché si 0)
@@ -190,8 +190,8 @@ export function renderProfile(s, rec, onTravel) {
     : fighterPower(makeFighter(s));
   setTxt('prof-power', fmtNum(power));
   setTxt('prof-lvl', L.level);
-  setTxt('prof-fish', fmtNum(rec.fishTotal));
-  setTxt('prof-shell', fmtNum(rec.treatsTotal));
+  setTxt('prof-fish', fmtNum(rec.fish));       // réserve dépensable (cohérent avec le HUD)
+  setTxt('prof-shell', fmtNum(rec.shells));
   setTxt('prof-gang', (gang && gang.name) ? ((gang.emblem || '🦦') + ' ' + gang.name) : 'Aucune');
   setTxt('prof-streak', streak);
   // la collection de coffres : sans compteur visible, on ne la poursuit pas
@@ -355,7 +355,7 @@ export function renderGang(rec, s, h, board) {
   const rT = document.createElement('p'); rT.className = 'g-section'; rT.textContent = 'Recrues du jour';
   host.appendChild(rT);
   const recWrap = document.createElement('div'); recWrap.className = 'gang-recruit';
-  const xpNow = rec.xp || 0;
+  const fishNow = rec.fish || 0;   // le recrutement se paie en poissons 🐟 (É5)
   (board || []).forEach(c => {
     const card = document.createElement('div'); card.className = 'rec-card';
     const fur = FURS.find(f => f.id === c.fur) || FURS[0];
@@ -363,16 +363,16 @@ export function renderGang(rec, s, h, board) {
     const col = document.createElement('div'); col.className = 'rc-col';
     const nm = document.createElement('span'); nm.className = 'rc-nm'; nm.textContent = c.name;
     const pw = document.createElement('span'); pw.className = 'rc-pw'; pw.textContent = '💪 ' + fmtNum(c.power);
-    const afford = xpNow >= c.cost;
+    const afford = fishNow >= c.cost;
     const sub = document.createElement('span'); sub.className = 'rc-sub';
     sub.textContent = afford
-      ? 'Tu as ' + fmtNum(xpNow) + ' XP — il en reste ' + fmtNum(xpNow - c.cost)
-      : 'Tu as ' + fmtNum(xpNow) + ' XP — il en manque ' + fmtNum(c.cost - xpNow);
+      ? 'Tu as ' + fmtNum(fishNow) + ' 🐟 — il en reste ' + fmtNum(fishNow - c.cost)
+      : 'Tu as ' + fmtNum(fishNow) + ' 🐟 — il en manque ' + fmtNum(c.cost - fishNow);
     col.appendChild(nm); col.appendChild(pw); col.appendChild(sub);
     const btn = document.createElement('button'); btn.className = 'act';
     if (c.recruited) { btn.textContent = 'Recrutée ✓'; btn.disabled = true; }
     else if (full) { btn.textContent = 'Complet'; btn.disabled = true; }
-    else { btn.textContent = c.cost + ' XP'; btn.disabled = !afford; }
+    else { btn.textContent = c.cost + ' 🐟'; btn.disabled = !afford; }
     btn.addEventListener('click', () => h.recruit && h.recruit(c));
     card.appendChild(ic); card.appendChild(col); card.appendChild(btn);
     recWrap.appendChild(card);
@@ -384,6 +384,82 @@ export function renderGang(rec, s, h, board) {
   fight.addEventListener('click', () => h.battle && h.battle());
   actions.appendChild(fight);
   host.appendChild(actions);
+}
+
+/** Le troc du jour (É5) : échanger des coquillages contre poissons/gemmes. */
+export function renderBarter(data, h) {
+  data = data || {}; h = h || {};
+  const host = $('barter-body'); if (!host) return;
+  host.innerHTML = '';
+  const intro = document.createElement('p'); intro.className = 'small';
+  intro.textContent = 'Échange tes coquillages 🐚 contre des poissons 🐟 ou des gemmes 💎. Une fois par offre et par jour.';
+  host.appendChild(intro);
+  const have = document.createElement('p'); have.className = 'g-section';
+  have.textContent = 'Ta réserve : ' + fmtNum(data.shells || 0) + ' 🐚';
+  host.appendChild(have);
+  (data.offers || []).forEach(o => {
+    const card = document.createElement('div'); card.className = 'rec-card';
+    const col = document.createElement('div'); col.className = 'rc-col';
+    const nm = document.createElement('span'); nm.className = 'rc-nm';
+    nm.textContent = o.giveShells + ' 🐚 → ' + o.getN + (o.getKind === 'fish' ? ' 🐟' : ' 💎');
+    const sub = document.createElement('span'); sub.className = 'rc-sub';
+    sub.textContent = o.used ? 'Déjà échangé aujourd\'hui' : (o.afford ? 'Disponible' : 'Pas assez de coquillages');
+    col.appendChild(nm); col.appendChild(sub);
+    const btn = document.createElement('button'); btn.className = 'act';
+    if (o.used) { btn.textContent = 'Fait ✓'; btn.disabled = true; }
+    else { btn.textContent = 'Échanger'; btn.disabled = !o.afford; }
+    btn.addEventListener('click', () => h.trade && h.trade(o.id));
+    card.appendChild(col); card.appendChild(btn);
+    host.appendChild(card);
+  });
+}
+
+/** L'atelier de trésors (É5) : 3 doublons d'un palier → 1 trésor du palier au-dessus. */
+export function renderWorkshop(data, h) {
+  data = data || {}; h = h || {};
+  const host = $('workshop-body'); if (!host) return;
+  host.innerHTML = '';
+  if (data.choice) {                       // vue CHOIX du trésor à forger
+    const t = document.createElement('p'); t.className = 'small';
+    t.textContent = 'Choisis ton trésor ' + (data.choice.upLabel || '').toLowerCase() + ' :';
+    host.appendChild(t);
+    (data.choice.items || []).forEach(it => {
+      const btn = document.createElement('button'); btn.className = 'act';
+      btn.textContent = it.emoji + ' ' + it.name + (it.label ? ' (' + it.label + ')' : '');
+      btn.addEventListener('click', () => h.pick && h.pick(data.choice.tier, it.id));
+      host.appendChild(btn);
+    });
+    const back = document.createElement('button'); back.className = 'act'; back.textContent = '← Retour';
+    back.addEventListener('click', () => h.cancel && h.cancel());
+    host.appendChild(back);
+    return;
+  }
+  const intro = document.createElement('p'); intro.className = 'small';
+  intro.textContent = '3 doublons d\'un même palier se fondent en 1 trésor du palier supérieur (choix parmi 2).';
+  host.appendChild(intro);
+  let any = false;
+  (data.rows || []).forEach(r => {
+    const card = document.createElement('div'); card.className = 'rec-card';
+    const col = document.createElement('div'); col.className = 'rc-col';
+    const nm = document.createElement('span'); nm.className = 'rc-nm';
+    nm.textContent = r.label + ' — ' + r.count + '/' + r.need + ' doublons';
+    if (r.color) nm.style.color = r.color;
+    const sub = document.createElement('span'); sub.className = 'rc-sub';
+    sub.textContent = r.can ? ('→ 1 trésor ' + r.upLabel.toLowerCase()) : ('encore ' + Math.max(0, r.need - r.count) + ' doublon(s)');
+    col.appendChild(nm); col.appendChild(sub);
+    const btn = document.createElement('button'); btn.className = 'act';
+    btn.textContent = r.can ? 'Fusionner' : '—';
+    btn.disabled = !r.can;
+    if (r.can) any = true;
+    btn.addEventListener('click', () => h.begin && h.begin(r.tier));
+    card.appendChild(col); card.appendChild(btn);
+    host.appendChild(card);
+  });
+  if (!any) {
+    const hint = document.createElement('p'); hint.className = 'rc-sub';
+    hint.textContent = 'Les trésors en double (plongée, pêche, coffres…) atterrissent ici. Reviens quand tu en as 3 d\'un même palier.';
+    host.appendChild(hint);
+  }
 }
 
 /** Résultat d'un combat de bande : bannière, récompense, journal du relais. */

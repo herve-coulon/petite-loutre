@@ -134,6 +134,11 @@ export function newRecords() {
     treatsTotal: 0,     // trésors de saison récoltés (total à vie — records/UI)
     treatsBySeason: {}, // trésors récoltés par (saison, année) — preuve de jeu du cadeau
     gems: 0,            // gemmes 💎 — monnaie gagnée (cadeaux de saison…)
+    fish: 0,            // 🐟 portefeuille DÉPENSABLE (repas/recrutement/troc) — distinct de fishTotal (à vie)
+    shells: 0,          // 🐚 portefeuille DÉPENSABLE (troc) — distinct de treatsTotal (à vie)
+    dupes: {},          // doublons de trésors par tier (atelier) : {commun,rare,epique,legendaire}
+    barterDay: null,    // jour (dayKey) du dernier troc — réinitialise les offres à minuit
+    barterUsed: [],     // ids d'offres de troc déjà prises aujourd'hui
     items: [],          // trésors rares possédés (ids) — global, survit aux loutres
     wins: 0,
     battles: 0,
@@ -165,6 +170,13 @@ function normalizeRecords(o) {
     o.treatsBySeason = (o.treatsTotal || 0) >= GIFT_NEED_TREATS
       ? { [seasonGiftKey()]: o.treatsTotal } : {};
   }
+  // Portefeuilles dépensables (É5) : une save d'avant l'économie n'avait qu'un
+  // compteur À VIE (fishTotal/treatsTotal). On crédite le portefeuille du cumul
+  // déjà gagné (on ne vole rien), puis les deux vivent en parallèle. À faire
+  // AVANT le remplissage par défaut, sinon ils repartiraient à 0.
+  if (typeof o.fish !== 'number') o.fish = o.fishTotal || 0;
+  if (typeof o.shells !== 'number') o.shells = o.treatsTotal || 0;
+  if (!o.dupes || typeof o.dupes !== 'object') o.dupes = {};
   const base = newRecords();
   for (const k of Object.keys(base)) {
     if (o[k] === undefined) o[k] = base[k];
@@ -172,6 +184,7 @@ function normalizeRecords(o) {
   if (!Array.isArray(o.achievements)) o.achievements = [];
   if (!Array.isArray(o.items)) o.items = [];
   if (!Array.isArray(o.recruited)) o.recruited = [];
+  if (!Array.isArray(o.barterUsed)) o.barterUsed = [];
   if (!Array.isArray(o.found)) o.found = [];
   if (!Array.isArray(o.visited)) o.visited = [];
   if (!o.seasonGifts || typeof o.seasonGifts !== 'object') o.seasonGifts = {};

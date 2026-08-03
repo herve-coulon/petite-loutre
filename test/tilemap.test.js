@@ -373,7 +373,7 @@ test('habitants : un par lieu, chacun avec son service', () => {
   // les services connus de l'orchestrateur (parlerAuPnj). Un habitant dont le
   // `don` n'y figure pas consommerait la visite du jour sans rien rendre.
   const SERVICES = new Set(['piste', 'provisions', 'rincage', 'friandise',
-    'gemme', 'repos', 'remede', 'lecon', 'guet']);
+    'gemme', 'repos', 'remede', 'lecon', 'guet', 'troc']);   // 'troc' : le marché (É5)
   const emojis = new Set();
   for (const id of ids) {
     const h = HABITANT[id];

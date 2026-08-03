@@ -43,6 +43,7 @@ export function giftClaimed(rec, date = new Date()) {
 export function addSeasonTreat(rec, n = 1, date = new Date()) {
   if (!rec) return;
   rec.treatsTotal = (rec.treatsTotal || 0) + n;
+  rec.shells = (rec.shells || 0) + n;   // portefeuille DÉPENSABLE (troc) — cf. économie É5
   if (!rec.treatsBySeason || typeof rec.treatsBySeason !== 'object') rec.treatsBySeason = {};
   const k = seasonGiftKey(date);
   rec.treatsBySeason[k] = (rec.treatsBySeason[k] || 0) + n;

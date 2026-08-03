@@ -1,6 +1,6 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v3.91.0';
+const VERSION = 'v3.92.0';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [
@@ -50,6 +50,7 @@ const PRECACHE = [
   './assets/otter/hungry_strip.png',
   './assets/otter/manifest.json',
   './src/seasonpass.js',
+  './src/economy.js',
   './src/push.js',
   './src/photocard.js',
   './src/minigame.js',

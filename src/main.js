@@ -22,6 +22,7 @@ import {
 } from './state.js';
 import { stepSim, simulateOffline, ageMs } from './sim.js';
 import { newGame, tickGame, clickGame, WATER_Y } from './minigame.js';
+import { recruitFishCost, dailyBarter, canCraft, craftChoices, nextTier, TIERS, MEAL_HUNGER, CRAFT_NEED } from './economy.js';
 import { newSlide, tickSlide, setSlideLane, laneAt, DEGATS_EJECTION } from './toboggan.js';
 import { newGame as newGarden, tickGame as tickGarden, waterAt, harvestAt } from './garden.js';
 import { spawnCreatures, tickCreatures, checkAttack } from './creatures.js';
@@ -202,20 +203,29 @@ function resolveDive() {
 
 function actFeed() {
   if (busy() || s.sleeping) return;
+  if (s.hunger > 92) { press(); ui.log(s.name + ' n\'a plus faim du tout !'); return; }
+  // Le repas se paie désormais en POISSON pêché — un vrai poisson rassasie mieux
+  // qu'une friandise. À sec, on se rabat sur la friandise gratuite (actTreat).
+  if ((rec.fish || 0) <= 0) {
+    ui.log('🐟 Plus de poisson en réserve — pêche-en (Jouer 🎣), ou une friandise fera l\'affaire.');
+    actTreat();
+    return;
+  }
   press();
-  if (s.hunger > 92) { ui.log(s.name + ' n\'a plus faim du tout !'); return; }
-  s.hunger = clamp(s.hunger + 30, 0, 100);
+  rec.fish -= 1;
+  s.hunger = clamp(s.hunger + MEAL_HUNGER, 0, 100);
   s.fun = clamp(s.fun + 2, 0, 100);
   s.fed++;
   rec.mealsTotal++;
   s.nextPoop = Math.min(s.nextPoop, now() + (2 + Math.random() * 2) * 60 * MIN);
   R.spawn('fish', s.stage); R.spawn('heart', s.stage); R.spawn('heart', s.stage);
   R.ring(s.stage); sfx.eat(); feel('soft');
-  ui.log('Miam ! ' + s.name + ' dévore un poisson frais. 🐟');
+  ui.log('Miam ! ' + s.name + ' dévore un poisson frais 🐟 (−1, réserve : ' + rec.fish + ').');
   gainXp(XP.meal);
   afterAct();
   quest('meals');
   careBond('feed');
+  persistRec(); ui.updateHUD(s, mg, rec);
 }
 
 function actWash() {
@@ -397,6 +407,7 @@ function endGame(res) {
   s.played++;
   rec.gamesTotal++;
   rec.fishTotal += got;
+  rec.fish = (rec.fish || 0) + got;          // portefeuille dépensable (repas/recrutement/troc)
   const perfect = got >= tot && tot >= 5;   // aucun poisson manqué
   if (perfect) rec.perfectGames++;
   mg = null;
@@ -685,6 +696,9 @@ function donDispo(zoneId) {
  * met la rencontre en scène ; sinon il jette juste un mot au passage.
  */
 function parlerAuPnj(pnj) {
+  // Le troqueur ouvre son étal chaque visite (le troc lui-même est limité à une
+  // fois par offre et par jour — cf. openBarter) : pas de porte fermée du jour.
+  if (pnj.don === 'troc') { openBarter(); return; }
   const lignes = [...pnj.mots];
   if (!donDispo(pnj.zone)) {                       // déjà vu aujourd'hui
     ui.toast(pnj.emoji + ' ' + lignes[0]);
@@ -839,6 +853,7 @@ function collectFind(f) {
   };
   if (f.kind === 'poisson') {
     rec.fishTotal = (rec.fishTotal || 0) + x2;
+    rec.fish = (rec.fish || 0) + x2;               // portefeuille dépensable
     quest('fish', x2);
     s.hunger = clamp(s.hunger + 6 * x2, 0, 100);
     ui.log('🐟 ' + name + ' déniche un poisson frais !' + bis);
@@ -1484,6 +1499,107 @@ function wakeActionbar() {
   actionbarTimer = setTimeout(() => ab.classList.add('dim'), 5000);
 }
 
+/* ---------------- Troc quotidien (É5) : coquillages ↔ poissons/gemmes ---------------- */
+function barterData() {
+  if (rec.barterDay !== dayKey()) { rec.barterDay = dayKey(); rec.barterUsed = []; }
+  const offers = dailyBarter(dayKey());
+  return {
+    shells: rec.shells || 0,
+    offers: offers.map(o => ({
+      id: o.id,
+      giveShells: o.give.shells,
+      getKind: o.get.fish != null ? 'fish' : 'gems',
+      getN: o.get.fish != null ? o.get.fish : o.get.gems,
+      used: (rec.barterUsed || []).includes(o.id),
+      afford: (rec.shells || 0) >= o.give.shells
+    }))
+  };
+}
+const barterHandlers = {
+  trade: (id) => {
+    if (rec.barterDay !== dayKey()) { rec.barterDay = dayKey(); rec.barterUsed = []; }
+    if ((rec.barterUsed || []).includes(id)) return;
+    const offer = dailyBarter(dayKey()).find(o => o.id === id);
+    if (!offer) return;
+    if ((rec.shells || 0) < offer.give.shells) { ui.toast('🐚 Pas assez de coquillages.'); sfx.sad(); vibrate(20); return; }
+    rec.shells -= offer.give.shells;
+    if (offer.get.fish != null) rec.fish = (rec.fish || 0) + offer.get.fish;
+    else rec.gems = (rec.gems || 0) + offer.get.gems;
+    (rec.barterUsed = rec.barterUsed || []).push(id);
+    persistRec(); sfx.happy(); vibrate(10);
+    ui.updateHUD(s, mg, rec); refreshBarter();
+  }
+};
+function refreshBarter() { ui.renderBarter(barterData(), barterHandlers); }
+function openBarter() { if (!rec) return; sfx.press(); refreshBarter(); ui.showOverlay('ovl-barter'); }
+
+/* ---------------- Atelier (É5) : 3 doublons → 1 trésor du palier supérieur ---------------- */
+let workshopChoice = null;   // { tier, ids } quand on choisit le trésor à forger
+function workshopData() {
+  return TIERS.slice(0, -1).map(t => ({
+    tier: t,
+    label: RARITIES[t].label,
+    color: RARITIES[t].color,
+    count: (rec.dupes && rec.dupes[t]) || 0,
+    need: CRAFT_NEED,
+    can: canCraft(rec.dupes, t),
+    upLabel: RARITIES[nextTier(t)].label
+  }));
+}
+function itemPoolByTier(preferUnowned) {
+  const pool = {};
+  for (const it of ITEMS) {
+    if (preferUnowned && rec.items.includes(it.id)) continue;
+    (pool[it.rarity] = pool[it.rarity] || []).push(it.id);
+  }
+  return pool;
+}
+const workshopHandlers = {
+  begin: (tier) => {
+    if (!canCraft(rec.dupes, tier)) return;
+    const up = nextTier(tier);
+    let pool = itemPoolByTier(true);
+    if (!(pool[up] || []).length) pool = itemPoolByTier(false);   // tout possédé : on rejoue quand même
+    const ids = craftChoices(tier, pool, dayKey(), (rec.dupes[tier] || 0));
+    if (!ids.length) { ui.toast('Rien à forger pour ce palier.'); return; }
+    workshopChoice = { tier, ids };
+    refreshWorkshop();
+  },
+  pick: (tier, id) => {
+    if (!canCraft(rec.dupes, tier)) { workshopChoice = null; refreshWorkshop(); return; }
+    rec.dupes[tier] = (rec.dupes[tier] || 0) - CRAFT_NEED;
+    const it = itemById(id);
+    if (it && !rec.items.includes(id)) {
+      rec.items.push(id);
+      ui.toast(it.emoji + ' ' + it.name + ' forgé !');
+      ui.log('🛠️ Atelier : 3 doublons ' + RARITIES[tier].label.toLowerCase() + ' fondus en ' + it.emoji + ' ' + it.name + ' (' + RARITIES[it.rarity].label + ') !');
+    } else if (it) {                       // déjà possédé : devient un doublon du palier sup + gemmes
+      rec.dupes[it.rarity] = (rec.dupes[it.rarity] || 0) + 1;
+      rec.gems = (rec.gems || 0) + 3;
+      ui.toast(it.emoji + ' doublon rangé + 3 💎');
+    }
+    workshopChoice = null;
+    persistRec(); sfx.levelup(); vibrate([15, 30, 15]);
+    ui.updateHUD(s, mg, rec); refreshWorkshop();
+  },
+  cancel: () => { workshopChoice = null; refreshWorkshop(); }
+};
+function refreshWorkshop() {
+  let choice = null;
+  if (workshopChoice) {
+    choice = {
+      tier: workshopChoice.tier,
+      upLabel: RARITIES[nextTier(workshopChoice.tier)].label,
+      items: workshopChoice.ids.map(id => {
+        const it = itemById(id);
+        return it ? { id, emoji: it.emoji, name: it.name, label: RARITIES[it.rarity].label } : { id, emoji: '❔', name: id, label: '' };
+      })
+    };
+  }
+  ui.renderWorkshop({ rows: workshopData(), choice }, workshopHandlers);
+}
+function openWorkshop() { if (!rec) return; workshopChoice = null; sfx.press(); ui.hideOverlay('ovl-menu'); refreshWorkshop(); ui.showOverlay('ovl-workshop'); }
+
 // Gestes de glissement : la balle qu'on lance, ou le poisson qu'on donne. Le doigt
 // pilote le jeton ; on convertit les coords écran -> coords canvas.
 // Convertit un pointeur écran -> coordonnées logiques du canvas (0..CANVAS_W, 0..CANVAS_H),
@@ -1835,9 +1951,12 @@ function tryDrop(boost = 1) {
   const id = rollDrop(Math.random, (equipBonus(s).luck || 1) * boost);
   if (!id) return;
   const it = itemById(id);
-  if (rec.items.includes(id)) { // déjà possédé -> petit lot de consolation
-    ui.toast('✨ ' + it.emoji + ' encore un ' + it.name + ' !');
-    gainXp(15);
+  if (rec.items.includes(id)) { // déjà possédé -> le doublon part à l'atelier (É5)
+    rec.dupes = rec.dupes || {};
+    rec.dupes[it.rarity] = (rec.dupes[it.rarity] || 0) + 1;
+    persistRec();
+    ui.toast('✨ ' + it.emoji + ' doublon ' + it.name + ' → atelier 🛠️');
+    gainXp(10);
     return;
   }
   rec.items.push(id);
@@ -2440,6 +2559,7 @@ function boot() {
     if (!g) return;
     rec.gems = (rec.gems || 0) + g.gems;
     rec.fishTotal = (rec.fishTotal || 0) + g.fish;
+    rec.fish = (rec.fish || 0) + g.fish;           // portefeuille dépensable
     persistRec();
     ui.renderLevel(rec);
     refreshGift();
@@ -2471,9 +2591,13 @@ function boot() {
     ui.showOverlay('ovl-bestiary');
   });
 
-  // Escouade (gang) : création, recrutement (coûte de l'XP), combats de bande.
-  const gangBoard = () => recruitBoard(curLevel(), dayKey(), 3)
-    .map(c => ({ ...c, recruited: isRecruited(c.id) }));
+  // Escouade (gang) : création, recrutement (se paie en POISSONS 🐟, prix doux
+  // progressif selon la taille de l'escouade — fini l'XP-monnaie), combats de bande.
+  const gangBoard = () => {
+    const cost = recruitFishCost((rec.gang && rec.gang.members.length) || 0);
+    return recruitBoard(curLevel(), dayKey(), 3)
+      .map(c => ({ ...c, cost, recruited: isRecruited(c.id) }));
+  };
   const refreshGang = () => ui.renderGang(rec, s, gangHandlers, gangBoard());
   const gangHandlers = {
     create: (name, emblem) => {
@@ -2483,11 +2607,13 @@ function boot() {
     },
     recruit: (c) => {
       if (!rec.gang || rec.gang.members.length >= MAX_MEMBERS) return;
-      if ((rec.xp || 0) < c.cost) { ui.toast('Pas assez d\'XP 🐟'); return; }
+      const cost = recruitFishCost(rec.gang.members.length);
+      if ((rec.fish || 0) < cost) { ui.toast('🐟 Pas assez de poissons — il en faut ' + cost + '.'); sfx.sad(); vibrate(20); return; }
       if (recruit(rec.gang, c)) {
-        rec.xp -= c.cost; markRecruited(c.id);
+        rec.fish -= cost; markRecruited(c.id);
         persistRec(); sfx.happy(); vibrate(12);
         ui.renderProfile(s, rec, worldTravelHandler()); refreshGang();
+        ui.updateHUD(s, mg, rec);
       }
     },
     battle: () => {
@@ -2520,6 +2646,7 @@ function boot() {
     ui.showOverlay('ovl-gang');
   };
   $('pt-gang').addEventListener('click', openGang);
+  $('pt-atelier').addEventListener('click', openWorkshop);   // atelier de trésors (É5)
 
   // la bannière de quête ouvre le détail (quêtes + succès)
   $('quest').addEventListener('click', openAch);
@@ -2624,6 +2751,8 @@ function boot() {
   const overlayClosers = {
     'ovl-menu': () => ui.hideOverlay('ovl-menu'),
     'ovl-gang': () => ui.hideOverlay('ovl-gang'),
+    'ovl-barter': () => ui.hideOverlay('ovl-barter'),
+    'ovl-workshop': () => { workshopChoice = null; ui.hideOverlay('ovl-workshop'); },
     'ovl-encounter': () => closeEncounter(false),
     'ovl-hats': () => ui.hideOverlay('ovl-hats'),
     'ovl-ach': () => ui.hideOverlay('ovl-ach'),

@@ -321,6 +321,21 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v3.92.0 : l'économie circulaire — les monnaies (É5a, la Crue suivra). Poissons et
+coquillages CESSENT d'être de simples compteurs à vie et deviennent des monnaies
+qui se DÉPENSENT, via deux portefeuilles neufs (`rec.fish`, `rec.shells`) alimentés
+en parallèle des compteurs à vie (records/cadeau de saison intacts) et migrés depuis
+eux (on ne vole rien : une vieille save récupère son cumul en portefeuille). (1) Le
+repas se paie en poisson 🐟 (un vrai poisson rassasie mieux, +34) ; à sec, la
+friandise gratuite prend le relais. (2) Le recrutement se paie en poissons (fini
+l'XP-monnaie), prix doux progressif (6, 12, 18…). (3) Troc quotidien chez Gaspard le
+troqueur du lac : coquillages ↔ poissons/gemmes, offres seedées par le jour, une par
+jour. (4) Atelier de trésors à la tanière (onglet 🛠️) : 3 doublons d'un palier se
+fondent en 1 trésor du palier supérieur (choix parmi 2, seedé) — les doublons de
+plongée/pêche/coffres, jadis perdus, s'y accumulent. Module pur `economy.js` testé
+(prix, troc déterministe « deux joueurs, même jour », fusion, migration). Vérifié
+navigateur : HUD 🐟/🐚, repas −1 poisson, recrue à 12 🐟, atelier 3 communs → corail
+rare. 462 tests.*
 v3.91.0 : l'eau rendue à la berge. La rivière était décorative — elle devient
 vivante et jouable. (1) Nage idle : de temps en temps la loutre part barboter
 SEULE dans la rivière puis remonte, calée sur la ligne d'eau (rendu swim du kit,
