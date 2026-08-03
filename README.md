@@ -321,6 +321,22 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v3.93.0 : LA CRUE — le rendez-vous HEBDOMADAIRE (É5b, cœur du step). Chaque semaine
+ISO, un module pur `crue.js` tire — de façon déterministe, seedée par la semaine —
+un lieu de la vallée envahi, une météo qui l'habille (Crue d'orage/brume/canicule…),
+et une CHAMPIONNE errante renforcée (×1,5 à ×2) aux talents VISIBLES. Deux joueurs,
+la même semaine → exactement la même Crue (garanti par test). Onglet Profil → 🌊 La
+Crue : la championne, ses talents, les 3 défis bronze/argent/or, et « Défier ». Le
+duel réutilise l'arène tour-par-tour existante ; à la victoire, la médaille se lit
+sur les PV restants (or ≥ 80 %, argent ≥ 50 %, sinon bronze), la MEILLEURE est
+gardée, et chaque palier atteint se réclame une fois/semaine — récompenses
+NON-puissance : matériaux d'atelier (doublons) + gemmes croissantes. Bannière
+« La Crue a envahi <lieu> » à l'entrée de la vallée + notification optionnelle
+« la Crue est arrivée » sur l'opt-in push existant. Migration douce (`rec.crue`,
+`rec.crueNotified`). Tests : semaine ISO (bords d'année), Crue déterministe, « deux
+joueurs même semaine », médailles, réclamation cumulative et non-doublée. Vérifié
+navigateur : overlay Crue (Nixe ×1,5, talents 🌬️/⏳, 3 paliers), duel lancé avec
+championne renforcée (135 PV), zéro erreur console. 469 tests.*
 v3.92.0 : l'économie circulaire — les monnaies (É5a, la Crue suivra). Poissons et
 coquillages CESSENT d'être de simples compteurs à vie et deviennent des monnaies
 qui se DÉPENSENT, via deux portefeuilles neufs (`rec.fish`, `rec.shells`) alimentés

@@ -35,7 +35,8 @@ import { unlockedHats, hatById } from './accessories.js';
 import { unlockedFurs, unlockedDecors, equipBonus, furById, decorById } from './skins.js';
 import { newAchievements } from './achievements.js';
 import { encodeCard, decodeCard, newBattle, stepBattle, duelInput, wildFoe, makeFighter, playerTechniques, techniqueById } from './battle.js';
-import { combatBuffs, jeuBuffs, unlockedTechniques } from './skills.js';
+import { combatBuffs, jeuBuffs, unlockedTechniques, PASSIVE_TECHNIQUES } from './skills.js';
+import { isoWeekKey, crueOfWeek, medalFor, claimCrueRewards } from './crue.js';
 import { chasseurRode, newChasseur, stepChasseur, DEGATS_CAPTURE } from './chasseur.js';
 import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
 import {
@@ -1032,6 +1033,13 @@ function goToZone(zoneId, px, py) {
   if (!discoverZone(zoneId)) {          // déjà connu : simple annonce
     ui.log('🗺️ ' + z.name);
   }
+  // La Crue (É5b) : ce lieu est-il celui envahi cette semaine ? Si oui, on le
+  // signale (la météo de la Crue l'habille dans le nom de l'événement).
+  const cr = currentCrue();
+  world.crue = (zoneId === cr.zone) ? cr : null;
+  if (world.crue) {
+    messageImportant('🌊 ' + cr.weatherLabel + ' — la Crue a envahi ' + z.name + ' ! ' + cr.name + ' rôde (Profil → 🌊 La Crue).');
+  }
   // Auto-lancer le mini-jeu jardin quand on entre dans la zone jardin
   if (zoneId === 'jardin' && curLevel() >= UNLOCK_LEVEL.garden && s.energy >= 10 && !mg) {
     mg = newGarden(now());
@@ -1073,6 +1081,16 @@ function enterWorld(zoneId) {
     ui.log(connu
       ? '🗺️ ' + (s.name || 'La loutre') + ' file vers ' + zoneById(zone).name.toLowerCase() + '…'
       : '🗺️ ' + (s.name || 'La loutre') + ' part explorer la vallée…');
+  }
+  // La Crue (É5b) : marque le lieu s'il est envahi + bannière d'entrée de vallée
+  // (une fois par session) + notification opt-in « la Crue est arrivée ».
+  const cr = currentCrue();
+  world.crue = (zone === cr.zone) ? cr : null;
+  maybeNotifyCrue();
+  if (!crueBannerShown) {
+    crueBannerShown = true;
+    const cz = zoneById(cr.zone);
+    messageImportant('🌊 ' + cr.weatherLabel + ' cette semaine — ' + cr.name + ' rôde à ' + cz.name + '. (Profil → 🌊 La Crue)');
   }
 }
 
@@ -1254,12 +1272,15 @@ function onDuelOver() {
     sfx.happy(); vibrate([20, 40, 20]); ui.toast('🏆 Victoire de ' + battle.me.name + ' !');
     tryDrop(1.5);                       // une victoire peut rapporter un trésor
     if (epreuveEnCours) gagnerEpreuve(epreuveEnCours);
+    if (crueEnCours) gagnerCrue(crueEnCours);
   } else {
     s.fun = clamp(s.fun + 2, 0, 100);
     sfx.sad(); ui.toast('💔 Défaite… ça se rejouera !');
     if (epreuveEnCours) ui.log('⚔️ L\'épreuve reste à passer — reviens quand tu seras prête.');
+    if (crueEnCours) ui.log('🌊 La championne tient bon — la Crue t\'attend encore.');
   }
   epreuveEnCours = null;
+  crueEnCours = null;
   persist(); persistRec(); checkUnlocks();
 }
 
@@ -1599,6 +1620,100 @@ function refreshWorkshop() {
   ui.renderWorkshop({ rows: workshopData(), choice }, workshopHandlers);
 }
 function openWorkshop() { if (!rec) return; workshopChoice = null; sfx.press(); ui.hideOverlay('ovl-menu'); refreshWorkshop(); ui.showOverlay('ovl-workshop'); }
+
+/* ---------------- La Crue (É5b) : le rendez-vous HEBDOMADAIRE ---------------- */
+let crueEnCours = null;        // la Crue dont on affronte la championne, s'il y a lieu
+let crueBannerShown = false;   // bannière d'entrée de vallée montrée une fois par session
+const MEDAL_EMOJI = { bronze: '🥉', argent: '🥈', or: '🥇' };
+
+// La Crue de la semaine, déterministe (lieu + météo + championne + talents visibles).
+function currentCrue() {
+  return crueOfWeek(isoWeekKey(new Date()), Object.keys(ZONES), PASSIVE_TECHNIQUES.map(t => t.id));
+}
+// Progrès de la SEMAINE courante — remis à zéro dès qu'on change de semaine ISO.
+function crueProgress() {
+  const wk = isoWeekKey(new Date());
+  if (!rec.crue || rec.crue.week !== wk) rec.crue = { week: wk, best: 'none', claimed: [] };
+  return rec.crue;
+}
+// La carte de la championne : calée sur la loutre NUE (duel serré), renforcée par
+// powerMult au lancement (comme l'épreuve, mais seedée par la SEMAINE, pas le lieu).
+function carteChampionne(cr) {
+  const base = wildFoe(curLevel(), cr.seed, makeFighter(s));
+  return { ...base, name: cr.name, hat: null };
+}
+function defierCrue() {
+  if (!denAvailable()) { ui.toast('🌊 Reviens quand ta loutre pourra se battre.'); return; }
+  if (curLevel() < UNLOCK_LEVEL.battle) {
+    ui.log('🌊 La Crue et sa championne s\'ouvrent au niveau ' + UNLOCK_LEVEL.battle + '.'); return;
+  }
+  if (!battleStarter) return;
+  const cr = currentCrue();
+  crueProgress();               // aligne rec.crue sur la bonne semaine avant le duel
+  crueEnCours = cr;
+  ui.hideOverlay('ovl-crue');
+  ui.showOverlay('ovl-battle');
+  battleStarter(carteChampionne(cr), cr.seed, cr.powerMult);
+}
+// Victoire sur la championne : médaille selon les PV restants, la MEILLEURE est
+// gardée, et chaque palier atteint se réclame UNE fois par semaine (matériaux + gemmes).
+function gagnerCrue(cr) {
+  const prog = crueProgress();
+  const hpFrac = (battle && battle.me && battle.me.maxHp) ? battle.me.hp / battle.me.maxHp : 0;
+  const medal = medalFor(true, hpFrac);
+  const res = claimCrueRewards(prog, rec, medal);   // logique pure & testée
+  persistRec(); ui.updateHUD(s, mg, rec);
+  if (res.granted.length) {
+    ui.celebrate({ kicker: 'LA CRUE', big: MEDAL_EMOJI[medal] || '🌊',
+      title: cr.name + ' vaincue', reward: '💎 +' + res.gems + ' · matériaux d\'atelier 🛠️' });
+    ui.log('🌊 Crue : ' + cr.name + ' vaincue — médaille ' + medal + ' ' + (MEDAL_EMOJI[medal] || '') + ' !');
+  } else {
+    ui.toast('🌊 ' + cr.name + ' s\'incline encore (' + medal + ' déjà obtenu)');
+  }
+}
+function crueData() {
+  const cr = currentCrue();
+  const prog = crueProgress();
+  const z = zoneById(cr.zone);
+  const talents = cr.talents.map(id => {
+    const t = PASSIVE_TECHNIQUES.find(x => x.id === id);
+    return t ? { icon: t.icon, name: t.name } : { icon: '✨', name: id };
+  });
+  return {
+    weatherLabel: cr.weatherLabel,
+    zoneName: z ? z.name : cr.zone,
+    name: cr.name,
+    powerMult: cr.powerMult,
+    talents,
+    best: prog.best, bestEmoji: MEDAL_EMOJI[prog.best] || '',
+    tiers: cr.tiers.map(t => ({ desc: t.desc, emoji: MEDAL_EMOJI[t.medal], got: prog.claimed.includes(t.medal) })),
+    locked: curLevel() < UNLOCK_LEVEL.battle,
+    lockLevel: UNLOCK_LEVEL.battle
+  };
+}
+function openCrue() {
+  if (!rec) return;
+  sfx.press(); ui.hideOverlay('ovl-menu');
+  ui.renderCrue(crueData(), { defy: defierCrue });
+  ui.showOverlay('ovl-crue');
+}
+// Notification optionnelle « la Crue est arrivée » — gated sur l'opt-in existant
+// (s.push + permission accordée). Une seule fois par semaine, en local (best-effort).
+function maybeNotifyCrue() {
+  try {
+    if (!s || !s.push || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    const wk = isoWeekKey(new Date());
+    if (rec.crueNotified === wk) return;
+    rec.crueNotified = wk; persistRec();
+    if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+      navigator.serviceWorker.ready
+        .then(reg => reg.showNotification('🌊 La Crue est arrivée !', {
+          body: 'Une championne rôde dans la vallée cette semaine.', tag: 'crue', icon: './icons/icon-192.png'
+        }))
+        .catch(() => {});
+    }
+  } catch (_) { /* le banner en jeu reste le canal principal */ }
+}
 
 // Gestes de glissement : la balle qu'on lance, ou le poisson qu'on donne. Le doigt
 // pilote le jeton ; on convertit les coords écran -> coords canvas.
@@ -2647,6 +2762,7 @@ function boot() {
   };
   $('pt-gang').addEventListener('click', openGang);
   $('pt-atelier').addEventListener('click', openWorkshop);   // atelier de trésors (É5)
+  $('pt-crue').addEventListener('click', openCrue);          // La Crue de la semaine (É5b)
 
   // la bannière de quête ouvre le détail (quêtes + succès)
   $('quest').addEventListener('click', openAch);
@@ -2753,6 +2869,7 @@ function boot() {
     'ovl-gang': () => ui.hideOverlay('ovl-gang'),
     'ovl-barter': () => ui.hideOverlay('ovl-barter'),
     'ovl-workshop': () => { workshopChoice = null; ui.hideOverlay('ovl-workshop'); },
+    'ovl-crue': () => ui.hideOverlay('ovl-crue'),
     'ovl-encounter': () => closeEncounter(false),
     'ovl-hats': () => ui.hideOverlay('ovl-hats'),
     'ovl-ach': () => ui.hideOverlay('ovl-ach'),

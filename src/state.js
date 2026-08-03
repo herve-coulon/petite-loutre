@@ -139,6 +139,8 @@ export function newRecords() {
     dupes: {},          // doublons de trésors par tier (atelier) : {commun,rare,epique,legendaire}
     barterDay: null,    // jour (dayKey) du dernier troc — réinitialise les offres à minuit
     barterUsed: [],     // ids d'offres de troc déjà prises aujourd'hui
+    crue: null,         // La Crue (É5b) : { week, best, claimed:[] } — progrès de la semaine courante
+    crueNotified: null, // dernière semaine ISO notifiée « la Crue est arrivée » (push opt-in)
     items: [],          // trésors rares possédés (ids) — global, survit aux loutres
     wins: 0,
     battles: 0,
@@ -177,6 +179,7 @@ function normalizeRecords(o) {
   if (typeof o.fish !== 'number') o.fish = o.fishTotal || 0;
   if (typeof o.shells !== 'number') o.shells = o.treatsTotal || 0;
   if (!o.dupes || typeof o.dupes !== 'object') o.dupes = {};
+  if (o.crue !== null && (typeof o.crue !== 'object')) o.crue = null;   // La Crue (É5b)
   const base = newRecords();
   for (const k of Object.keys(base)) {
     if (o[k] === undefined) o[k] = base[k];

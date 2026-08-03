@@ -462,6 +462,53 @@ export function renderWorkshop(data, h) {
   }
 }
 
+/** La Crue de la semaine (É5b) : championne renforcée + talents visibles + défis. */
+export function renderCrue(data, h) {
+  data = data || {}; h = h || {};
+  const host = $('crue-body'); if (!host) return;
+  host.innerHTML = '';
+  const intro = document.createElement('p'); intro.className = 'small';
+  intro.textContent = data.weatherLabel + ' — la championne a envahi ' + data.zoneName + ' cette semaine.';
+  host.appendChild(intro);
+
+  const champ = document.createElement('div'); champ.className = 'rec-card';
+  const col = document.createElement('div'); col.className = 'rc-col';
+  const nm = document.createElement('span'); nm.className = 'rc-nm'; nm.textContent = '🏆 ' + data.name;
+  const pw = document.createElement('span'); pw.className = 'rc-pw'; pw.textContent = '💪 ×' + data.powerMult + ' — renforcée';
+  const tl = document.createElement('span'); tl.className = 'rc-sub';
+  tl.textContent = 'Talents : ' + ((data.talents && data.talents.length) ? data.talents.map(t => t.icon + ' ' + t.name).join(', ') : 'aucun');
+  col.appendChild(nm); col.appendChild(pw); col.appendChild(tl);
+  champ.appendChild(col);
+  host.appendChild(champ);
+
+  const secT = document.createElement('p'); secT.className = 'g-section'; secT.textContent = 'Défis de la semaine';
+  host.appendChild(secT);
+  (data.tiers || []).forEach(t => {
+    const row = document.createElement('div'); row.className = 'rec-card';
+    const c2 = document.createElement('div'); c2.className = 'rc-col';
+    const n2 = document.createElement('span'); n2.className = 'rc-nm'; n2.textContent = t.emoji + ' ' + t.desc;
+    c2.appendChild(n2);
+    const badge = document.createElement('button'); badge.className = 'act'; badge.disabled = true;
+    badge.textContent = t.got ? 'Obtenu ✓' : '—';
+    row.appendChild(c2); row.appendChild(badge);
+    host.appendChild(row);
+  });
+
+  const act = document.createElement('div'); act.className = 'gang-actions';
+  const btn = document.createElement('button'); btn.className = 'act';
+  if (data.locked) { btn.textContent = '🔒 Niveau ' + data.lockLevel; btn.disabled = true; }
+  else { btn.textContent = '🌊 Défier ' + data.name; }
+  btn.addEventListener('click', () => h.defy && h.defy());
+  act.appendChild(btn);
+  host.appendChild(act);
+
+  if (data.best && data.best !== 'none') {
+    const b = document.createElement('p'); b.className = 'rc-sub';
+    b.textContent = 'Ta meilleure médaille cette semaine : ' + data.bestEmoji + ' ' + data.best;
+    host.appendChild(b);
+  }
+}
+
 /** Résultat d'un combat de bande : bannière, récompense, journal du relais. */
 export function renderGangResult(res, rival, gang, h) {
   const host = $('gang-body'); if (!host) return;
