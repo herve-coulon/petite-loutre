@@ -8,6 +8,3 @@ project_id = "wjpoojscmnbgofymcmvz"
 
 [functions.telemetry]
 verify_jwt = false
-
-[functions.kimi-chat]
-verify_jwt = false
