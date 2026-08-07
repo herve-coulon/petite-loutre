@@ -321,6 +321,20 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v3.95.0 : Dialogues vivants, version LOCALE (on abandonne l'appel Kimi). Même
+ressenti — les habitants varient leur accueil — mais 100 % sur l'appareil : gratuit,
+hors-ligne, instantané, déterministe. `dialogue.js` devient un générateur pur seedé
+(`livingLine`) qui garde la VOIX de chaque habitant (une de ses répliques signature)
+et y ajoute une remarque de l'instant selon la météo (repli saison), personnalisée
+au nom de la loutre et seedée par le jour+lieu (varie chaque jour, stable dans la
+journée). Le réglage ⚙️ « Dialogues vivants » passe ON par défaut (plus rien à
+payer) avec bascule unique pour les anciennes saves ; on peut toujours revenir aux
+dialogues écrits. `kimi-client.js` + `kimi-cache-key.js` sortent du PRECACHE (bundle
+joueurs allégé, Option B) ; l'Edge Function `kimi-chat` reste déployée mais dormante,
+plus aucun appel réseau ni clé requise. Tests purs `dialogue.test.js` réécrits
+(déterminisme, variété jour à jour, priorité météo/saison, sans emoji). Vérifié
+navigateur : réglage ON par défaut, module servi générant bien « voix + remarque
+météo » qui varie par jour, zéro erreur console. 473 tests.*
 v3.94.0 : les Dialogues vivants (É6 — Option A). `kimi-client.js` avait un client
 mais aucun consommateur : il en a un désormais. Quand le réglage ⚙️ « Dialogues
 vivants » est activé (OFF par défaut, opt-in, nécessite une connexion), les habitants

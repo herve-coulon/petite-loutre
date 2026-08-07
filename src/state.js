@@ -27,7 +27,8 @@ export function newState(now = Date.now(), rnd = Math.random) {
     bigText: false,      // accessibilité : texte agrandi
     reduceMotion: false, // accessibilité : animations réduites (init. sur la pref OS au boot)
     questCollapsed: false, // bandeau de quêtes replié (É4) — laisse respirer l'eau
-    livingDialogues: false, // « Dialogues vivants » (É6) : habitants génératifs — OFF par défaut (en ligne, opt-in)
+    livingDialogues: true, // « Dialogues vivants » (v3.95) : habitants générés LOCALEMENT — ON par défaut (gratuit, hors-ligne)
+    livingV2: true,        // marqueur : bascule unique vers le défaut ON de la version locale
     push: false,
     hat: null,
     fur: 'roux',
@@ -66,7 +67,10 @@ function normalizeState(o) {
   if (typeof o.bigText !== 'boolean') o.bigText = false;
   if (typeof o.reduceMotion !== 'boolean') o.reduceMotion = false;
   if (typeof o.questCollapsed !== 'boolean') o.questCollapsed = false;
-  if (typeof o.livingDialogues !== 'boolean') o.livingDialogues = false;   // É6 : off par défaut
+  if (typeof o.livingDialogues !== 'boolean') o.livingDialogues = true;    // v3.95 : local, ON par défaut
+  // Bascule UNIQUE : les saves d'avant la version locale (Kimi, réglage à false et
+  // inopérant sans clé) passent une fois au nouveau défaut ON. L'utilisateur peut re-couper.
+  if (!o.livingV2) { o.livingDialogues = true; o.livingV2 = true; }
   if (typeof o.push !== 'boolean') o.push = false;
   if (typeof o.away !== 'boolean') o.away = false;
   for (const k of ['awayAt', 'awayCare', 'awayNextCare']) {

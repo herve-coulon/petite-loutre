@@ -37,8 +37,7 @@ import { newAchievements } from './achievements.js';
 import { encodeCard, decodeCard, newBattle, stepBattle, duelInput, wildFoe, makeFighter, playerTechniques, techniqueById } from './battle.js';
 import { combatBuffs, jeuBuffs, unlockedTechniques, PASSIVE_TECHNIQUES } from './skills.js';
 import { isoWeekKey, crueOfWeek, medalFor, claimCrueRewards } from './crue.js';
-import { askKimi } from './kimi-client.js';
-import { buildDialoguePrompt, cleanDialogueLines } from './dialogue.js';
+import { livingLine } from './dialogue.js';
 import { chasseurRode, newChasseur, stepChasseur, DEGATS_CAPTURE } from './chasseur.js';
 import { makeGang, recruit, recruitBoard, gangPower, generateRival, resolveGangBattle, applyGangResult, MAX_MEMBERS } from './gang.js';
 import {
@@ -754,16 +753,19 @@ function parlerAuPnj(pnj) {
 }
 
 /**
- * Présente l'habitant : dialogues ÉCRITS par défaut. Si « Dialogues vivants » est
- * activé (opt-in, hors ligne exclu) on tente une salutation générée (Kimi) — mais
- * uniquement pour REMPLACER la salutation d'accroche, jamais les lignes de gain/
- * conseil (on ne perd jamais d'info utile). Repli COMPLET sur l'écrit si le réseau,
- * le budget ou la latence (> 2 s) font défaut : le jeu ne se dégrade jamais.
+ * Présente l'habitant. Si « Dialogues vivants » est activé (ON par défaut), on
+ * génère LOCALEMENT une salutation vivante (voix de l'habitant + remarque de
+ * l'instant, seedée par le jour+lieu) qui remplace la seule accroche — jamais les
+ * lignes de gain/conseil (on ne perd aucune info utile). Coupé : dialogues écrits.
+ * Tout est local : gratuit, hors-ligne, instantané, déterministe.
  */
 function presentPnj(pnj, lignes, flavorCount) {
-  enhanceWithLiving(pnj, lignes, flavorCount).then(finalLines => {
-    ui.showStory({ emoji: pnj.emoji, title: pnj.nom + ' — ' + pnj.role, lines: finalLines, cta: 'MERCI !' });
-  });
+  let lines = lignes;
+  if (s && s.livingDialogues !== false) {
+    const gen = livingLine(pnj, dialogueContext(pnj), dayKey() + '|' + pnj.zone);
+    if (gen && gen.length) lines = gen.concat(lignes.slice(flavorCount));   // garde gains/conseils
+  }
+  ui.showStory({ emoji: pnj.emoji, title: pnj.nom + ' — ' + pnj.role, lines, cta: 'MERCI !' });
 }
 function dialogueContext(pnj) {
   const w = weatherFor(new Date());
@@ -775,20 +777,6 @@ function dialogueContext(pnj) {
     zoneName: (zoneById(s.worldZone || pnj.zone || START_ZONE) || {}).name || null,
     level: curLevel()
   };
-}
-async function enhanceWithLiving(pnj, lignes, flavorCount) {
-  if (!s || s.livingDialogues !== true) return lignes;                       // opt-in only
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) return lignes; // hors ligne
-  try {
-    const msgs = buildDialoguePrompt(pnj, dialogueContext(pnj));
-    const gen = await Promise.race([
-      askKimi(msgs, { temperature: 0.85, maxTokens: 120 }),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('kimi-timeout')), 2000))  // latence > 2 s
-    ]);
-    const lines = cleanDialogueLines(gen && gen.content);
-    if (lines.length) return lines.concat(lignes.slice(flavorCount));         // garde gains/conseils
-  } catch (_) { /* repli COMPLET sur les dialogues écrits (réseau/budget/latence) */ }
-  return lignes;
 }
 
 /**
@@ -2587,7 +2575,7 @@ function boot() {
     livingLabel();
     persist();
     ui.toast(s.livingDialogues
-      ? '🗣️ Dialogues vivants activés — les habitants improvisent (en ligne).'
+      ? '🗣️ Dialogues vivants activés — les habitants varient leur accueil.'
       : '🗣️ Dialogues vivants coupés — retour aux dialogues écrits.');
   });
   $('b-reset').addEventListener('click', () => {
