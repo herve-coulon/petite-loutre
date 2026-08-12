@@ -1065,3 +1065,17 @@ test('trousse de soins : premium en gemmes quand pas malade ; la guérison reste
   assert.ok($('ovl-confirm').classList.contains('hidden'), 'aucune offre en pleine forme');
   assert.equal(L.records.gems, 50, 'et aucune gemme dépensée');
 });
+
+test('Le Marché : le hub s\'ouvre (onglet + bourse du HUD) et rassemble les 4 usages', () => {
+  L.records.marcheSeen = true;            // évite le petit mot d'accueil
+  $('pt-marche').click();
+  assert.ok(!$('ovl-marche').classList.contains('hidden'), 'le Marché s\'ouvre depuis l\'onglet Profil');
+  assert.equal($('marche-body').querySelectorAll('.marche-tile').length, 4, '4 usages regroupés');
+  assert.equal($('marche-body').querySelectorAll('.mp-coin').length, 3, 'les 3 monnaies affichées');
+  $('ovl-marche').querySelector('.ovl-x').click();
+  assert.ok($('ovl-marche').classList.contains('hidden'), 'le ✕ ferme le Marché');
+  // la bourse du HUD est tappable : 🐟 ouvre aussi le Marché
+  $('pill-fish').click();
+  assert.ok(!$('ovl-marche').classList.contains('hidden'), 'taper les poissons du HUD ouvre le Marché');
+  $('ovl-marche').querySelector('.ovl-x').click();
+});

@@ -509,6 +509,46 @@ export function renderCrue(data, h) {
   }
 }
 
+/** Le Marché (v3.96) : le HUB économique — la bourse + tout ce qu'on peut dépenser. */
+export function renderMarche(data, h) {
+  data = data || {}; h = h || {};
+  const host = $('marche-body'); if (!host) return;
+  host.innerHTML = '';
+  const intro = document.createElement('p'); intro.className = 'small';
+  intro.textContent = 'Ta bourse — dépense-la ici. La pêche et les trouvailles la remplissent.';
+  host.appendChild(intro);
+
+  const purse = document.createElement('div'); purse.className = 'marche-purse';
+  [['fish', '🐟', data.fish], ['shell', '🐚', data.shells], ['gem', '💎', data.gems]].forEach(([key, ic, val]) => {
+    const c = document.createElement('div'); c.className = 'mp-coin' + (data.focus === key ? ' on' : '');
+    const i = document.createElement('span'); i.className = 'mp-ic'; i.textContent = ic;
+    const b = document.createElement('b'); b.textContent = fmtNum(val || 0);
+    c.appendChild(i); c.appendChild(b); purse.appendChild(c);
+  });
+  host.appendChild(purse);
+
+  const tiles = [
+    { ic: '🛍️', title: 'Cosmétiques', sub: 'Chapeaux, pelages, décors, trésors — en 💎', fn: h.cosmetics },
+    { ic: '🐚', title: 'Troc du jour', sub: 'Échange tes coquillages contre poissons ou gemmes', fn: h.troc },
+    { ic: '🛠️', title: 'Atelier', sub: 'Fusionne 3 doublons en un trésor supérieur', fn: h.atelier },
+    { ic: '🦦', title: 'Recrutement', sub: 'Enrôle des loutres dans ton escouade — en 🐟', fn: h.recrutement },
+  ];
+  const grid = document.createElement('div'); grid.className = 'marche-grid';
+  tiles.forEach(t => {
+    const btn = document.createElement('button'); btn.className = 'marche-tile';
+    const ic = document.createElement('span'); ic.className = 'mt-ic'; ic.textContent = t.ic;
+    const tx = document.createElement('span'); tx.className = 'mt-tx';
+    const nm = document.createElement('b'); nm.textContent = t.title;
+    const sub = document.createElement('span'); sub.className = 'mt-sub'; sub.textContent = t.sub;
+    tx.appendChild(nm); tx.appendChild(sub);
+    const go = document.createElement('span'); go.className = 'mt-go'; go.textContent = '›';
+    btn.appendChild(ic); btn.appendChild(tx); btn.appendChild(go);
+    btn.addEventListener('click', () => t.fn && t.fn());
+    grid.appendChild(btn);
+  });
+  host.appendChild(grid);
+}
+
 /** Résultat d'un combat de bande : bannière, récompense, journal du relais. */
 export function renderGangResult(res, rival, gang, h) {
   const host = $('gang-body'); if (!host) return;

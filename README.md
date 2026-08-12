@@ -321,6 +321,20 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v3.96.0 : Le Marché — l'économie enfin VISIBLE. La plomberie économique existait
+(poissons/coquillages/gemmes, repas, recrutement, troc, atelier) mais restait
+invisible et dispersée : monnaies lues comme de simples stats, points de dépense
+enterrés dans des sous-menus, troc accessible seulement en marchant jusqu'à Gaspard
+au lac. Nouveau HUB « 🪙 Le Marché » (onglet Profil + overlay) : en-tête « ta bourse »
+avec les 3 monnaies, puis 4 tuiles qui rassemblent l'existant sans le dupliquer —
+Cosmétiques (garde-robe, 💎), Troc du jour (enfin atteignable partout, sans marcher),
+Atelier (fusion de doublons), Recrutement (🐟). Surtout, la bourse du HUD devient
+TAPPABLE : toucher 🐟 / 🐚 / 💎 ouvre le Marché avec la monnaie mise en avant, et un
+petit mot d'accueil la 1re fois — les compteurs passent de « stats » à « argent ».
+Zéro nouvelle mécanique, zéro nouveau fichier : que de la mise en scène. Migration
+douce (`marcheSeen`). Test d'intégration (ouverture onglet + pastille HUD, 4 usages,
+le troc s'ouvre sans le monde). Vérifié navigateur : le hub s'ouvre, monnaie tapée
+surlignée, tuile Troc ouvre le barter, zéro erreur console. 466 tests.*
 v3.95.0 : Dialogues vivants, version LOCALE (on abandonne l'appel Kimi). Même
 ressenti — les habitants varient leur accueil — mais 100 % sur l'appareil : gratuit,
 hors-ligne, instantané, déterministe. `dialogue.js` devient un générateur pur seedé

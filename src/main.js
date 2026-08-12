@@ -2689,6 +2689,30 @@ function boot() {
   }
   $('btn-hats-close').addEventListener('click', () => ui.hideOverlay('ovl-hats'));
 
+  // ── Le Marché (v3.96) : le HUB économique. Il ne réinvente rien — il RASSEMBLE
+  //    et rend visible ce qui existait, éparpillé (garde-robe, troc, atelier,
+  //    recrutement). Surtout, il rend le troc atteignable sans marcher jusqu'au lac.
+  const marcheHandlers = {
+    cosmetics: () => { ui.hideOverlay('ovl-marche'); openWardrobe('hats'); },
+    troc: () => { ui.hideOverlay('ovl-marche'); openBarter(); },
+    atelier: () => { ui.hideOverlay('ovl-marche'); openWorkshop(); },
+    recrutement: () => { ui.hideOverlay('ovl-marche'); openGang(); }
+  };
+  const openMarche = (focus) => {
+    if (!rec) return;
+    sfx.press(); ui.hideOverlay('ovl-menu');
+    ui.renderMarche({ fish: rec.fish, shells: rec.shells, gems: rec.gems, focus: focus || null }, marcheHandlers);
+    ui.showOverlay('ovl-marche');
+    if (!rec.marcheSeen) { rec.marcheSeen = true; persistRec(); ui.toast('🪙 Voici ta bourse — dépense 🐟 🐚 💎 ici !'); }
+  };
+  $('pt-marche').addEventListener('click', () => openMarche());
+  // La bourse du HUD est TAPPABLE : 🐟 / 🐚 / 💎 ouvrent le Marché (stats → argent).
+  [['gems', 'gem'], ['pill-fish', 'fish'], ['pill-shell', 'shell']].forEach(([id, key]) => {
+    const el = $(id); if (!el) return;
+    el.addEventListener('click', () => openMarche(key));
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMarche(key); } });
+  });
+
   // Carte photo (accessible depuis Succès)
   $('b-photo').addEventListener('click', openPhoto);
   $('b-place').addEventListener('click', togglePlace);
@@ -2909,6 +2933,7 @@ function boot() {
     'ovl-barter': () => ui.hideOverlay('ovl-barter'),
     'ovl-workshop': () => { workshopChoice = null; ui.hideOverlay('ovl-workshop'); },
     'ovl-crue': () => ui.hideOverlay('ovl-crue'),
+    'ovl-marche': () => ui.hideOverlay('ovl-marche'),
     'ovl-encounter': () => closeEncounter(false),
     'ovl-hats': () => ui.hideOverlay('ovl-hats'),
     'ovl-ach': () => ui.hideOverlay('ovl-ach'),

@@ -56,15 +56,15 @@
       <b id="hud-name">???</b>
       <div class="xpbar"><div class="fill" id="lvl-fill"></div></div>
     </div>
-    <div id="gems" class="pill">
+    <div id="gems" class="pill purse" role="button" tabindex="0" aria-label="Gemmes — ouvrir le Marché">
       <span class="ic">💎</span><b id="gem-num">0</b>
     </div>
   </div>
 
-  <!-- Rangée 2 : poissons · coquillages · série -->
+  <!-- Rangée 2 : poissons · coquillages · série — les monnaies ouvrent le Marché -->
   <div id="counters">
-    <div class="pill"><span class="ic">🐟</span><b id="fish-num">0</b></div>
-    <div class="pill"><span class="ic">🐚</span><b id="shell-num">0</b></div>
+    <div id="pill-fish" class="pill purse" role="button" tabindex="0" aria-label="Poissons — ouvrir le Marché"><span class="ic">🐟</span><b id="fish-num">0</b></div>
+    <div id="pill-shell" class="pill purse" role="button" tabindex="0" aria-label="Coquillages — ouvrir le Marché"><span class="ic">🐚</span><b id="shell-num">0</b></div>
     <div id="streak" class="pill streak"><span class="ic">🔥</span><b id="streak-num">0</b></div>
   </div>
 
@@ -274,6 +274,7 @@
     <div class="prof-nav">
       <button class="prof-tab" id="b-ach"><span class="pt-ic">🏆</span>Succès<span class="badge count" id="ach-badge"></span></button>
       <button class="prof-tab" id="b-bestiary"><span class="pt-ic">📖</span>Bestiaire</button>
+      <button class="prof-tab" id="pt-marche"><span class="pt-ic">🪙</span>Marché</button>
       <button class="prof-tab" id="pt-gang"><span class="pt-ic">🦦</span>Escouade</button>
       <button class="prof-tab" id="pt-crue"><span class="pt-ic">🌊</span>La Crue</button>
       <button class="prof-tab" id="pt-atelier"><span class="pt-ic">🛠️</span>Atelier</button>
@@ -343,6 +344,12 @@
     <button class="ovl-x" aria-label="Fermer">✕</button>
     <p class="big">🌊 La Crue</p>
     <div id="crue-body"></div>
+  </div>
+
+  <div id="ovl-marche" class="ovl scroll hidden" role="dialog" aria-modal="true" aria-label="Le Marché">
+    <button class="ovl-x" aria-label="Fermer">✕</button>
+    <p class="big">🪙 Le Marché</p>
+    <div id="marche-body"></div>
   </div>
 
   <!-- Rencontre : amadouer une loutre sauvage pour l'enrôler -->
