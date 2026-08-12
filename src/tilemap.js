@@ -656,6 +656,16 @@ export const FIND_ICON = {
   nenufar: '🪷'
 };
 
+// Noms des sortes de trouvailles — pour le Carnet du naturaliste (album des 16).
+export const FIND_NAME = {
+  poisson: 'Poisson', champignon: 'Champignon', gemme: 'Gemme',
+  coquillage: 'Coquillage', tresor: 'Trésor', fleur: 'Fleur',
+  crabe: 'Crabe', silex: 'Silex', baie: 'Baie',
+  corail: 'Corail', nacre: 'Nacre', cristal: 'Cristal',
+  pepite: 'Pépite', glacon: 'Glaçon', etoile: 'Étoile',
+  nenufar: 'Nénuphar'
+};
+
 /**
  * Ce que chaque lieu a de PROPRE. Sans cela la vallée n'était qu'une suite de
  * prés : on ramassait trois objets et plus rien ne distinguait un lieu d'un

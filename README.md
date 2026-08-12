@@ -321,6 +321,19 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v3.98.0 : Le Carnet du naturaliste — bestiaire, trouvailles et records réunis. Trois
+choses étaient éparpillées : le bestiaire (son propre écran), les records (une ligne
+noyée dans Succès), et les trouvailles (aucun album — `rec.found` ne gardait que des
+ids éphémères). Le Carnet les UNIFIE en un carnet à trois sections (onglet Profil
+« 📖 Carnet » qui remplace l'ancien « Bestiaire ») : 🐾 Bestiaire (créatures vues/
+attrapées, X/total), 🍄 Trouvailles (l'album des 16 sortes — poisson, champignon,
+gemme… nénuphar — découvertes en clair, verrouillées en ❓, suivies dès maintenant
+via `rec.foundKinds` renseigné au ramassage), 🏆 Records (11 stats à vie, durée
+formatée), le tout coiffé d'un taux de complétion global (« Carnet rempli à N% »).
+Zéro nouveau fichier ni nouvelle mécanique : de la mise en scène. Migration douce
+(`foundKinds` défaut []). Test smoke (3 sections, bascule, 16 sortes dont N
+découvertes, fermeture). Vérifié navigateur : le Carnet s'ouvre, en-tête 38% ·
+🐾 2/8 · 🍄 7/16, album des trouvailles, records chiffrés, zéro erreur. 467 tests.*
 v3.97.0 : équilibrage des prix + « solde après achat » (Phase 3 du Marché). Le vrai
 déséquilibre repéré : les poissons S'ENTASSENT (pêche généreuse, peu de puits) tandis
 que les coquillages sont rares — et le troc ne demandait QUE des coquillages, donc il

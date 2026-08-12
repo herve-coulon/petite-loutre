@@ -1079,3 +1079,22 @@ test('Le Marché : le hub s\'ouvre (onglet + bourse du HUD) et rassemble les 4 u
   assert.ok(!$('ovl-marche').classList.contains('hidden'), 'taper les poissons du HUD ouvre le Marché');
   $('ovl-marche').querySelector('.ovl-x').click();
 });
+
+test('Le Carnet du naturaliste : 3 sections unifiées, bascule et fermeture', () => {
+  L.records.foundKinds = ['poisson', 'gemme'];   // deux sortes découvertes
+  $('pt-carnet').click();
+  assert.ok(!$('ovl-carnet').classList.contains('hidden'), 'le Carnet s\'ouvre');
+  const tabs = [...document.querySelectorAll('#carnet-tabs .carnet-tab')];
+  assert.equal(tabs.length, 3, 'bestiaire · trouvailles · records');
+  assert.ok(tabs.find(t => t.dataset.sec === 'bestiaire').classList.contains('on'), 'bestiaire actif au départ');
+  assert.match($('carnet-global').textContent, /Carnet rempli/);
+  // Trouvailles : l'album des 16 sortes, dont 2 découvertes
+  tabs.find(t => t.dataset.sec === 'trouvailles').click();
+  assert.equal($('carnet-body').querySelectorAll('.carnet-cell').length, 16, '16 sortes');
+  assert.equal($('carnet-body').querySelectorAll('.carnet-cell:not(.locked)').length, 2, '2 découvertes');
+  // Records : des lignes chiffrées
+  tabs.find(t => t.dataset.sec === 'records').click();
+  assert.ok($('carnet-body').querySelectorAll('.cr-row').length >= 6, 'des records listés');
+  $('ovl-carnet').querySelector('.ovl-x').click();
+  assert.ok($('ovl-carnet').classList.contains('hidden'), 'le ✕ ferme le Carnet');
+});

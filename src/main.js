@@ -869,6 +869,9 @@ function ouvrirCoffre(c) {
 function collectFind(f) {
   if (!rec) return;
   (rec.found = rec.found || []).push(f.id);
+  // Album du Carnet : on note la SORTE découverte (une première fois marque la page).
+  rec.foundKinds = rec.foundKinds || [];
+  if (f.kind && !rec.foundKinds.includes(f.kind)) rec.foundKinds.push(f.kind);
   quest('finds');
   const name = s.name || 'La loutre';
   const honneur = zoneDuJour(dayKey()) === (s.worldZone || START_ZONE);
@@ -2768,10 +2771,19 @@ function boot() {
   $('b-ach').addEventListener('click', openAch);
   { const el = $('ps-ach'); if (el) el.addEventListener('click', openAch); }
 
-  // Bestiaire
-  $('b-bestiary').addEventListener('click', () => {
-    ui.renderBestiary(rec);
-    ui.showOverlay('ovl-bestiary');
+  // Le Carnet du naturaliste (v3.98) : unifie bestiaire + trouvailles + records.
+  let carnetSection = 'bestiaire';
+  const refreshCarnet = () => ui.renderCarnet(rec, carnetSection, {});
+  const openCarnet = () => {
+    if (!rec) return;
+    sfx.press(); ui.hideOverlay('ovl-menu');
+    carnetSection = 'bestiaire';
+    refreshCarnet();
+    ui.showOverlay('ovl-carnet');
+  };
+  $('pt-carnet').addEventListener('click', openCarnet);
+  document.querySelectorAll('#carnet-tabs .carnet-tab').forEach(tab => {
+    tab.addEventListener('click', () => { carnetSection = tab.getAttribute('data-sec'); sfx.press(); refreshCarnet(); });
   });
 
   // Escouade (gang) : création, recrutement (se paie en POISSONS 🐟, prix doux
@@ -2940,6 +2952,7 @@ function boot() {
     'ovl-workshop': () => { workshopChoice = null; ui.hideOverlay('ovl-workshop'); },
     'ovl-crue': () => ui.hideOverlay('ovl-crue'),
     'ovl-marche': () => ui.hideOverlay('ovl-marche'),
+    'ovl-carnet': () => ui.hideOverlay('ovl-carnet'),
     'ovl-encounter': () => closeEncounter(false),
     'ovl-hats': () => ui.hideOverlay('ovl-hats'),
     'ovl-ach': () => ui.hideOverlay('ovl-ach'),

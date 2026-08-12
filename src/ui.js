@@ -18,7 +18,7 @@ import { PASSIVE_TECHNIQUES, unlockedTechniques } from './skills.js';
 function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 import { equipBonus } from './skins.js';
 import { paintOtter, paintBadge } from './render.js';
-import { ZONES, ZONE_INTRO, FIND_ICON, SPECIALITE, COFFRE_ZONES, EPREUVE_ZONES, zoneDuJour, zoneLayout, zoneUnlocked, zoneReq } from './tilemap.js';
+import { ZONES, ZONE_INTRO, FIND_ICON, FIND_NAME, SPECIALITE, COFFRE_ZONES, EPREUVE_ZONES, zoneDuJour, zoneLayout, zoneUnlocked, zoneReq } from './tilemap.js';
 import { CREATURES } from './creatures.js';
 
 const $ = id => document.getElementById(id);
@@ -735,37 +735,79 @@ export function updateHUD(s, mg, rec) {
 export function showOverlay(id) { $(id).classList.remove('hidden'); }
 export function hideOverlay(id) { $(id).classList.add('hidden'); }
 export function hideAllOverlays() {
-  ['ovl-intro', 'ovl-name', 'ovl-story', 'ovl-over', 'ovl-confirm', 'ovl-hats', 'ovl-ach', 'ovl-set', 'ovl-battle', 'ovl-photo', 'ovl-bestiary']
+  ['ovl-intro', 'ovl-name', 'ovl-story', 'ovl-over', 'ovl-confirm', 'ovl-hats', 'ovl-ach', 'ovl-set', 'ovl-battle', 'ovl-photo', 'ovl-carnet']
     .forEach(hideOverlay);
 }
 
 /** Bestiaire : affiche les créatures découvertes (fiches en emoji — design
  *  préféré d'Hervé ; le pixel avait été jugé trop laid). */
-export function renderBestiary(rec) {
-  const list = $('bestiary-list');
-  const cnt = $('bestiary-count');
-  if (!list) return;
-  if (!rec.bestiary || Object.keys(rec.bestiary).length === 0) {
-    cnt.textContent = 'Aucune créature découverte pour l\'instant.';
-    list.innerHTML = '';
-    return;
-  }
-  cnt.textContent = Object.keys(rec.bestiary).length + '/' + CREATURES.length + ' créatures découvertes';
+/**
+ * Le Carnet du naturaliste (v3.98) : UNIFIE le bestiaire, l'album des trouvailles
+ * et les records en un seul carnet à trois sections. `section` = l'onglet actif.
+ */
+export function renderCarnet(rec, section, h) {
+  rec = rec || {}; h = h || {};
+  const body = $('carnet-body'); if (!body) return;
+  section = section || 'bestiaire';
+
+  // Compteurs pour l'en-tête de complétion globale (bestiaire + trouvailles).
+  const seen = rec.bestiary || {};
+  const bCount = Object.keys(seen).length, bTotal = CREATURES.length;
+  const kinds = Object.keys(FIND_ICON);
+  const tCount = (rec.foundKinds || []).filter(k => kinds.includes(k)).length, tTotal = kinds.length;
+  const globalPct = Math.round(((bCount + tCount) / Math.max(1, bTotal + tTotal)) * 100);
+  setTxt('carnet-global', 'Carnet rempli à ' + globalPct + '% · 🐾 ' + bCount + '/' + bTotal + ' · 🍄 ' + tCount + '/' + tTotal);
+
+  // Onglet actif
+  document.querySelectorAll('#carnet-tabs .carnet-tab').forEach(t =>
+    t.classList.toggle('on', t.getAttribute('data-sec') === section));
+
   let html = '';
-  for (const c of CREATURES) {
-    const entry = rec.bestiary[c.id];
-    if (!entry) {
-      html += '<div class="best-entry best-unknown"><span class="best-emoji">❓</span><span class="best-name">???</span></div>';
-    } else {
-      html += '<div class="best-entry">' +
-        '<span class="best-emoji">' + c.emoji + '</span>' +
-        '<div class="best-info"><b>' + esc(c.name) + '</b>' +
-        '<span class="best-desc">' + esc(c.desc) + '</span>' +
-        '<span class="best-stats">Vu ' + entry.seen + ' fois' + (entry.caught ? ' · Attrapé ' + entry.caught + 'x' : '') +
-        (c.aggressive ? ' · ⚠️ Agressif' : '') + '</span></div></div>';
+  if (section === 'bestiaire') {
+    html += '<p class="small">' + bCount + '/' + bTotal + ' créatures rencontrées dans la vallée.</p>';
+    for (const c of CREATURES) {
+      const entry = seen[c.id];
+      if (!entry) {
+        html += '<div class="best-entry best-unknown"><span class="best-emoji">❓</span><span class="best-name">???</span></div>';
+      } else {
+        html += '<div class="best-entry"><span class="best-emoji">' + c.emoji + '</span>' +
+          '<div class="best-info"><b>' + esc(c.name) + '</b>' +
+          '<span class="best-desc">' + esc(c.desc) + '</span>' +
+          '<span class="best-stats">Vu ' + entry.seen + ' fois' + (entry.caught ? ' · Attrapé ' + entry.caught + 'x' : '') +
+          (c.aggressive ? ' · ⚠️ Agressif' : '') + '</span></div></div>';
+      }
     }
+  } else if (section === 'trouvailles') {
+    html += '<p class="small">' + tCount + '/' + tTotal + ' sortes de trouvailles découvertes en explorant la vallée.</p>';
+    html += '<div class="carnet-grid">';
+    for (const k of kinds) {
+      const got = (rec.foundKinds || []).includes(k);
+      html += '<div class="carnet-cell' + (got ? '' : ' locked') + '">' +
+        '<span class="cc-ic">' + (got ? FIND_ICON[k] : '❓') + '</span>' +
+        '<span class="cc-nm">' + (got ? esc(FIND_NAME[k] || k) : '???') + '</span></div>';
+    }
+    html += '</div>';
+  } else { // records
+    const rows = [
+      ['Plus longue vie', rec.bestAge > 0 ? fmtDur(rec.bestAge) : '—'],
+      ['Loutres élevées', Math.max(rec.otters || 0, rec.bestAge > 0 ? 1 : 0)],
+      ['Poissons pêchés (à vie)', fmtNum(rec.fishTotal || 0)],
+      ['Repas servis', fmtNum(rec.mealsTotal || 0)],
+      ['Bains donnés', fmtNum(rec.bathsTotal || 0)],
+      ['Parties de pêche', fmtNum(rec.gamesTotal || 0)],
+      ['Trésors de saison', fmtNum(rec.treatsTotal || 0)],
+      ['Trésors collectionnés', fmtNum((rec.items || []).length)],
+      ['Meilleur toboggan', fmtNum(rec.slideBest || 0)],
+      ['Combats gagnés', fmtNum(rec.wins || 0)],
+      ['Quêtes accomplies', fmtNum(rec.questsDone || 0)],
+    ];
+    html += '<div class="carnet-records">';
+    for (const [label, val] of rows) {
+      html += '<div class="cr-row"><span class="cr-l">' + esc(label) + '</span><b class="cr-v">' + esc(String(val)) + '</b></div>';
+    }
+    html += '</div>';
   }
-  list.innerHTML = html;
+  body.innerHTML = html;
 }
 
 /** Carte d'histoire (chapitre) : emoji, titre, texte, bouton de suite. */
