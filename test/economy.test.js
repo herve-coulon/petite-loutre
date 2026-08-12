@@ -41,16 +41,25 @@ test('recrutement : prix en poissons doux et strictement progressif', () => {
   assert.equal(recruitFishCost(-3), 6);   // robustesse : jamais négatif
 });
 
-test('troc : déterministe par jour, coquillages ↔ poissons/gemmes plausibles', () => {
+test('troc : déterministe par jour, échelle de valeur cohérente + débouché du poisson', () => {
   const a = dailyBarter('2026-08-03');
   const b = dailyBarter('2026-08-03');
   const c = dailyBarter('2026-08-04');
   assert.deepEqual(a, b, 'même jour → même troc (deux joueurs identiques)');
   assert.notDeepEqual(a, c, 'un autre jour → un autre troc');
-  assert.equal(a.length, 2);
-  assert.equal(a[0].id, 'fish'); assert.ok(a[0].give.shells >= 2 && a[0].give.shells <= 4);
-  assert.ok(a[0].get.fish >= 5 && a[0].get.fish <= 10);
-  assert.equal(a[1].id, 'gems'); assert.ok(a[1].get.gems >= 1 && a[1].get.gems <= 2);
+  assert.equal(a.length, 3, 'trois offres');
+  // offre 1 : coquillages → poissons en gros (~3 poissons / coquillage)
+  assert.equal(a[0].id, 'fish');
+  assert.ok(a[0].give.shells >= 2 && a[0].give.shells <= 3);
+  assert.ok(a[0].get.fish >= a[0].give.shells * 3 && a[0].get.fish <= a[0].give.shells * 3 + 2);
+  // offre 2 : coquillages → gemmes (premium)
+  assert.equal(a[1].id, 'gems');
+  assert.ok(a[1].give.shells >= 3 && a[1].give.shells <= 4);
+  assert.ok(a[1].get.gems >= 1 && a[1].get.gems <= 2);
+  // offre 3 : le trop-plein de POISSONS gagne un débouché → 1 gemme (économie qui circule)
+  assert.equal(a[2].id, 'fgems');
+  assert.ok(a[2].give.fish >= 12 && a[2].give.fish <= 16);
+  assert.equal(a[2].get.gems, 1);
 });
 
 test('atelier : 3 doublons requis, choix de 2 candidats seedé et stable', () => {

@@ -391,19 +391,23 @@ export function renderBarter(data, h) {
   data = data || {}; h = h || {};
   const host = $('barter-body'); if (!host) return;
   host.innerHTML = '';
+  const ICON = { shells: '🐚', fish: '🐟', gems: '💎' };
   const intro = document.createElement('p'); intro.className = 'small';
-  intro.textContent = 'Échange tes coquillages 🐚 contre des poissons 🐟 ou des gemmes 💎. Une fois par offre et par jour.';
+  intro.textContent = 'Échange du jour : tes coquillages 🐚 et ton trop-plein de poissons 🐟 contre ce qui te manque. Une fois par offre et par jour.';
   host.appendChild(intro);
+  const bal = data.balances || {};
   const have = document.createElement('p'); have.className = 'g-section';
-  have.textContent = 'Ta réserve : ' + fmtNum(data.shells || 0) + ' 🐚';
+  have.textContent = 'Ta bourse : ' + fmtNum(bal.fish || 0) + ' 🐟 · ' + fmtNum(bal.shells || 0) + ' 🐚 · ' + fmtNum(bal.gems || 0) + ' 💎';
   host.appendChild(have);
   (data.offers || []).forEach(o => {
     const card = document.createElement('div'); card.className = 'rec-card';
     const col = document.createElement('div'); col.className = 'rc-col';
     const nm = document.createElement('span'); nm.className = 'rc-nm';
-    nm.textContent = o.giveShells + ' 🐚 → ' + o.getN + (o.getKind === 'fish' ? ' 🐟' : ' 💎');
+    nm.textContent = o.giveN + ' ' + ICON[o.giveKind] + ' → ' + o.getN + ' ' + ICON[o.getKind];
     const sub = document.createElement('span'); sub.className = 'rc-sub';
-    sub.textContent = o.used ? 'Déjà échangé aujourd\'hui' : (o.afford ? 'Disponible' : 'Pas assez de coquillages');
+    sub.textContent = o.used ? 'Déjà échangé aujourd\'hui'
+      : (o.afford ? ('il te restera ' + o.rest + ' ' + ICON[o.giveKind])
+        : ('il te manque ' + (-o.rest) + ' ' + ICON[o.giveKind]));
     col.appendChild(nm); col.appendChild(sub);
     const btn = document.createElement('button'); btn.className = 'act';
     if (o.used) { btn.textContent = 'Fait ✓'; btn.disabled = true; }

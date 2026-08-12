@@ -321,6 +321,20 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v3.97.0 : équilibrage des prix + « solde après achat » (Phase 3 du Marché). Le vrai
+déséquilibre repéré : les poissons S'ENTASSENT (pêche généreuse, peu de puits) tandis
+que les coquillages sont rares — et le troc ne demandait QUE des coquillages, donc il
+servait peu et l'économie ne circulait pas. Correctif : le troc quotidien gagne une
+3e offre **🐟 → 💎** (12-16 poissons pour 1 gemme) qui donne enfin un débouché à
+l'abondance de poissons, et les trois offres suivent une échelle de valeur cohérente
+et documentée (1 💎 ≈ 3 🐚 ≈ 12 🐟). Partout où l'on dépense, on voit désormais le
+**solde après achat** : chaque offre du troc affiche « il te restera N », et les
+achats express en gemmes (friandise, trousse de soins) annoncent le reste. Le
+recrutement (6 → 30 poissons, ~1-4 parties de pêche) était déjà cohérent : conservé.
+Zéro nouveau fichier ; `dailyBarter` et le troc généralisés (débit en coquillages OU
+poissons). Tests `economy.test.js` mis à jour (3 offres, échelle, débouché poisson).
+Vérifié navigateur : les 3 offres, l'échange 🐟→💎 (−13 🐟 / +1 💎), le « solde après
+achat », HUD à jour. 466 tests.*
 v3.96.0 : Le Marché — l'économie enfin VISIBLE. La plomberie économique existait
 (poissons/coquillages/gemmes, repas, recrutement, troc, atelier) mais restait
 invisible et dispersée : monnaies lues comme de simples stats, points de dépense

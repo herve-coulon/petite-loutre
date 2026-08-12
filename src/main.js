@@ -162,7 +162,7 @@ function actTreat() {
     const left = Math.ceil((CD - (t - s.lastTreat)) / MIN);
     // le délai gratuit court encore : on PEUT en offrir une tout de suite en gemmes
     if ((rec.gems || 0) >= GEM_TREAT) {
-      ui.askConfirm('Plus de friandises avant ' + left + ' min.\nEn offrir une tout de suite pour 💎 ' + GEM_TREAT + ' ?', () => {
+      ui.askConfirm('Plus de friandises avant ' + left + ' min.\nEn offrir une tout de suite pour 💎 ' + GEM_TREAT + ' ? (il te restera ' + ((rec.gems || 0) - GEM_TREAT) + ' 💎)', () => {
         if ((rec.gems || 0) < GEM_TREAT) return;   // garde-fou : solde revérifié à la validation
         rec.gems -= GEM_TREAT; persistRec(); ui.renderLevel(rec);
         servirFriandise(now());
@@ -306,7 +306,7 @@ function offrirTrousse() {
     ui.log(s.name + ' n\'est pas malade — sa santé remonte doucement d\'elle-même.');
     return;
   }
-  ui.askConfirm('Une trousse de soins remet la santé au maximum tout de suite, pour 💎 ' + GEM_HEAL + ' ?', () => {
+  ui.askConfirm('Une trousse de soins remet la santé au maximum tout de suite, pour 💎 ' + GEM_HEAL + ' ? (il te restera ' + ((rec.gems || 0) - GEM_HEAL) + ' 💎)', () => {
     if ((rec.gems || 0) < GEM_HEAL || s.health >= 100) return;  // solde/état revérifiés à la validation
     rec.gems -= GEM_HEAL;
     s.health = 100;
@@ -1549,19 +1549,23 @@ function wakeActionbar() {
 }
 
 /* ---------------- Troc quotidien (É5) : coquillages ↔ poissons/gemmes ---------------- */
+const giveKindOf = (o) => (o.give.shells != null ? 'shells' : 'fish');
 function barterData() {
   if (rec.barterDay !== dayKey()) { rec.barterDay = dayKey(); rec.barterUsed = []; }
-  const offers = dailyBarter(dayKey());
+  const bal = { shells: rec.shells || 0, fish: rec.fish || 0, gems: rec.gems || 0 };
   return {
-    shells: rec.shells || 0,
-    offers: offers.map(o => ({
-      id: o.id,
-      giveShells: o.give.shells,
-      getKind: o.get.fish != null ? 'fish' : 'gems',
-      getN: o.get.fish != null ? o.get.fish : o.get.gems,
-      used: (rec.barterUsed || []).includes(o.id),
-      afford: (rec.shells || 0) >= o.give.shells
-    }))
+    balances: bal,
+    offers: dailyBarter(dayKey()).map(o => {
+      const gk = giveKindOf(o), gn = o.give[gk];
+      const afford = (bal[gk] || 0) >= gn;
+      return {
+        id: o.id, giveKind: gk, giveN: gn,
+        getKind: o.get.fish != null ? 'fish' : 'gems',
+        getN: o.get.fish != null ? o.get.fish : o.get.gems,
+        used: (rec.barterUsed || []).includes(o.id),
+        afford, rest: (bal[gk] || 0) - gn        // solde APRÈS achat (négatif = manque)
+      };
+    })
   };
 }
 const barterHandlers = {
@@ -1570,10 +1574,12 @@ const barterHandlers = {
     if ((rec.barterUsed || []).includes(id)) return;
     const offer = dailyBarter(dayKey()).find(o => o.id === id);
     if (!offer) return;
-    if ((rec.shells || 0) < offer.give.shells) { ui.toast('🐚 Pas assez de coquillages.'); sfx.sad(); vibrate(20); return; }
-    rec.shells -= offer.give.shells;
+    const gk = giveKindOf(offer), gn = offer.give[gk];
+    if ((rec[gk] || 0) < gn) { ui.toast((gk === 'shells' ? '🐚' : '🐟') + ' Pas assez pour cet échange.'); sfx.sad(); vibrate(20); return; }
+    rec[gk] -= gn;
     if (offer.get.fish != null) rec.fish = (rec.fish || 0) + offer.get.fish;
-    else rec.gems = (rec.gems || 0) + offer.get.gems;
+    else if (offer.get.gems != null) rec.gems = (rec.gems || 0) + offer.get.gems;
+    else if (offer.get.shells != null) rec.shells = (rec.shells || 0) + offer.get.shells;
     (rec.barterUsed = rec.barterUsed || []).push(id);
     persistRec(); sfx.happy(); vibrate(10);
     ui.updateHUD(s, mg, rec); refreshBarter();

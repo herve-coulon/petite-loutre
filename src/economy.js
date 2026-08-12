@@ -20,17 +20,23 @@ export function recruitFishCost(owned) {
   return 6 + Math.max(0, owned | 0) * 6;   // 6, 12, 18, 24, 30…
 }
 
-// ── Troc quotidien chez un habitant : deux offres seedées par le jour. ──
-// Retourne [{ id, give:{shells}, get:{fish|gems} }] — coquillages ↔ poissons/gemmes.
+// ── Troc quotidien chez un habitant : trois offres seedées par le jour. ──
+// Échelle de valeur de référence (approx.) : 1 💎 ≈ 3 🐚 ≈ 12 🐟.
+// Le poisson est ABONDANT (pêche) → il gagne enfin un débouché (🐟 → 💎), et les
+// coquillages RARES s'échangent contre du poisson en gros ou des gemmes. C'est ce
+// qui fait CIRCULER l'économie au lieu de laisser les poissons s'entasser.
+// Retourne [{ id, give:{shells|fish}, get:{fish|gems} }].
 export function dailyBarter(dayKey) {
   const rng = makeRng(hashSeed('barter|' + dayKey));
-  const shellsF = 2 + Math.floor(rng() * 3);   // 2..4 coquillages
-  const fishGet = 5 + Math.floor(rng() * 6);   // → 5..10 poissons
-  const shellsG = 3 + Math.floor(rng() * 3);   // 3..5 coquillages
-  const gemsGet = 1 + Math.floor(rng() * 2);   // → 1..2 gemmes
+  const shellsF = 2 + Math.floor(rng() * 2);              // 2..3 coquillages
+  const fishGet = shellsF * 3 + Math.floor(rng() * 3);    // ~3 poissons / coquillage
+  const shellsG = 3 + Math.floor(rng() * 2);              // 3..4 coquillages
+  const gemsGet = 1 + Math.floor(rng() * 2);              // 1..2 gemmes (~2.5 🐚 / 💎)
+  const fishForGem = 12 + Math.floor(rng() * 5);          // 12..16 poissons → 1 gemme
   return [
     { id: 'fish', give: { shells: shellsF }, get: { fish: fishGet } },
-    { id: 'gems', give: { shells: shellsG }, get: { gems: gemsGet } }
+    { id: 'gems', give: { shells: shellsG }, get: { gems: gemsGet } },
+    { id: 'fgems', give: { fish: fishForGem }, get: { gems: 1 } }
   ];
 }
 
