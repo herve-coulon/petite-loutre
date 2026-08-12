@@ -321,6 +321,19 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v3.99.0 : L'Almanach de saison — 8 paliers gratuits qui rythment la saison. Le cadeau
+de saison UNIQUE (bouton 🎁) devient une PISTE de 8 paliers, pilotée par les trésors
+de saison déjà récoltés (`treatsBySeason` de l'É3, sur laquelle l'Almanach « s'appuie »).
+Chaque coquillage / trésor du jour fait avancer la piste ; on réclame palier par palier
+des lots NON-puissance (💎 5 → 🐟 25 → 🐚 4 → 🛠️ matériaux → 💎 10 → 🐟 50 → 💎 18 →
+palier 8 = l'ancien cadeau 💎 15 + 🐟 60). Réinitialisée à chaque saison (clé
+saison-année), réclamation unique par palier, badge « ! » sur 🎁 dès qu'un palier est
+mûr. Module pur `almanach.js` (paliers, progression, états, réclamation) + overlay
+`ovl-almanach`. Migration douce (`rec.almanach` défaut {}) ; l'ancien claim unique est
+remplacé (le palier final marque `seasonGifts` pour la compat). Tests `almanach.test.js`
+(seuils croissants, états, réclamation unique, fish portefeuille+à-vie, cadeau final) +
+smoke. Vérifié navigateur : Été 2026, 8 paliers (4 mûrs / 4 verrouillés), réclamation
+palier 1 (+5 💎, « Obtenu ✓ », 1/8), zéro erreur. 472 tests.*
 v3.98.0 : Le Carnet du naturaliste — bestiaire, trouvailles et records réunis. Trois
 choses étaient éparpillées : le bestiaire (son propre écran), les records (une ligne
 noyée dans Succès), et les trouvailles (aucun album — `rec.found` ne gardait que des

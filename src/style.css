@@ -799,6 +799,19 @@ input#name-input:focus{border-color:var(--teal);}
 .cr-row .cr-v{font-size:14px; color:var(--teal); font-variant-numeric:tabular-nums;}
 :root.reduce-motion .carnet-tab:active{transform:none;}
 
+/* ---------------- L'Almanach de saison (v3.99) ---------------- */
+.alm-tier{display:flex; align-items:center; gap:10px; padding:9px 12px; margin-bottom:7px;
+  border:2px solid var(--ink); border-radius:12px; background:var(--paper);
+  box-shadow:0 3px 10px rgba(38,54,78,.15);}
+.alm-tier.locked{opacity:.5;}
+.alm-tier.claimed{opacity:.72;}
+.alm-tier.claimable{border-color:var(--gold); box-shadow:0 0 0 3px rgba(201,162,75,.26), 0 3px 10px rgba(38,54,78,.15);}
+.alm-num{flex:none; width:26px; height:26px; border-radius:50%; background:var(--teal); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px;}
+.alm-tier .rc-col{display:flex; flex-direction:column; flex:1; min-width:0; text-align:left;}
+.alm-tier .rc-nm{font-weight:700; font-size:13px; color:var(--ink);}
+.alm-tier .rc-sub{font-size:11px; color:rgba(38,54,78,.6); margin-top:1px;}
+
 /* Accessibilité : classe pour masquer visuellement un élément tout en le laissant lisible par les lecteurs d'écran */
 .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
 

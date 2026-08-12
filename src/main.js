@@ -14,7 +14,8 @@ import * as music from './music.js';
 import * as ambient from './ambient.js';
 import { XP, levelFromXp, titleFor } from './level.js';
 import { bumpQuest, completedQuests, ensureDaily, dayKey, isEligible } from './quests.js';
-import { giftClaimable, giftClaimed, claimSeasonGift, addSeasonTreat } from './seasonpass.js';
+import { addSeasonTreat } from './seasonpass.js';
+import { ALMANACH_TIERS, tierState, almanachProgress, almanachCompletion, almanachHasClaimable, claimTier } from './almanach.js';
 
 import {
   newState, saveState, loadState, clearSave,
@@ -1855,7 +1856,7 @@ function persistRec() { saveRecords(rec, storage); }
 function refreshGift() {
   const b = $('b-gift'); if (!b) return;
   const badge = b.querySelector('.badge');
-  if (badge) badge.classList.toggle('hidden', !giftClaimable(rec));
+  if (badge) badge.classList.toggle('hidden', !almanachHasClaimable(rec));
 }
 /** Après chaque action joueur : sauvegarde + HUD à jour immédiatement. */
 function afterAct() { persist(); ui.updateHUD(s, mg, rec); updateCoach(); refreshGift(); }
@@ -2731,28 +2732,40 @@ function boot() {
   $('enc-fish').addEventListener('click', () => encHandlers.offer());
   $('enc-fight').addEventListener('click', () => encHandlers.fight());
 
-  // Cadeau de saison : un lot (gemmes + poissons) à réclamer une fois par saison
-  $('b-gift').addEventListener('click', () => {
-    sfx.press();
-    if (!giftClaimable(rec)) {
-      ui.log(giftClaimed(rec)
-        ? '🎁 Cadeau de saison déjà reçu — rendez-vous la saison prochaine !'
-        : '🎁 Récolte le trésor de saison sur la berge pour débloquer ton cadeau !');
-      ui.toast(giftClaimed(rec) ? '🎁 Déjà réclamé cette saison' : '🎁 Récolte un trésor de saison d\'abord');
-      return;
+  // L'Almanach de saison (v3.99) : le bouton 🎁 ouvre la piste de 8 paliers gratuits
+  // (l'ancien cadeau unique en est le palier final). Réclamation palier par palier.
+  const REWARD_ICON = { gems: '💎', fish: '🐟', shells: '🐚' };
+  function rewardLabel(r) {
+    if (r.gift) return '🎁 Cadeau : 💎 ' + r.gems + ' + 🐟 ' + r.fish;
+    if (r.dupes && r.dupesTier) return '🛠️ ' + r.dupes + ' matériaux d\'atelier';
+    for (const k of ['gems', 'fish', 'shells']) if (r[k]) return REWARD_ICON[k] + ' ' + r[k];
+    return '✨';
+  }
+  function almanachData() {
+    const info = seasonInfo(new Date());
+    const label = (info && info.label) ? info.label : (seasonFor(new Date()) || 'Saison');
+    return {
+      seasonEmoji: (info && info.emoji) || '📅',
+      seasonLabel: label + ' ' + new Date().getFullYear(),
+      progress: almanachProgress(rec),
+      completion: almanachCompletion(rec),
+      tiers: ALMANACH_TIERS.map((t, i) => ({ need: t.need, rewardLabel: rewardLabel(t.reward), state: tierState(rec, i) }))
+    };
+  }
+  const almanachHandlers = {
+    claim: (i) => {
+      const r = claimTier(rec, i);
+      if (!r) return;
+      persistRec(); ui.renderLevel(rec); ui.updateHUD(s, mg, rec); refreshGift();
+      vibrate([15, 30, 15]); sfx.happy();
+      refreshAlmanach();
+      if (r.gift) ui.celebrate({ kicker: 'Almanach — palier final', big: '🎁', title: 'Cadeau de saison', reward: '+' + r.gems + ' 💎    +' + r.fish + ' 🐟', rewardColor: 'var(--teal)' });
+      else ui.toast('📅 Palier ' + (i + 1) + ' réclamé — ' + rewardLabel(r).replace(/^🛠️ /, '+') + ' !');
     }
-    const g = claimSeasonGift(rec);
-    if (!g) return;
-    rec.gems = (rec.gems || 0) + g.gems;
-    rec.fishTotal = (rec.fishTotal || 0) + g.fish;
-    rec.fish = (rec.fish || 0) + g.fish;           // portefeuille dépensable
-    persistRec();
-    ui.renderLevel(rec);
-    refreshGift();
-    vibrate([15, 30, 15]); sfx.happy();
-    ui.celebrate({ kicker: 'Cadeau de saison', big: g.emoji, title: g.name,
-      reward: '+' + g.gems + ' 💎    +' + g.fish + ' 🐟', rewardColor: 'var(--teal)' });
-  });
+  };
+  const refreshAlmanach = () => ui.renderAlmanach(almanachData(), almanachHandlers);
+  const openAlmanach = () => { if (!rec) return; sfx.press(); refreshAlmanach(); ui.showOverlay('ovl-almanach'); };
+  $('b-gift').addEventListener('click', openAlmanach);
   $('ovl-cheer').addEventListener('click', ui.closeCheer); // fermer la célébration au toucher
   $('btn-photo-share').addEventListener('click', sharePhoto);
   $('btn-photo-save').addEventListener('click', savePhoto);
@@ -2953,6 +2966,7 @@ function boot() {
     'ovl-crue': () => ui.hideOverlay('ovl-crue'),
     'ovl-marche': () => ui.hideOverlay('ovl-marche'),
     'ovl-carnet': () => ui.hideOverlay('ovl-carnet'),
+    'ovl-almanach': () => ui.hideOverlay('ovl-almanach'),
     'ovl-encounter': () => closeEncounter(false),
     'ovl-hats': () => ui.hideOverlay('ovl-hats'),
     'ovl-ach': () => ui.hideOverlay('ovl-ach'),

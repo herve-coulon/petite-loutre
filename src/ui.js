@@ -513,6 +513,36 @@ export function renderCrue(data, h) {
   }
 }
 
+/** L'Almanach de saison (v3.99) : la piste de 8 paliers gratuits de la saison. */
+export function renderAlmanach(data, h) {
+  data = data || {}; h = h || {};
+  const host = $('almanach-body'); if (!host) return;
+  host.innerHTML = '';
+  const p = data.progress || 0, comp = data.completion || { claimed: 0, total: 8 };
+  const intro = document.createElement('p'); intro.className = 'small';
+  intro.textContent = (data.seasonEmoji || '📅') + ' ' + (data.seasonLabel || 'Saison') + ' — ' + p + ' trésor' +
+    (p > 1 ? 's' : '') + ' de saison récolté' + (p > 1 ? 's' : '') + '. Paliers : ' + comp.claimed + '/' + comp.total + '.';
+  host.appendChild(intro);
+  const note = document.createElement('p'); note.className = 'g-section';
+  note.textContent = 'Récolte les trésors de saison (berge & vallée) pour dérouler la piste — elle repart à chaque saison.';
+  host.appendChild(note);
+  (data.tiers || []).forEach((t, i) => {
+    const card = document.createElement('div'); card.className = 'alm-tier ' + (t.state || 'locked');
+    const num = document.createElement('span'); num.className = 'alm-num'; num.textContent = String(i + 1);
+    const col = document.createElement('div'); col.className = 'rc-col';
+    const nm = document.createElement('span'); nm.className = 'rc-nm'; nm.textContent = t.rewardLabel;
+    const sub = document.createElement('span'); sub.className = 'rc-sub'; sub.textContent = t.need + ' trésor' + (t.need > 1 ? 's' : '') + ' de saison';
+    col.appendChild(nm); col.appendChild(sub);
+    const btn = document.createElement('button'); btn.className = 'act';
+    if (t.state === 'claimed') { btn.textContent = 'Obtenu ✓'; btn.disabled = true; }
+    else if (t.state === 'claimable') { btn.textContent = 'Réclamer'; }
+    else { btn.textContent = '🔒'; btn.disabled = true; }
+    btn.addEventListener('click', () => h.claim && h.claim(i));
+    card.appendChild(num); card.appendChild(col); card.appendChild(btn);
+    host.appendChild(card);
+  });
+}
+
 /** Le Marché (v3.96) : le HUB économique — la bourse + tout ce qu'on peut dépenser. */
 export function renderMarche(data, h) {
   data = data || {}; h = h || {};

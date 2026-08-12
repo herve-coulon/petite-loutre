@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { JSDOM } from 'jsdom';
 import { dailyQuests, dayKey } from '../src/quests.js';
+import { seasonGiftKey } from '../src/seasonpass.js';
 import { levelFromXp } from '../src/level.js';
 import { seasonFor } from '../src/seasons.js';
 import { ACHIEVEMENTS } from '../src/achievements.js';
@@ -1097,4 +1098,24 @@ test('Le Carnet du naturaliste : 3 sections unifiées, bascule et fermeture', ()
   assert.ok($('carnet-body').querySelectorAll('.cr-row').length >= 6, 'des records listés');
   $('ovl-carnet').querySelector('.ovl-x').click();
   assert.ok($('ovl-carnet').classList.contains('hidden'), 'le ✕ ferme le Carnet');
+});
+
+test('Almanach de saison : le bouton 🎁 ouvre la piste de 8 paliers, on réclame', () => {
+  L.records.treatsBySeason = { [seasonGiftKey()]: 10 };   // 10 trésors récoltés cette saison
+  L.records.almanach = {};
+  L.records.gems = 0;
+  $('b-gift').click();
+  assert.ok(!$('ovl-almanach').classList.contains('hidden'), 'l\'Almanach s\'ouvre depuis 🎁');
+  let tiers = $('almanach-body').querySelectorAll('.alm-tier');
+  assert.equal(tiers.length, 8, '8 paliers');
+  // palier 1 (seuil 1 → 💎 5) : réclamable
+  assert.equal(tiers[0].querySelector('button').textContent, 'Réclamer');
+  tiers[0].querySelector('button').click();
+  assert.equal(L.records.gems, 5, 'palier 1 crédite 5 gemmes');
+  tiers = $('almanach-body').querySelectorAll('.alm-tier');
+  assert.match(tiers[0].querySelector('button').textContent, /Obtenu/, 'palier 1 devient obtenu');
+  // palier 8 (seuil 38) reste verrouillé avec 10 trésors
+  assert.equal(tiers[7].querySelector('button').textContent, '🔒', 'le palier final est verrouillé');
+  $('ovl-almanach').querySelector('.ovl-x').click();
+  assert.ok($('ovl-almanach').classList.contains('hidden'), 'le ✕ ferme l\'Almanach');
 });

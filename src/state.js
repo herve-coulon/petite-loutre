@@ -164,7 +164,8 @@ export function newRecords() {
     found: [],           // trouvailles déjà ramassées (une seule fois par jour et par zone)
     foundKinds: [],      // SORTES de trouvailles déjà découvertes (album du Carnet du naturaliste)
     visited: [],         // lieux déjà découverts (carte de la vallée + arrivée mise en scène)
-    seasonGifts: {}      // cadeaux de saison réclamés, par clé (cf. seasonpass.js)
+    seasonGifts: {},     // cadeaux de saison réclamés, par clé (cf. seasonpass.js)
+    almanach: {}         // Almanach : paliers réclamés par (saison, année) → [indices] (cf. almanach.js)
   };
 }
 
@@ -200,6 +201,7 @@ function normalizeRecords(o) {
   if (!Array.isArray(o.foundKinds)) o.foundKinds = [];   // album des sortes (Carnet)
   if (!Array.isArray(o.visited)) o.visited = [];
   if (!o.seasonGifts || typeof o.seasonGifts !== 'object') o.seasonGifts = {};
+  if (!o.almanach || typeof o.almanach !== 'object') o.almanach = {};   // Almanach de saison
   if (o.gang !== null && (typeof o.gang !== 'object')) o.gang = null;
   // Migration douce : levelReached (v3.77) — computed from xp for old saves
   if (!o.levelReached || o.levelReached < 1) {
