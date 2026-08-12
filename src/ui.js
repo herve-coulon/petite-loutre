@@ -775,8 +775,8 @@ export function hideAllOverlays() {
  * Le Carnet du naturaliste (v3.98) : UNIFIE le bestiaire, l'album des trouvailles
  * et les records en un seul carnet à trois sections. `section` = l'onglet actif.
  */
-export function renderCarnet(rec, section, h) {
-  rec = rec || {}; h = h || {};
+export function renderCarnet(rec, s, section, h) {
+  rec = rec || {}; s = s || {}; h = h || {};
   const body = $('carnet-body'); if (!body) return;
   section = section || 'bestiaire';
 
@@ -817,6 +817,27 @@ export function renderCarnet(rec, section, h) {
         '<span class="cc-nm">' + (got ? esc(FIND_NAME[k] || k) : '???') + '</span></div>';
     }
     html += '</div>';
+  } else if (section === 'lignee') {
+    const mem = (rec.memorial || []).slice().reverse();   // le plus récent d'abord
+    const curTrait = traitById(s.trait);
+    html += '<p class="small">Le fil des vies. Chaque nouvelle loutre hérite souvent du caractère de la précédente.</p>';
+    html += '<div class="lin-card lin-current">' +
+      '<canvas class="lin-portrait" width="52" height="52" data-fur="' + esc(s.fur || 'roux') + '" data-hat="' + esc(s.hat || '') + '"></canvas>' +
+      '<div class="rc-col"><span class="rc-nm">🌱 ' + esc(s.name || 'Ta loutre') + ' — génération ' + (s.generation || 1) + '</span>' +
+      '<span class="rc-sub">' + (s.heirOf ? 'de la lignée de ' + esc(s.heirOf) : 'la fondatrice de la lignée') +
+      (curTrait ? ' · ' + curTrait.emoji + ' ' + esc(curTrait.name) : '') + '</span></div></div>';
+    if (mem.length) {
+      html += '<p class="g-section">Mémorial (' + mem.length + ')</p>';
+      for (const a of mem) {
+        const t = traitById(a.trait);
+        html += '<div class="lin-card">' +
+          '<canvas class="lin-portrait" width="52" height="52" data-fur="' + esc(a.fur || 'roux') + '" data-hat="' + esc(a.hat || '') + '"></canvas>' +
+          '<div class="rc-col"><span class="rc-nm">' + esc(a.name) + ' — génération ' + a.generation + '</span>' +
+          '<span class="rc-sub">a vécu ' + fmtDur(a.ageMs) + (t ? ' · ' + t.emoji + ' ' + esc(t.name) : '') + '</span></div></div>';
+      }
+    } else {
+      html += '<p class="rc-sub">Aucun aïeul encore. Quand une loutre passera le relais (⚙️ → Recommencer), elle prendra place ici.</p>';
+    }
   } else { // records
     const rows = [
       ['Plus longue vie', rec.bestAge > 0 ? fmtDur(rec.bestAge) : '—'],
@@ -839,6 +860,11 @@ export function renderCarnet(rec, section, h) {
     html += '</div>';
   }
   body.innerHTML = html;
+  // Portraits de la lignée : peints APRÈS insertion (paintBadge a besoin du canvas réel).
+  if (section === 'lignee') {
+    body.querySelectorAll('.lin-portrait').forEach(cv =>
+      paintBadge(cv, { fur: cv.dataset.fur || 'roux', hat: cv.dataset.hat || null, stage: 'adult' }, 52));
+  }
 }
 
 /** Carte d'histoire (chapitre) : emoji, titre, texte, bouton de suite. */

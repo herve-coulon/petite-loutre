@@ -321,6 +321,20 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v4.1.0 : Le cœur long-terme, Phase 1 — la lignée & le mémorial 🕊️. Jusqu'ici,
+« Recommencer à zéro » effaçait la loutre. Désormais, elle PASSE LE RELAIS : la loutre
+sortante rejoint un mémorial (nom, personnalité, âge vécu, portrait, génération), et la
+suivante HÉRITE souvent (70 %) de son caractère — un vrai fil des vies, sans introduire
+la mort (la Phase 2, la vieillesse célébrée, viendra en opt-in). Le Carnet gagne une
+4e section « 🕊️ Lignée » : la loutre actuelle (génération N, « de la lignée de … ») en
+tête, puis les aïeules avec leur portrait (paintBadge) et l'âge atteint. Et des
+portraits encadrés de la lignée veillent sur le mur de la tanière. Le baptême annonce
+l'ascendance et le trait transmis ; le « Recommencer » est reformulé (elle rejoint la
+lignée, chapeaux/succès conservés). Module pur `lineage.js` (fiche d'aïeul, héritage
+du trait) testé ; migration douce (`memorial`, `generation`, `heirOf`, `heirTrait`).
+Tests `lineage.test.js` + smoke (le relais inscrit l'aïeule, génération +1, portraits).
+Vérifié navigateur : Lignée (Néo génération 3 « de la lignée de Rade », mémorial de
+Rade/Ondine avec portraits aux bons pelages), zéro erreur. 482 tests.*
 v4.0.0 : Le Dojo de parade — un entraînement QUOTIDIEN à la parade 🥋. Nouveau bouton
 latéral 🥋 : une séance de 8 assauts télégraphiés, seedés par le jour (même
 enchaînement pour tous, comme la Crue). Chaque assaut a une annonce (windup) puis une

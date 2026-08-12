@@ -43,6 +43,9 @@ export function newState(now = Date.now(), rnd = Math.random) {
     season: null,    // dernière saison connue (null = à initialiser en silence)
     gear: null,      // trésor équipé (id) — bonus de jeu, par loutre
     trait: null,     // personnalité, tirée au baptême (chaque loutre est unique)
+    generation: 1,   // La lignée (v4.1) : rang dans le fil des vies (1 = la fondatrice)
+    heirOf: null,    // nom de la loutre dont celle-ci descend (null pour la 1re)
+    heirTrait: null, // trait hérité à appliquer au baptême (null → tirage libre)
     bond: 0,         // lien/affinité avec CETTE loutre, grandit avec les soins
     telemetry: true,      // statistiques anonymes (opt-out dans ⚙️)
     telemetryId: null,    // identifiant aléatoire, généré au 1er ping
@@ -67,6 +70,9 @@ function normalizeState(o) {
   if (typeof o.bigText !== 'boolean') o.bigText = false;
   if (typeof o.reduceMotion !== 'boolean') o.reduceMotion = false;
   if (typeof o.questCollapsed !== 'boolean') o.questCollapsed = false;
+  if (typeof o.generation !== 'number' || o.generation < 1) o.generation = 1;   // lignée (v4.1)
+  if (o.heirOf === undefined) o.heirOf = null;
+  if (o.heirTrait === undefined) o.heirTrait = null;
   if (typeof o.livingDialogues !== 'boolean') o.livingDialogues = true;    // v3.95 : local, ON par défaut
   // Bascule UNIQUE : les saves d'avant la version locale (Kimi, réglage à false et
   // inopérant sans clé) passent une fois au nouveau défaut ON. L'utilisateur peut re-couper.
@@ -167,7 +173,8 @@ export function newRecords() {
     foundKinds: [],      // SORTES de trouvailles déjà découvertes (album du Carnet du naturaliste)
     visited: [],         // lieux déjà découverts (carte de la vallée + arrivée mise en scène)
     seasonGifts: {},     // cadeaux de saison réclamés, par clé (cf. seasonpass.js)
-    almanach: {}         // Almanach : paliers réclamés par (saison, année) → [indices] (cf. almanach.js)
+    almanach: {},        // Almanach : paliers réclamés par (saison, année) → [indices] (cf. almanach.js)
+    memorial: []         // La lignée (v4.1) : les loutres passées {name,trait,fur,hat,ageMs,generation}
   };
 }
 
@@ -201,6 +208,7 @@ function normalizeRecords(o) {
   if (!Array.isArray(o.barterUsed)) o.barterUsed = [];
   if (!Array.isArray(o.found)) o.found = [];
   if (!Array.isArray(o.foundKinds)) o.foundKinds = [];   // album des sortes (Carnet)
+  if (!Array.isArray(o.memorial)) o.memorial = [];       // la lignée (v4.1)
   if (!Array.isArray(o.visited)) o.visited = [];
   if (!o.seasonGifts || typeof o.seasonGifts !== 'object') o.seasonGifts = {};
   if (!o.almanach || typeof o.almanach !== 'object') o.almanach = {};   // Almanach de saison

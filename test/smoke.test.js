@@ -1086,7 +1086,7 @@ test('Le Carnet du naturaliste : 3 sections unifiées, bascule et fermeture', ()
   $('pt-carnet').click();
   assert.ok(!$('ovl-carnet').classList.contains('hidden'), 'le Carnet s\'ouvre');
   const tabs = [...document.querySelectorAll('#carnet-tabs .carnet-tab')];
-  assert.equal(tabs.length, 3, 'bestiaire · trouvailles · records');
+  assert.equal(tabs.length, 4, 'bestiaire · trouvailles · lignée · records');
   assert.ok(tabs.find(t => t.dataset.sec === 'bestiaire').classList.contains('on'), 'bestiaire actif au départ');
   assert.match($('carnet-global').textContent, /Carnet rempli/);
   // Trouvailles : l'album des 16 sortes, dont 2 découvertes
@@ -1129,4 +1129,21 @@ test('Dojo de parade : le bouton 🥋 lance l\'entraînement quotidien', () => {
   assert.match($('dojo-prompt').textContent, /Prêt|Prépare|PARE/, 'une consigne s\'affiche');
   $('ovl-dojo').querySelector('.ovl-x').click();
   assert.ok($('ovl-dojo').classList.contains('hidden'), 'le ✕ ferme et coupe la séance');
+});
+
+test('La lignée : passer le relais inscrit l\'aïeule au mémorial et fait naître une génération de plus', () => {
+  Object.assign(L.state, { name: 'Vieille', stage: 'adult', trait: 'caline', fur: 'choco', generation: 2 });
+  L.records.memorial = [];
+  L.startNew();                       // passe le relais à une nouvelle loutre
+  assert.equal(L.records.memorial.length, 1, 'l\'aïeule rejoint le mémorial');
+  assert.equal(L.records.memorial[0].name, 'Vieille');
+  assert.equal(L.records.memorial[0].generation, 2);
+  assert.equal(L.state.generation, 3, 'la nouvelle loutre est génération +1');
+  assert.equal(L.state.heirOf, 'Vieille', 'elle descend de la précédente');
+  // La Lignée s'affiche dans le Carnet (loutre actuelle + aïeule, avec portraits)
+  $('pt-carnet').click();
+  [...document.querySelectorAll('#carnet-tabs .carnet-tab')].find(t => t.dataset.sec === 'lignee').click();
+  assert.ok($('carnet-body').querySelectorAll('.lin-card').length >= 2, 'la loutre actuelle + l\'aïeule');
+  assert.equal($('carnet-body').querySelectorAll('.lin-portrait').length, $('carnet-body').querySelectorAll('.lin-card').length, 'chaque carte a son portrait');
+  $('ovl-carnet').querySelector('.ovl-x').click();
 });

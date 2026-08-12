@@ -55,6 +55,7 @@ import { seasonFor, seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 import { weatherFor, sicknessBonus, WEATHER_LABELS } from './weather.js';
 import { ITEMS, RARITIES, itemById, bonusOf, rollDrop, milestoneItem, describeBonus, cosmeticPrice, treasurePrice } from './items.js';
 import { pickTrait, traitById, isFavorite, favoriteLine, bondGain, bondLevel } from './personality.js';
+import { makeAncestor, inheritTrait, isRealOtter } from './lineage.js';
 
 const $ = id => document.getElementById(id);
 const now = () => Date.now();
@@ -2356,7 +2357,22 @@ function savePhoto() {
 
 /* ---------------- Cycle de vie ---------------- */
 function startNew() {
+  // La lignée (v4.1) : la loutre qui part ne disparaît pas — elle rejoint le
+  // mémorial, et la suivante hérite (souvent) de sa personnalité. Le « recommencer »
+  // devient un passage de relais entre générations.
+  let generation = 1, heirOf = null, heirTrait = null;
+  if (isRealOtter(s)) {
+    const anc = makeAncestor(s, ageMs(s, now()), s.generation || 1);
+    (rec.memorial = rec.memorial || []).push(anc);
+    if (rec.memorial.length > 40) rec.memorial.shift();     // garde-fou mémoire
+    rec.bestAge = Math.max(rec.bestAge || 0, anc.ageMs);
+    generation = (s.generation || 1) + 1;
+    heirOf = s.name;
+    heirTrait = inheritTrait(s.trait);
+    persistRec();
+  }
   s = newState(now());
+  s.generation = generation; s.heirOf = heirOf; s.heirTrait = heirTrait;
   s.reduceMotion = mediaReduce(); // nouvelle partie : suit la préférence système
   setMuted(s.mute);
   applyA11y();
@@ -2482,6 +2498,7 @@ function loop() {
     foe: battle ? battle.foe : null,
     dragFood,
     owned: rec ? rec.items : null,
+    memorial: (rec && s && s.place === 'taniere') ? rec.memorial : null,   // portraits de la lignée (v4.1)
     world: (s && s.place === 'monde') ? world : null,
     level: curLevel(),
     hint: (s && activeHint) ? hintTargetFor(activeHint) : null,
@@ -2514,7 +2531,7 @@ function boot() {
     // Le Monde est une excursion runtime (world non persisté) : on rentre à la berge au boot.
     if (s.place === 'monde') s.place = 'berge';
     // migration : une loutre déjà nommée d'avant v3.10 reçoit un caractère (déterministe)
-    if (s.name && s.stage !== 'egg' && !s.trait) s.trait = pickTrait(() => (s.born % 1000) / 1000);
+    if (s.name && s.stage !== 'egg' && !s.trait) s.trait = s.heirTrait || pickTrait(() => (s.born % 1000) / 1000);
     setMuted(s.mute);
     applyA11y();
     const { elapsed, events } = simulateOffline(s, now());
@@ -2547,9 +2564,16 @@ function boot() {
     let n = $('name-input').value.trim();
     if (!n) n = 'Loutrette';
     s.name = n.slice(0, 12);
-    if (!s.trait) s.trait = pickTrait(); // chaque loutre a son caractère
+    if (!s.trait) s.trait = s.heirTrait || pickTrait(); // le trait de la lignée, ou le sien propre
     ui.hideOverlay('ovl-name');
     ui.toast('💛 Bienvenue, ' + s.name + ' ! 💛');
+    // La lignée : on annonce l'ascendance et le trait transmis (Phase 1).
+    if (s.heirOf) {
+      const tr = traitById(s.trait);
+      const herite = s.heirTrait && s.trait === s.heirTrait;
+      ui.log('🕊️ ' + s.name + ', génération ' + (s.generation || 2) + ', descend de ' + s.heirOf + '. ' +
+        (herite && tr ? 'Elle tient d\'elle son caractère ' + tr.emoji + ' ' + tr.name.toLowerCase() + '.' : 'Elle trace sa propre voie.'));
+    }
     sfx.happy(); vibrate([15, 40, 15]);
     persist(); ui.updateHUD(s, mg, rec);
     maybeStory(); // Chapitre 1 — La rencontre, puis premiers pas guidés
@@ -2707,7 +2731,10 @@ function boot() {
       : '🗣️ Dialogues vivants coupés — retour aux dialogues écrits.');
   });
   $('b-reset').addEventListener('click', () => {
-    ui.askConfirm('Recommencer avec un nouvel œuf ? La loutre actuelle sera perdue (chapeaux et succès conservés).', () => {
+    const passe = isRealOtter(s)
+      ? (s.name || 'Ta loutre') + ' rejoindra la lignée (mémorial et portraits, dans le Carnet 📖) et un œuf reprendra le fil — la suivante héritera souvent de son caractère.'
+      : 'Repartir d\'un nouvel œuf ?';
+    ui.askConfirm('Passer le relais à une nouvelle loutre ?\n' + passe + '\n(chapeaux et succès conservés)', () => {
       clearSave(storage);
       startNew();
     });
@@ -2904,7 +2931,7 @@ function boot() {
 
   // Le Carnet du naturaliste (v3.98) : unifie bestiaire + trouvailles + records.
   let carnetSection = 'bestiaire';
-  const refreshCarnet = () => ui.renderCarnet(rec, carnetSection, {});
+  const refreshCarnet = () => ui.renderCarnet(rec, s, carnetSection, {});
   const openCarnet = () => {
     if (!rec) return;
     sfx.press(); ui.hideOverlay('ovl-menu');

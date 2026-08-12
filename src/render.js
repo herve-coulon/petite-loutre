@@ -852,6 +852,22 @@ export function makeRenderer(cv) {
       const it = itemById(id); if (!it) return;
       drawGem(DEN_SLOTS[i].x, DEN_SLOTS[i].y, RARITIES[it.rarity].color);
     });
+    // Portraits de la lignée (v4.1) : les aïeules encadrées veillent sur la tanière.
+    const mem = fx.memorial || [];
+    mem.slice(-5).forEach((a, i) => {
+      const px = 12 + i * 17, py = 8;
+      ctx.fillStyle = '#3a2a16'; ctx.fillRect(px - 1, py - 1, 15, 17);      // cadre
+      ctx.fillStyle = '#c9a24b'; ctx.fillRect(px, py, 13, 15);              // liseré doré
+      ctx.fillStyle = '#e8dcc0'; ctx.fillRect(px + 1, py + 1, 11, 13);      // fond clair
+      const map = (furById(a.fur) || {}).map;
+      const col = (map && map.B) || '#8a5a34';                             // couleur du pelage (roux par défaut)
+      ctx.fillStyle = col;
+      ctx.fillRect(px + 3, py + 5, 7, 7);                                   // tête
+      ctx.fillRect(px + 3, py + 3, 2, 2); ctx.fillRect(px + 8, py + 3, 2, 2); // oreilles
+      if (a.hat) { ctx.fillStyle = '#b33a36'; ctx.fillRect(px + 3, py + 2, 7, 2); } // touche de chapeau
+      ctx.fillStyle = '#2a1a0e';
+      ctx.fillRect(px + 4, py + 7, 1, 1); ctx.fillRect(px + 8, py + 7, 1, 1); // yeux
+    });
     // compteur de collection
     ctx.fillStyle = '#e9c98a'; ctx.font = '7px monospace';
     ctx.fillText(owned.length + '/' + ITEMS.length + ' tresors', 9, 12);

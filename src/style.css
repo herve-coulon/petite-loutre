@@ -781,8 +781,9 @@ input#name-input:focus{border-color:var(--teal);}
 
 /* ---------------- Le Carnet du naturaliste (v3.98) ---------------- */
 #carnet-tabs{display:flex; gap:6px; margin:8px 0 12px;}
-.carnet-tab{flex:1; padding:8px 4px; border:2px solid var(--ink); border-radius:10px;
-  background:var(--paper); color:var(--ink); font-weight:700; font-size:12px; cursor:pointer;}
+.carnet-tab{flex:1; min-width:0; padding:8px 2px; border:2px solid var(--ink); border-radius:10px;
+  background:var(--paper); color:var(--ink); font-weight:700; font-size:11px; cursor:pointer;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .carnet-tab.on{background:var(--gold); border-color:var(--ink); color:#2a2317;}
 .carnet-tab:active{transform:translateY(1px);}
 .carnet-grid{display:grid; grid-template-columns:repeat(4, 1fr); gap:8px;}
@@ -792,6 +793,16 @@ input#name-input:focus{border-color:var(--teal);}
 .carnet-cell.locked{opacity:.4;}
 .carnet-cell .cc-ic{font-size:26px; line-height:1;}
 .carnet-cell .cc-nm{font-size:10px; font-weight:700; color:var(--ink); text-align:center;}
+/* La lignée (v4.1) : cartes d'ancêtres avec portrait */
+.lin-card{display:flex; align-items:center; gap:12px; padding:8px 10px; margin-bottom:7px;
+  border:2px solid var(--ink); border-radius:12px; background:var(--paper);
+  box-shadow:0 3px 10px rgba(38,54,78,.14);}
+.lin-card.lin-current{border-color:var(--gold); box-shadow:0 0 0 3px rgba(201,162,75,.24), 0 3px 10px rgba(38,54,78,.14);}
+.lin-portrait{flex:none; width:52px; height:52px; border-radius:50%; border:2px solid var(--ink);
+  background:var(--washi); overflow:hidden;}
+.lin-card .rc-col{display:flex; flex-direction:column; min-width:0; text-align:left;}
+.lin-card .rc-nm{font-weight:700; font-size:13px; color:var(--ink);}
+.lin-card .rc-sub{font-size:11px; color:rgba(38,54,78,.6); margin-top:1px;}
 .carnet-records{display:flex; flex-direction:column; gap:5px;}
 .cr-row{display:flex; justify-content:space-between; align-items:baseline; gap:10px;
   padding:8px 12px; border:2px solid var(--ink); border-radius:10px; background:var(--paper);}
