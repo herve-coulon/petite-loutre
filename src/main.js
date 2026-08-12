@@ -16,6 +16,7 @@ import { XP, levelFromXp, titleFor } from './level.js';
 import { bumpQuest, completedQuests, ensureDaily, dayKey, isEligible } from './quests.js';
 import { addSeasonTreat } from './seasonpass.js';
 import { ALMANACH_TIERS, tierState, almanachProgress, almanachCompletion, almanachHasClaimable, claimTier } from './almanach.js';
+import { dailyDojo, judgeParry, parryScore, nextCombo, beltFor, dojoReward } from './dojo.js';
 
 import {
   newState, saveState, loadState, clearSave,
@@ -1753,6 +1754,121 @@ function maybeNotifyCrue() {
   } catch (_) { /* le banner en jeu reste le canal principal */ }
 }
 
+/* ---------------- Le Dojo de parade (v4.0) : entraînement quotidien ---------------- */
+// Enchaînement seedé du jour, joué au TEMPS RÉEL (setTimeout + now()) — pas de
+// dépendance à la boucle de rendu. La logique de jugement est pure (dojo.js).
+let dojoState = null;
+function setDojoPrompt(txt, cls) {
+  const p = $('dojo-prompt'); if (p) { p.textContent = txt; p.className = 'dojo-prompt ' + (cls || ''); }
+}
+function animDojoBar(ms) {
+  const bar = $('dojo-bar'); if (!bar) return;
+  bar.style.transition = 'none'; bar.style.width = '0%';
+  // reflow puis on lance l'animation de remplissage sur la durée de la fenêtre
+  void bar.offsetWidth;
+  bar.style.transition = 'width ' + ms + 'ms linear'; bar.style.width = '100%';
+}
+function resetDojoBar() { const bar = $('dojo-bar'); if (bar) { bar.style.transition = 'none'; bar.style.width = '0%'; } }
+function updateDojoScore() {
+  const el = $('dojo-score'); if (el && dojoState) el.textContent = 'Score : ' + dojoState.score + (dojoState.combo > 1 ? '   ✦ combo ×' + dojoState.combo : '');
+}
+function openDojo() {
+  if (!rec) return;
+  if (busy() || s.sleeping || s.stage === 'egg' || s.away || s.gameOver) { ui.toast('🥋 Le dojo t\'attend quand ta loutre sera disponible.'); return; }
+  sfx.press(); vibrate(8);
+  dojoState = { seq: dailyDojo(dayKey()), i: -1, score: 0, combo: 0, windowOpenAt: 0, windowMs: 0, phase: 'ready', results: [], timer: 0 };
+  $('dojo-result').classList.add('hidden');
+  $('dojo-live').classList.remove('hidden');
+  resetDojoBar(); updateDojoScore();
+  setDojoPrompt('Prêt ? Pare chaque assaut au bon moment.', 'ready');
+  ui.showOverlay('ovl-dojo');
+  dojoState.timer = setTimeout(dojoNextStrike, 950);
+}
+function dojoNextStrike() {
+  if (!dojoState) return;
+  dojoState.i++;
+  if (dojoState.i >= dojoState.seq.strikes.length) { dojoEnd(); return; }
+  const st = dojoState.seq.strikes[dojoState.i];
+  dojoState.phase = 'windup';
+  resetDojoBar();
+  setDojoPrompt('Prépare-toi… (' + (dojoState.i + 1) + '/' + dojoState.seq.strikes.length + ')', 'windup');
+  clearTimeout(dojoState.timer);
+  dojoState.timer = setTimeout(() => dojoOpenWindow(st), st.windup);
+}
+function dojoOpenWindow(st) {
+  if (!dojoState) return;
+  dojoState.phase = 'window';
+  dojoState.windowMs = st.window;
+  dojoState.windowOpenAt = now();
+  setDojoPrompt('PARE !', 'window');
+  animDojoBar(st.window);
+  sfx.chirp();
+  clearTimeout(dojoState.timer);
+  dojoState.timer = setTimeout(() => dojoResolve(null), st.window);   // fenêtre ratée
+}
+function dojoTap() {
+  if (!dojoState) return;
+  if (dojoState.phase === 'windup') { dojoResolve(-1); return; }       // touché trop tôt (feinte)
+  if (dojoState.phase !== 'window') return;
+  dojoResolve(now() - dojoState.windowOpenAt);
+}
+function dojoResolve(elapsed) {
+  if (!dojoState || dojoState.phase === 'resolved') return;
+  dojoState.phase = 'resolved';
+  clearTimeout(dojoState.timer);
+  resetDojoBar();
+  const st = dojoState.seq.strikes[dojoState.i];
+  const q = (elapsed === -1) ? 'miss' : judgeParry(st.window, elapsed);
+  const gained = parryScore(q, dojoState.combo);
+  dojoState.score += gained;
+  dojoState.combo = nextCombo(q, dojoState.combo);
+  dojoState.results.push(q);
+  const label = q === 'perfect' ? '🛡️ PARFAIT !' : q === 'good' ? '🛡️ Bien !' : '💥 Raté…';
+  setDojoPrompt(label + (gained ? '  +' + gained : ''), 'result-' + q);
+  if (q === 'miss') { sfx.sad(); vibrate(30); } else { sfx.catch(); vibrate(q === 'perfect' ? 14 : 8); }
+  updateDojoScore();
+  dojoState.timer = setTimeout(dojoNextStrike, 700);
+}
+function dojoEnd() {
+  if (!dojoState) return;
+  clearTimeout(dojoState.timer);
+  const score = dojoState.score;
+  const belt = beltFor(score);
+  const newBest = score > (rec.dojoBest || 0);
+  if (newBest) rec.dojoBest = score;
+  let reward = null;
+  if (rec.dojoDay !== dayKey()) {          // récompense une fois par jour
+    rec.dojoDay = dayKey();
+    reward = dojoReward(score);
+    rec.gems = (rec.gems || 0) + reward.gems;
+    rec.fish = (rec.fish || 0) + reward.fish; rec.fishTotal = (rec.fishTotal || 0) + reward.fish;
+    gainXp(reward.xp);
+  }
+  persistRec(); ui.updateHUD(s, mg, rec);
+  sfx.happy(); vibrate([15, 30, 15]);
+  // écran de résultat
+  const perfects = dojoState.results.filter(r => r === 'perfect').length;
+  const html = '<p class="dojo-belt">' + belt.emoji + ' Ceinture ' + belt.name + '</p>' +
+    '<p class="dojo-final">Score : <b>' + score + '</b>' + (newBest ? '   🏅 Nouveau record !' : '') + '</p>' +
+    '<p class="small">' + perfects + ' parade' + (perfects > 1 ? 's' : '') + ' parfaite' + (perfects > 1 ? 's' : '') + ' · meilleur : ' + (rec.dojoBest || 0) + '</p>' +
+    (reward
+      ? '<p class="dojo-reward">Récompense du jour : +' + reward.gems + ' 💎  +' + reward.fish + ' 🐟  +' + reward.xp + ' XP</p>'
+      : '<p class="small">Déjà récompensé aujourd\'hui — reviens demain (l\'entraînement, lui, reste ouvert).</p>');
+  const res = $('dojo-result');
+  res.innerHTML = html +
+    '<div class="dojo-actions"><button id="dojo-replay" class="act" type="button">↻ Recommencer</button>' +
+    '<button id="dojo-close" class="act ghost" type="button">Fermer</button></div>';
+  $('dojo-live').classList.add('hidden');
+  res.classList.remove('hidden');
+  $('dojo-replay').addEventListener('click', openDojo);
+  $('dojo-close').addEventListener('click', closeDojo);
+  dojoState.phase = 'done';
+}
+function closeDojo() {
+  if (dojoState) { clearTimeout(dojoState.timer); dojoState = null; }
+  ui.hideOverlay('ovl-dojo');
+}
+
 // Gestes de glissement : la balle qu'on lance, ou le poisson qu'on donne. Le doigt
 // pilote le jeton ; on convertit les coords écran -> coords canvas.
 // Convertit un pointeur écran -> coordonnées logiques du canvas (0..CANVAS_W, 0..CANVAS_H),
@@ -2450,6 +2566,8 @@ function boot() {
   $('b-treat').addEventListener('click', actTreat);
   $('b-dive').addEventListener('click', actDive);
   $('b-slide').addEventListener('click', actSlide);
+  $('b-dojo').addEventListener('click', openDojo);        // Dojo de parade (v4.0)
+  $('dojo-parry').addEventListener('click', dojoTap);
   $('b-care').addEventListener('click', actCare);
 
   // Combat de loutres : une sauvage à défier tout de suite (ou le code d'un ami)
@@ -2967,6 +3085,7 @@ function boot() {
     'ovl-marche': () => ui.hideOverlay('ovl-marche'),
     'ovl-carnet': () => ui.hideOverlay('ovl-carnet'),
     'ovl-almanach': () => ui.hideOverlay('ovl-almanach'),
+    'ovl-dojo': closeDojo,
     'ovl-encounter': () => closeEncounter(false),
     'ovl-hats': () => ui.hideOverlay('ovl-hats'),
     'ovl-ach': () => ui.hideOverlay('ovl-ach'),

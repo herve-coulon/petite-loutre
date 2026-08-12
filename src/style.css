@@ -812,6 +812,26 @@ input#name-input:focus{border-color:var(--teal);}
 .alm-tier .rc-nm{font-weight:700; font-size:13px; color:var(--ink);}
 .alm-tier .rc-sub{font-size:11px; color:rgba(38,54,78,.6); margin-top:1px;}
 
+/* ---------------- Le Dojo de parade (v4.0) ---------------- */
+#dojo-live{display:flex; flex-direction:column; align-items:center; gap:18px; padding:24px 0;}
+.dojo-prompt{font-size:22px; font-weight:800; text-align:center; min-height:30px; color:var(--ink);}
+.dojo-prompt.window{color:#e5484d;}
+.dojo-prompt.result-perfect{color:var(--gold);}
+.dojo-prompt.result-good{color:var(--teal);}
+.dojo-prompt.result-miss{color:#b33a36;}
+/* la zone dorée au centre = le bon moment pour parer (la barre le remplit à ~50 %) */
+#dojo-bar-wrap{position:relative; width:82%; height:24px; border:2.5px solid var(--ink); border-radius:999px; overflow:hidden;
+  background:linear-gradient(90deg, var(--track) 0 40%, rgba(201,162,75,.4) 40% 60%, var(--track) 60% 100%);}
+#dojo-bar{height:100%; width:0%; background:var(--teal); opacity:.72;}
+.dojo-parry{font-size:18px; padding:16px 44px;}
+#dojo-score{min-height:18px; font-weight:700; color:var(--ink);}
+.dojo-belt{font-size:20px; font-weight:800; text-align:center; margin-top:6px;}
+.dojo-final{font-size:16px; text-align:center;}
+.dojo-reward{text-align:center; color:var(--teal); font-weight:700; margin:8px 0;}
+.dojo-actions{display:flex; gap:8px; margin-top:14px;}
+.dojo-actions .act{flex:1;}
+:root.reduce-motion #dojo-bar{transition:none !important;}
+
 /* Accessibilité : classe pour masquer visuellement un élément tout en le laissant lisible par les lecteurs d'écran */
 .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
 

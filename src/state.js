@@ -148,6 +148,8 @@ export function newRecords() {
     crue: null,         // La Crue (É5b) : { week, best, claimed:[] } — progrès de la semaine courante
     crueNotified: null, // dernière semaine ISO notifiée « la Crue est arrivée » (push opt-in)
     marcheSeen: false,  // Le Marché (v3.96) : le petit mot d'accueil « ta bourse » a été montré une fois
+    dojoBest: 0,        // Dojo de parade (v4.0) : meilleur score jamais réalisé (→ Records du Carnet)
+    dojoDay: null,      // jour (dayKey) de la dernière récompense de dojo (une fois par jour)
     items: [],          // trésors rares possédés (ids) — global, survit aux loutres
     wins: 0,
     battles: 0,

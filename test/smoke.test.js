@@ -1119,3 +1119,14 @@ test('Almanach de saison : le bouton 🎁 ouvre la piste de 8 paliers, on récla
   $('ovl-almanach').querySelector('.ovl-x').click();
   assert.ok($('ovl-almanach').classList.contains('hidden'), 'le ✕ ferme l\'Almanach');
 });
+
+test('Dojo de parade : le bouton 🥋 lance l\'entraînement quotidien', () => {
+  Object.assign(L.state, { stage: 'child', sleeping: false, away: false, gameOver: false, divingUntil: 0 });
+  $('b-dojo').click();
+  assert.ok(!$('ovl-dojo').classList.contains('hidden'), 'le dojo s\'ouvre');
+  assert.ok(!$('dojo-live').classList.contains('hidden'), 'la séance est active');
+  assert.ok($('dojo-parry'), 'le bouton Parer est présent');
+  assert.match($('dojo-prompt').textContent, /Prêt|Prépare|PARE/, 'une consigne s\'affiche');
+  $('ovl-dojo').querySelector('.ovl-x').click();
+  assert.ok($('ovl-dojo').classList.contains('hidden'), 'le ✕ ferme et coupe la séance');
+});

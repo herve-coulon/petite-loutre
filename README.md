@@ -321,6 +321,19 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v4.0.0 : Le Dojo de parade — un entraînement QUOTIDIEN à la parade 🥋. Nouveau bouton
+latéral 🥋 : une séance de 8 assauts télégraphiés, seedés par le jour (même
+enchaînement pour tous, comme la Crue). Chaque assaut a une annonce (windup) puis une
+fenêtre de parade qui se resserre au fil de la séance ; on touche « 🛡️ Parer » au bon
+moment — parfait (centre de la fenêtre) / bien / raté, avec bonus de combo. Score →
+ceinture (blanche → noire) et récompense NON-puissance une fois par jour (💎 1-5 +
+🐟 6-30 + XP), dosée à la perf ; meilleur score enregistré (→ Records du Carnet).
+Piloté au temps réel (setTimeout + horloge), cœur de jugement PUR (`dojo.js` :
+enchaînement, jugement, combo, score, ceintures, récompense). Migration douce
+(`dojoBest`, `dojoDay`). Tests `dojo.test.js` + smoke. Vérifié navigateur : séance
+lancée, boucle annonce→fenêtre→résultat, écran final (⚪ Ceinture blanche, récompense
++1 💎 +6 🐟 +20 XP, récompense une fois/jour), zéro erreur. 478 tests. On passe la
+barre des 4.0 — la vallée a de quoi occuper chaque jour.*
 v3.99.0 : L'Almanach de saison — 8 paliers gratuits qui rythment la saison. Le cadeau
 de saison UNIQUE (bouton 🎁) devient une PISTE de 8 paliers, pilotée par les trésors
 de saison déjà récoltés (`treatsBySeason` de l'É3, sur laquelle l'Almanach « s'appuie »).

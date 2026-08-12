@@ -92,6 +92,7 @@
         <!-- b-garden : le jardin est maintenant une zone du monde ouvert -->
         <button id="b-garden" class="roundbtn" aria-label="Jardin" hidden><span class="ic">🌿</span></button>
         <button id="b-battle" class="roundbtn" aria-label="Combat"><span class="ic">⚔️</span><span class="badge"></span></button>
+        <button id="b-dojo" class="roundbtn" aria-label="Dojo de parade"><span class="ic">🥋</span></button>
       </div>
     </div>
     <p id="log" aria-live="polite">…</p>
@@ -361,6 +362,18 @@
     <button class="ovl-x" aria-label="Fermer">✕</button>
     <p class="big">📅 L'Almanach de saison</p>
     <div id="almanach-body"></div>
+  </div>
+
+  <div id="ovl-dojo" class="ovl hidden" role="dialog" aria-modal="true" aria-label="Dojo de parade">
+    <button class="ovl-x" aria-label="Fermer">✕</button>
+    <p class="big">🥋 Dojo de parade</p>
+    <div id="dojo-live">
+      <p id="dojo-prompt" class="dojo-prompt">…</p>
+      <div id="dojo-bar-wrap"><div id="dojo-bar"></div></div>
+      <button id="dojo-parry" class="act dojo-parry" type="button">🛡️ Parer</button>
+      <p id="dojo-score" class="small"></p>
+    </div>
+    <div id="dojo-result" class="hidden"></div>
   </div>
 
   <!-- Rencontre : amadouer une loutre sauvage pour l'enrôler -->

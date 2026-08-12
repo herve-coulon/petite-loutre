@@ -828,6 +828,7 @@ export function renderCarnet(rec, section, h) {
       ['Trésors de saison', fmtNum(rec.treatsTotal || 0)],
       ['Trésors collectionnés', fmtNum((rec.items || []).length)],
       ['Meilleur toboggan', fmtNum(rec.slideBest || 0)],
+      ['Meilleure parade (dojo)', fmtNum(rec.dojoBest || 0)],
       ['Combats gagnés', fmtNum(rec.wins || 0)],
       ['Quêtes accomplies', fmtNum(rec.questsDone || 0)],
     ];
