@@ -2,7 +2,7 @@
 import {
   SEC, MIN, clamp, TREAT_CD, DIVE_MS, GRUMPY_MS, WAKE_OK_ENERGY, GEM_TREAT, GEM_HEAL,
   WARM_BOOST, WARM_CD, SHAKE_BOOST, SHAKE_CD, SHAKE_G,
-  AWAY_CARE_NEEDED, AWAY_CARE_CD, SEASON_FX, UNLOCK_LEVEL, GAME_VERSION, STAGES
+  AWAY_CARE_NEEDED, AWAY_CARE_CD, SEASON_FX, UNLOCK_LEVEL, GAME_VERSION, STAGES, SAVE_KEY
 } from './constants.js';
 import { touchStreak } from './streak.js';
 import { greeting } from './mood.js';
@@ -20,8 +20,9 @@ import { dailyDojo, judgeParry, parryScore, nextCombo, beltFor, dojoReward } fro
 
 import {
   newState, saveState, loadState, clearSave,
-  loadRecords, saveRecords, exportSave, importSave
+  loadRecords, saveRecords, exportSave, importSave, REC_KEY
 } from './state.js';
+import { SLOT_COUNT, slotKey, clampSlot, summarize } from './slots.js';
 import { stepSim, simulateOffline, ageMs } from './sim.js';
 import { newGame, tickGame, clickGame, WATER_Y } from './minigame.js';
 import { recruitFishCost, dailyBarter, canCraft, craftChoices, nextTier, TIERS, MEAL_HUNGER, CRAFT_NEED } from './economy.js';
@@ -62,7 +63,23 @@ import { remembrance } from './memory.js';
 const $ = id => document.getElementById(id);
 const now = () => Date.now();
 const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-const storage = (() => { try { return window.localStorage; } catch (e) { return null; } })();
+const rawStore = (() => { try { return window.localStorage; } catch (e) { return null; } })();
+const SLOT_PTR = 'petite_loutre_slot';   // pointeur (localStorage brut) : quel slot est actif
+
+// Un « storage » qui redirige les clés de sauvegarde (état + records) vers le slot
+// actif. Tout le reste (persist, boot, hors-ligne) l'utilise sans le savoir : le
+// chemin chaud reste synchrone et inchangé. Slot 1 = clés d'origine (compat totale).
+function makeSlotStorage(raw, slot) {
+  if (!raw) return raw;
+  const remap = { [SAVE_KEY]: slotKey(SAVE_KEY, slot), [REC_KEY]: slotKey(REC_KEY, slot) };
+  return {
+    getItem: (k) => raw.getItem(remap[k] || k),
+    setItem: (k, v) => raw.setItem(remap[k] || k, v),
+    removeItem: (k) => raw.removeItem(remap[k] || k)
+  };
+}
+let activeSlot = rawStore ? clampSlot(+(rawStore.getItem(SLOT_PTR) || 1)) : 1;
+let storage = makeSlotStorage(rawStore, activeSlot);
 
 let s = null;
 let rec = null;               // records globaux (toutes loutres confondues)
@@ -1599,6 +1616,61 @@ function openBarter() { if (!rec) return; sfx.press(); refreshBarter(); ui.showO
 // Le souvenir jouable (v4.3) : rejouer le rêve d'une aïeule de la lignée.
 function openSouvenir(anc) { if (!anc) return; sfx.press(); vibrate(8); ui.openSouvenir(anc, remembrance(anc)); }
 
+/* ---------------- Les slots de sauvegarde (v4.4) ----------------
+   Plusieurs loutres en parallèle, chacune dans son monde isolé. On sauvegarde le
+   slot courant, on déplace le pointeur, et on recharge la page : le SW rend ça
+   instantané et hors-ligne, et on repart d'un état 100 % propre (zéro résidu). */
+function reloadApp() { try { location.reload(); } catch (e) {} }
+
+function loadSlotState(slot) { return loadState(makeSlotStorage(rawStore, slot)); } // lecture seule
+
+function slotSummaries() {
+  const list = [];
+  for (let i = 1; i <= SLOT_COUNT; i++) {
+    const st = (i === activeSlot) ? s : loadSlotState(i);
+    list.push({ slot: i, active: i === activeSlot, sum: summarize(st) });
+  }
+  return list;
+}
+
+function openSlots() { sfx.press(); ui.hideOverlay('ovl-set'); refreshSlots(); ui.showOverlay('ovl-slots'); }
+function refreshSlots() { ui.renderSlots(slotSummaries(), { onPick: pickSlot, onDelete: askDeleteSlot }); }
+
+// Bascule vers `target` : on sauve le slot COURANT, on déplace le pointeur, puis on
+// recharge. On NE réoriente PAS le `storage` en place — sinon un tick tardif écrirait
+// la loutre courante dans le slot cible. Le boot chargera le slot cible proprement.
+let switching = false;
+function commitSlot(target) {
+  persist(); persistRec();                 // fige le slot courant (storage = slot courant)
+  switching = true;                        // gèle les écritures jusqu'au reload
+  if (rawStore) rawStore.setItem(SLOT_PTR, String(clampSlot(target)));
+}
+
+function pickSlot(target) {
+  target = clampSlot(target);
+  if (target === activeSlot) { ui.hideOverlay('ovl-slots'); return; }
+  const st = loadSlotState(target);
+  const occupied = !summarize(st).empty;
+  const msg = occupied
+    ? 'Passer à cette loutre ?\nTa loutre actuelle est sauvegardée dans son emplacement — tu la retrouveras intacte.'
+    : 'Commencer une nouvelle loutre dans cet emplacement libre ?\nTa loutre actuelle est sauvegardée et t\'attendra ici.';
+  ui.askConfirm(msg, () => { commitSlot(target); reloadApp(); });
+}
+
+// On n'efface que les AUTRES emplacements. La loutre active se gère en jeu
+// (⚙️ Recommencer) — ça évite de re-sauver par mégarde ce qu'on vient d'effacer.
+function askDeleteSlot(target) {
+  target = clampSlot(target);
+  if (target === activeSlot) return;
+  const sum = summarize(loadSlotState(target));
+  if (sum.empty) return;
+  const who = sum.name || 'cette loutre';
+  ui.askConfirm('Effacer définitivement l\'emplacement de ' + who + ' ?\nToute sa lignée et sa collection seront perdues. (Sans effet sur ta loutre actuelle.)', () => {
+    if (rawStore) { rawStore.removeItem(slotKey(SAVE_KEY, target)); rawStore.removeItem(slotKey(REC_KEY, target)); }
+    sfx.press(); refreshSlots();
+  });
+}
+
 /* ---------------- Atelier (É5) : 3 doublons → 1 trésor du palier supérieur ---------------- */
 let workshopChoice = null;   // { tier, ids } quand on choisit le trésor à forger
 function workshopData() {
@@ -2435,7 +2507,7 @@ function passAway(cause, t) {
 }
 
 function tick() {
-  if (!s) return;
+  if (!s || switching) return;   // en plein changement de slot : on gèle tout jusqu'au reload
   const t = now();
   const rawDt = t - lastTickAt;
   lastTickAt = t;
@@ -2982,6 +3054,8 @@ function boot() {
   $('btn-photo-save').addEventListener('click', savePhoto);
   $('btn-photo-close').addEventListener('click', () => { cardCv = null; ui.hideOverlay('ovl-photo'); });
   $('btn-souvenir-close').addEventListener('click', () => { sfx.press(); ui.closeSouvenir(); });
+  $('b-slots').addEventListener('click', openSlots);
+  $('btn-slots-close').addEventListener('click', () => { sfx.press(); ui.hideOverlay('ovl-slots'); });
 
   // Succès
   const openAch = () => {
@@ -3180,6 +3254,7 @@ function boot() {
     'ovl-marche': () => ui.hideOverlay('ovl-marche'),
     'ovl-carnet': () => ui.hideOverlay('ovl-carnet'),
     'ovl-souvenir': () => ui.closeSouvenir(),
+    'ovl-slots': () => ui.hideOverlay('ovl-slots'),
     'ovl-almanach': () => ui.hideOverlay('ovl-almanach'),
     'ovl-dojo': closeDojo,
     'ovl-encounter': () => closeEncounter(false),

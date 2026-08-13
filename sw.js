@@ -1,6 +1,6 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v4.3.0';
+const VERSION = 'v4.4.0';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [
@@ -15,6 +15,7 @@ const PRECACHE = [
   './src/lineage.js',
   './src/lifecycle.js',
   './src/memory.js',
+  './src/slots.js',
   './src/sim.js',
   './src/sprites.js',
   './src/accessories.js',

@@ -808,6 +808,29 @@ input#name-input:focus{border-color:var(--teal);}
   box-shadow:0 0 0 3px rgba(94,120,168,.22), 0 4px 12px rgba(38,54,78,.18); outline:none;}
 .lin-dream{font-size:10px; color:#5e78a8; margin-top:3px; font-weight:700; letter-spacing:.2px;}
 
+/* ---------------- Les slots de sauvegarde (v4.4) ---------------- */
+#slots-list{display:flex; flex-direction:column; gap:9px; margin:10px 0 4px;}
+.slot-card{display:flex; align-items:center; gap:12px; padding:9px 10px;
+  border:2px solid var(--ink); border-radius:12px; background:var(--paper);
+  box-shadow:0 3px 10px rgba(38,54,78,.14); cursor:pointer; text-align:left;
+  transition:transform .12s ease, box-shadow .12s ease;}
+.slot-card:hover, .slot-card:focus-visible{transform:translateY(-1px);
+  box-shadow:0 0 0 3px rgba(94,120,168,.2), 0 4px 12px rgba(38,54,78,.18); outline:none;}
+.slot-card.slot-active{border-color:var(--gold); cursor:default;
+  box-shadow:0 0 0 3px rgba(201,162,75,.24), 0 3px 10px rgba(38,54,78,.14);}
+.slot-card.slot-empty{border-style:dashed; opacity:.9;}
+.slot-egg{flex:none; width:52px; height:52px; border-radius:50%; border:2px dashed var(--ink);
+  display:flex; align-items:center; justify-content:center; font-size:24px; background:var(--washi);}
+.slot-portrait{flex:none;}
+.slot-card .rc-col{flex:1 1 auto; display:flex; flex-direction:column; min-width:0;}
+.slot-card .rc-nm{font-weight:700; font-size:13px; color:var(--ink);}
+.slot-card .rc-sub{font-size:11px; color:rgba(38,54,78,.6); margin-top:1px;}
+.slot-badge{font-size:9px; font-weight:800; letter-spacing:.4px; color:#7a5a12;
+  background:rgba(201,162,75,.24); padding:1px 6px; border-radius:8px; vertical-align:middle;}
+.slot-del{flex:none; border:none; background:transparent; font-size:17px; cursor:pointer;
+  padding:6px; border-radius:8px; line-height:1; opacity:.7;}
+.slot-del:hover, .slot-del:focus-visible{opacity:1; background:rgba(200,70,70,.12); outline:none;}
+
 /* ---------------- Le souvenir jouable (v4.3) ---------------- */
 #ovl-souvenir{z-index:40;}   /* s'ouvre par-dessus le Carnet, sous la confirmation (50) */
 .souvenir-card{display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center;

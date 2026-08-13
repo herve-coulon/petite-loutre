@@ -321,6 +321,22 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v4.4.0 : Les slots de sauvegarde — plusieurs loutres en parallèle 🗂️. On peut désormais
+élever jusqu'à 3 loutres, chacune dans son monde COMPLET et ISOLÉ (sa loutre, sa lignée, sa
+collection, ses monnaies). ⚙️ Réglages → « 🗂️ Changer de loutre… » ouvre un écran qui liste
+les 3 emplacements : l'actuel marqué, les occupés avec portrait + nom + génération, les libres
+qui invitent à commencer. Choisir un emplacement demande confirmation puis recharge (le SW rend
+ça instantané et hors-ligne, et on repart d'un état 100 % propre). On peut effacer un AUTRE
+emplacement (jamais l'actuel — géré en jeu). Choix d'ingénierie assumé : localStorage SEGMENTÉ
+par slot plutôt qu'IndexedDB (3 petites sauvegardes → l'async d'IDB serait du risque pur) ; le
+chemin chaud (persist/boot/hors-ligne) reste 100 % synchrone et INCHANGÉ, et le Slot 1 garde les
+clés d'origine — ta sauvegarde existante DEVIENT le Slot 1, sans aucune migration. Un `storage`
+proxy redirige les clés d'état+records vers le slot actif ; module pur `slots.js` (clé par slot,
+bornage, résumé d'affichage). Piège corrigé (vérifié navigateur) : au changement de slot, on ne
+réoriente PAS le storage en place — sinon un tick tardif écrivait la loutre courante dans le slot
+cible ; on gèle les écritures (`switching`) jusqu'au reload. Tests `slots.test.js` + smoke (3
+emplacements, l'actuel marqué, confirmation avant bascule). Vérifié navigateur : aller-retour
+entre deux loutres, isolation parfaite, zéro perte, effacement d'un autre emplacement. 427 tests.*
 v4.3.0 : Le cœur long-terme, Phase 3 — le souvenir jouable 🌙. Dans le Carnet → 🕊️ Lignée,
 chaque aïeule du mémorial devient tappable (« 🌙 revivre un souvenir »). Le toucher ouvre un
 moment tout doux, contemplatif, sans le moindre enjeu : sous un ciel étoilé, l'aïeule DORT et

@@ -455,6 +455,30 @@ test('cycle de vie : bouton présent, OFF par défaut, activable via confirmatio
   $('btn-set-close').click();
 });
 
+/* ---------------- v4.4 : slots de sauvegarde (loutres en parallèle) ---------------- */
+
+test('slots : l\'écran liste 3 emplacements, l\'actuel marqué, les libres invitent', () => {
+  $('lvl-badge').click(); $('m-gear').click();
+  $('b-slots').click();
+  assert.ok(!$('ovl-slots').classList.contains('hidden'), 'l\'écran des loutres s\'ouvre');
+  const cards = [...document.querySelectorAll('#slots-list .slot-card')];
+  assert.equal(cards.length, 3, '3 emplacements');
+  assert.equal(document.querySelectorAll('#slots-list .slot-active').length, 1, 'un seul actif');
+  assert.ok(/ACTUELLE/.test($('slots-list').textContent), 'le slot courant est signalé');
+  assert.ok(document.querySelector('#slots-list .slot-empty'), 'au moins un emplacement libre');
+});
+
+test('slots : toucher un emplacement libre demande confirmation (sans recharger si on annule)', () => {
+  const empty = document.querySelector('#slots-list .slot-empty');
+  assert.ok(empty, 'un emplacement libre');
+  empty.click();
+  assert.ok(!$('ovl-confirm').classList.contains('hidden'), 'confirmation avant de changer de monde');
+  $('btn-confirm-no').click();
+  assert.ok($('ovl-confirm').classList.contains('hidden'), 'annulé : on reste sur sa loutre');
+  $('ovl-slots').querySelector('.ovl-x').click();
+  assert.ok($('ovl-slots').classList.contains('hidden'), 'le ✕ ferme l\'écran');
+});
+
 /* ---------------- v2.7.1 : fermer les menus sans scroller ---------------- */
 
 test('réglages : le numéro de version est affiché (cohérent avec package.json)', async () => {

@@ -806,6 +806,51 @@ export function closeSouvenir() {
   hideOverlay('ovl-souvenir');
 }
 
+/* ---------------- Les slots de sauvegarde (v4.4) ----------------
+   list : [{slot, active, sum}] (sum = résumé de slots.summarize).
+   h    : { onPick(slot), onDelete(slot) }. */
+export function renderSlots(list, h) {
+  const box = $('slots-list');
+  if (!box) return;
+  let html = '';
+  for (const it of list) {
+    const sum = it.sum || { empty: true };
+    if (sum.empty) {
+      html += '<div class="slot-card slot-empty" role="button" tabindex="0" data-slot="' + it.slot + '">' +
+        '<div class="slot-egg">🥚</div>' +
+        '<div class="rc-col"><span class="rc-nm">Emplacement ' + it.slot + ' · libre</span>' +
+        '<span class="rc-sub">Toucher pour commencer une nouvelle loutre</span></div></div>';
+      continue;
+    }
+    const etat = sum.egg ? 'un œuf au chaud' : sum.away ? 'chez le héron 🪶' : ('génération ' + sum.generation);
+    const sub = (sum.heirOf ? 'de la lignée de ' + esc(sum.heirOf) + ' · ' : '') + etat;
+    const nm = esc(sum.name || (sum.egg ? 'Un œuf' : 'Ta loutre'));
+    const portrait = sum.egg
+      ? '<div class="slot-egg">🥚</div>'
+      : '<canvas class="lin-portrait slot-portrait" width="52" height="52" data-fur="' + esc(sum.fur) + '" data-hat="' + esc(sum.hat || '') + '"></canvas>';
+    html += '<div class="slot-card' + (it.active ? ' slot-active' : '') + '" role="button" tabindex="0" data-slot="' + it.slot + '">' +
+      portrait +
+      '<div class="rc-col"><span class="rc-nm">' + nm + (it.active ? ' <span class="slot-badge">ACTUELLE</span>' : '') + '</span>' +
+      '<span class="rc-sub">' + sub + '</span></div>' +
+      (!it.active ? '<button class="slot-del" data-del="' + it.slot + '" aria-label="Effacer cet emplacement">🗑️</button>' : '') +
+      '</div>';
+  }
+  box.innerHTML = html;
+  box.querySelectorAll('.slot-portrait').forEach(cv =>
+    paintBadge(cv, { fur: cv.dataset.fur || 'roux', hat: cv.dataset.hat || null, stage: 'adult' }, 52));
+  if (h && typeof h.onPick === 'function') {
+    box.querySelectorAll('.slot-card[data-slot]').forEach(card => {
+      const go = () => h.onPick(+card.dataset.slot);
+      card.addEventListener('click', go);
+      card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    });
+  }
+  if (h && typeof h.onDelete === 'function') {
+    box.querySelectorAll('.slot-del').forEach(btn =>
+      btn.addEventListener('click', (e) => { e.stopPropagation(); h.onDelete(+btn.dataset.del); }));
+  }
+}
+
 /** Bestiaire : affiche les créatures découvertes (fiches en emoji — design
  *  préféré d'Hervé ; le pixel avait été jugé trop laid). */
 /**

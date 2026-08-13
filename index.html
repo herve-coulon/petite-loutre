@@ -268,6 +268,15 @@
     </div>
   </div>
 
+  <!-- Les slots de sauvegarde (v4.4) : plusieurs loutres en parallèle, mondes isolés. -->
+  <div id="ovl-slots" class="ovl scroll hidden" role="dialog" aria-modal="true" aria-label="Mes loutres">
+    <button class="ovl-x" aria-label="Fermer">✕</button>
+    <p class="big">🗂️ Mes loutres</p>
+    <p class="small">Chaque emplacement est un monde à part : sa loutre, sa lignée, sa collection.</p>
+    <div id="slots-list"></div>
+    <button class="act ghost" id="btn-slots-close" style="width:100%">FERMER</button>
+  </div>
+
   <!-- Écran « Profil de la loutre », ouvert depuis la pastille de niveau.
        Disposition façon profil de chef : portrait central + slots autour,
        carte d'identité, barre d'onglets vers les sections. -->
@@ -435,6 +444,10 @@
     <p class="set-section">📊 Statistiques</p>
     <button class="act ghost" id="b-telemetry">📊 STATISTIQUES ANONYMES : OUI</button>
     <p class="set-note">Ping quotidien anonyme (niveau, série, fonctionnalités utilisées). Aucune donnée personnelle.</p>
+
+    <p class="set-section">🗂️ Mes loutres</p>
+    <button class="act ghost" id="b-slots">🗂️ CHANGER DE LOUTRE…</button>
+    <p class="set-note">Élève plusieurs loutres en parallèle, chacune dans son monde à elle (sa lignée, sa collection). Pratique pour partager l'appareil, ou garder une lignée précieuse à l'abri pendant que tu en commences une autre.</p>
 
     <p class="set-section">💾 Sauvegarde</p>
     <p class="small">Ton code de sauvegarde :</p>
