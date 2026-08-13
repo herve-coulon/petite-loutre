@@ -57,6 +57,7 @@ import { ITEMS, RARITIES, itemById, bonusOf, rollDrop, milestoneItem, describeBo
 import { pickTrait, traitById, isFavorite, favoriteLine, bondGain, bondLevel } from './personality.js';
 import { makeAncestor, inheritTrait, isRealOtter } from './lineage.js';
 import { endOfLife, isElder } from './lifecycle.js';
+import { remembrance } from './memory.js';
 
 const $ = id => document.getElementById(id);
 const now = () => Date.now();
@@ -1595,6 +1596,9 @@ const barterHandlers = {
 function refreshBarter() { ui.renderBarter(barterData(), barterHandlers); }
 function openBarter() { if (!rec) return; sfx.press(); refreshBarter(); ui.showOverlay('ovl-barter'); }
 
+// Le souvenir jouable (v4.3) : rejouer le rêve d'une aïeule de la lignée.
+function openSouvenir(anc) { if (!anc) return; sfx.press(); vibrate(8); ui.openSouvenir(anc, remembrance(anc)); }
+
 /* ---------------- Atelier (É5) : 3 doublons → 1 trésor du palier supérieur ---------------- */
 let workshopChoice = null;   // { tier, ids } quand on choisit le trésor à forger
 function workshopData() {
@@ -2977,6 +2981,7 @@ function boot() {
   $('btn-photo-share').addEventListener('click', sharePhoto);
   $('btn-photo-save').addEventListener('click', savePhoto);
   $('btn-photo-close').addEventListener('click', () => { cardCv = null; ui.hideOverlay('ovl-photo'); });
+  $('btn-souvenir-close').addEventListener('click', () => { sfx.press(); ui.closeSouvenir(); });
 
   // Succès
   const openAch = () => {
@@ -2993,7 +2998,7 @@ function boot() {
 
   // Le Carnet du naturaliste (v3.98) : unifie bestiaire + trouvailles + records.
   let carnetSection = 'bestiaire';
-  const refreshCarnet = () => ui.renderCarnet(rec, s, carnetSection, {});
+  const refreshCarnet = () => ui.renderCarnet(rec, s, carnetSection, { onSouvenir: openSouvenir });
   const openCarnet = () => {
     if (!rec) return;
     sfx.press(); ui.hideOverlay('ovl-menu');
@@ -3174,6 +3179,7 @@ function boot() {
     'ovl-crue': () => ui.hideOverlay('ovl-crue'),
     'ovl-marche': () => ui.hideOverlay('ovl-marche'),
     'ovl-carnet': () => ui.hideOverlay('ovl-carnet'),
+    'ovl-souvenir': () => ui.closeSouvenir(),
     'ovl-almanach': () => ui.hideOverlay('ovl-almanach'),
     'ovl-dojo': closeDojo,
     'ovl-encounter': () => closeEncounter(false),

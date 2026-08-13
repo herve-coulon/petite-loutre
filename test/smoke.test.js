@@ -1168,3 +1168,21 @@ test('La lignée : passer le relais inscrit l\'aïeule au mémorial et fait naî
   assert.equal($('carnet-body').querySelectorAll('.lin-portrait').length, $('carnet-body').querySelectorAll('.lin-card').length, 'chaque carte a son portrait');
   $('ovl-carnet').querySelector('.ovl-x').click();
 });
+
+test('Le souvenir jouable : une aïeule tappable ouvre son rêve, le ✕ le referme', () => {
+  // Un mémorial connu (réutilise l'aïeule « Vieille » du test précédent au besoin).
+  if (!L.records.memorial.length) {
+    L.records.memorial = [{ name: 'Vieille', trait: 'caline', fur: 'choco', hat: null, ageMs: 3 * 24 * 3600 * 1000, generation: 2 }];
+  }
+  $('pt-carnet').click();
+  [...document.querySelectorAll('#carnet-tabs .carnet-tab')].find(t => t.dataset.sec === 'lignee').click();
+  const card = $('carnet-body').querySelector('.lin-card[data-mem]');
+  assert.ok(card, 'une aïeule est tappable');
+  assert.match(card.textContent, /revivre un souvenir/i, 'l\'invitation au souvenir s\'affiche');
+  card.click();
+  assert.ok(!$('ovl-souvenir').classList.contains('hidden'), 'le souvenir s\'ouvre');
+  assert.ok($('souvenir-name').textContent.length > 0, 'le nom de l\'aïeule');
+  assert.ok($('souvenir-line').textContent.length > 0, 'une phrase de souvenir');
+  $('ovl-souvenir').querySelector('.ovl-x').click();
+  assert.ok($('ovl-souvenir').classList.contains('hidden'), 'le ✕ referme le souvenir');
+});

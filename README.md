@@ -321,6 +321,17 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v4.3.0 : Le cœur long-terme, Phase 3 — le souvenir jouable 🌙. Dans le Carnet → 🕊️ Lignée,
+chaque aïeule du mémorial devient tappable (« 🌙 revivre un souvenir »). Le toucher ouvre un
+moment tout doux, contemplatif, sans le moindre enjeu : sous un ciel étoilé, l'aïeule DORT et
+RÊVE — l'animation `dream` jouée dans SON pelage (boucle rAF autonome, coupée à la fermeture) —
+avec son nom, sa génération, l'âge qu'elle a vécu, et une PHRASE DE SOUVENIR teintée par son
+caractère (« ses câlins sans fin — toujours un de plus » pour une câline). Un « Merci pour tout 💛 »
+referme. Module pur `memory.js` (souvenir déterministe et stable par loutre, coloré par le trait)
+testé ; nouvel export `paintDream` (render.js) ; overlay `ovl-souvenir` (z-index au-dessus du
+Carnet). Tests `memory.test.js` + smoke (aïeule tappable → rêve ouvert, nom & phrase, ✕ referme).
+Vérifié navigateur : Néo endormie et rêvant dans son ciel de nuit, souvenir de câline, zéro erreur.
+420 tests sim. Le cœur long-terme est complet : la lignée, la fin douce, et le souvenir.*
 v4.2.0 : Le cœur long-terme, Phase 2 — la vieillesse célébrée 🕊️. La mortalité douce
 entre en jeu, mais en OPT-IN, éteinte par défaut : le jeu cozy reste intact pour qui
 préfère garder sa loutre toujours auprès de soi. Un réglage ⚙️ « 🌿 Cycle de vie complet »

@@ -17,7 +17,7 @@ import { PASSIVE_TECHNIQUES, unlockedTechniques } from './skills.js';
 /** Échappe les caractères HTML dangereux pour un usage sûr dans innerHTML. */
 function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 import { equipBonus } from './skins.js';
-import { paintOtter, paintBadge } from './render.js';
+import { paintOtter, paintBadge, paintDream } from './render.js';
 import { ZONES, ZONE_INTRO, FIND_ICON, FIND_NAME, SPECIALITE, COFFRE_ZONES, EPREUVE_ZONES, zoneDuJour, zoneLayout, zoneUnlocked, zoneReq } from './tilemap.js';
 import { CREATURES } from './creatures.js';
 
@@ -765,8 +765,45 @@ export function updateHUD(s, mg, rec) {
 export function showOverlay(id) { $(id).classList.remove('hidden'); }
 export function hideOverlay(id) { $(id).classList.add('hidden'); }
 export function hideAllOverlays() {
-  ['ovl-intro', 'ovl-name', 'ovl-story', 'ovl-over', 'ovl-confirm', 'ovl-hats', 'ovl-ach', 'ovl-set', 'ovl-battle', 'ovl-photo', 'ovl-carnet']
+  ['ovl-intro', 'ovl-name', 'ovl-story', 'ovl-over', 'ovl-confirm', 'ovl-hats', 'ovl-ach', 'ovl-set', 'ovl-battle', 'ovl-photo', 'ovl-carnet', 'ovl-souvenir']
     .forEach(hideOverlay);
+  closeSouvenir();
+}
+
+/* ---------------- Le souvenir jouable (v4.3) ----------------
+   Un moment contemplatif : une aïeule qui dort et rêve (anim `dream`, dans son
+   pelage), sa phrase de souvenir. Boucle rAF autonome, coupée à la fermeture. */
+let souvenirRAF = 0;
+let souvenirAnc = null;
+const _raf = (typeof requestAnimationFrame === 'function') ? requestAnimationFrame : (fn) => setTimeout(() => fn(Date.now()), 120);
+const _caf = (typeof cancelAnimationFrame === 'function') ? cancelAnimationFrame : clearTimeout;
+
+// anc : l'aïeule {name, trait, fur, generation, ageMs}. mem : {intro, detail, close}.
+export function openSouvenir(anc, mem) {
+  if (!anc) return;
+  souvenirAnc = anc;
+  const t = traitById(anc.trait);
+  $('souvenir-name').textContent = (anc.name || 'Elle') + ' — génération ' + (anc.generation || 1);
+  $('souvenir-meta').textContent = 'a vécu ' + fmtDur(anc.ageMs || 0) + (t ? ' · ' + t.emoji + ' ' + t.name : '');
+  $('souvenir-intro').textContent = (mem && mem.intro) || '';
+  $('souvenir-line').textContent = (mem && mem.detail) || '';
+  $('souvenir-close-line').textContent = (mem && mem.close) || '';
+  const cv = $('souvenir-cv');
+  _caf(souvenirRAF);
+  const step = (ts) => {
+    if (!souvenirAnc) return;
+    paintDream(cv, { fur: souvenirAnc.fur || 'roux', stage: 'adult' }, ts || 0, 3);
+    souvenirRAF = _raf(step);
+  };
+  showOverlay('ovl-souvenir');
+  step(0);
+}
+
+export function closeSouvenir() {
+  souvenirAnc = null;
+  _caf(souvenirRAF);
+  souvenirRAF = 0;
+  hideOverlay('ovl-souvenir');
 }
 
 /** Bestiaire : affiche les créatures découvertes (fiches en emoji — design
@@ -828,13 +865,17 @@ export function renderCarnet(rec, s, section, h) {
       (curTrait ? ' · ' + curTrait.emoji + ' ' + esc(curTrait.name) : '') + '</span></div></div>';
     if (mem.length) {
       html += '<p class="g-section">Mémorial (' + mem.length + ')</p>';
-      for (const a of mem) {
+      const canDream = h && typeof h.onSouvenir === 'function';
+      mem.forEach((a, i) => {
         const t = traitById(a.trait);
-        html += '<div class="lin-card">' +
+        html += '<div class="lin-card' + (canDream ? ' lin-tappable' : '') + '"' +
+          (canDream ? ' role="button" tabindex="0" data-mem="' + i + '"' : '') + '>' +
           '<canvas class="lin-portrait" width="52" height="52" data-fur="' + esc(a.fur || 'roux') + '" data-hat="' + esc(a.hat || '') + '"></canvas>' +
           '<div class="rc-col"><span class="rc-nm">' + esc(a.name) + ' — génération ' + a.generation + '</span>' +
-          '<span class="rc-sub">a vécu ' + fmtDur(a.ageMs) + (t ? ' · ' + t.emoji + ' ' + esc(t.name) : '') + '</span></div></div>';
-      }
+          '<span class="rc-sub">a vécu ' + fmtDur(a.ageMs) + (t ? ' · ' + t.emoji + ' ' + esc(t.name) : '') + '</span>' +
+          (canDream ? '<span class="lin-dream">🌙 revivre un souvenir</span>' : '') +
+          '</div></div>';
+      });
     } else {
       html += '<p class="rc-sub">Aucun aïeul encore. Quand une loutre passera le relais (⚙️ → Recommencer), elle prendra place ici.</p>';
     }
@@ -864,6 +905,17 @@ export function renderCarnet(rec, s, section, h) {
   if (section === 'lignee') {
     body.querySelectorAll('.lin-portrait').forEach(cv =>
       paintBadge(cv, { fur: cv.dataset.fur || 'roux', hat: cv.dataset.hat || null, stage: 'adult' }, 52));
+    // Chaque aïeule tappable → rejouer son souvenir (le mémorial est affiché du plus récent au plus ancien).
+    if (h && typeof h.onSouvenir === 'function') {
+      const mem = (rec.memorial || []).slice().reverse();
+      body.querySelectorAll('.lin-card[data-mem]').forEach(card => {
+        const anc = mem[+card.dataset.mem];
+        if (!anc) return;
+        const go = () => h.onSouvenir(anc);
+        card.addEventListener('click', go);
+        card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+      });
+    }
   }
 }
 

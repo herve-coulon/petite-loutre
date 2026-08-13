@@ -252,6 +252,22 @@
     <button class="act ghost" id="btn-photo-close">FERMER</button>
   </div>
 
+  <!-- Le souvenir jouable (v4.3) : rejouer le rêve d'une aïeule de la lignée.
+       Un moment tout doux — elle dort et rêve, une phrase la ravive. -->
+  <div id="ovl-souvenir" class="ovl hidden" role="dialog" aria-modal="true" aria-label="Souvenir d'une aïeule">
+    <button class="ovl-x" aria-label="Fermer">✕</button>
+    <div class="souvenir-card">
+      <p class="souvenir-title">🌙 Un souvenir</p>
+      <div class="souvenir-sky"><canvas id="souvenir-cv" width="180" height="126"></canvas></div>
+      <p id="souvenir-name" class="souvenir-name"></p>
+      <p id="souvenir-meta" class="souvenir-meta"></p>
+      <p id="souvenir-intro" class="souvenir-intro"></p>
+      <p id="souvenir-line" class="souvenir-line"></p>
+      <p id="souvenir-close-line" class="souvenir-closeline"></p>
+      <button class="act" id="btn-souvenir-close" style="width:100%">Merci pour tout 💛</button>
+    </div>
+  </div>
+
   <!-- Écran « Profil de la loutre », ouvert depuis la pastille de niveau.
        Disposition façon profil de chef : portrait central + slots autour,
        carte d'identité, barre d'onglets vers les sections. -->

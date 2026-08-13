@@ -139,6 +139,29 @@ export function paintOtter(cv, o, sc = 3, flip = false) {
 }
 
 /**
+ * Le souvenir jouable (v4.3) : la loutre qui dort et rêve, animée dans le temps.
+ * Sert la carte « 🌙 Souvenir » d'une aïeule de la lignée — dans SON pelage.
+ * `t` est un temps en ms (performance.now()) ; l'appelant relance à chaque frame.
+ */
+export function paintDream(cv, o, t = 0, sc = 3) {
+  if (!cv || !cv.getContext || !o) return;
+  const ctx = cv.getContext('2d');
+  if (!ctx) return;
+  const stage = o.stage || 'adult';
+  const young = ART.stageFrames && ART.stageFrames('dream', o.fur, stage);
+  const an = (young && young.anatomy) || ANATOMY.dream;
+  const w = young ? young.frames[0].width : ANIMS.dream.w / 4;
+  const h = young ? young.frames[0].height : ANIMS.dream.h / 4;
+  cv.width = w * sc; cv.height = h * sc;
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.save();
+  ctx.scale(sc, sc);
+  drawAnim(ctx, ART, 'dream', frameAt('dream', t), an.feet.x, an.feet.y, o.fur, false, stage);
+  ctx.restore();
+}
+
+/**
  * Pastille profil : dessine juste la tête de la loutre, centrée dans un
  * canvas de taille fixe (diam × diam). Le chapeau s'il est équipé déborde
  * légèrement vers le haut — le cercle CSS clippe le tout.
