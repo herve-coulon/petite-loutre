@@ -321,6 +321,18 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v4.2.0 : Le cœur long-terme, Phase 2 — la vieillesse célébrée 🕊️. La mortalité douce
+entre en jeu, mais en OPT-IN, éteinte par défaut : le jeu cozy reste intact pour qui
+préfère garder sa loutre toujours auprès de soi. Un réglage ⚙️ « 🌿 Cycle de vie complet »
+(activation confirmée, réversible à tout moment) l'allume. Une fois activé, deux fins —
+toutes deux PAISIBLES, jamais un échec : la VIEILLESSE (après ~7 jours la loutre devient
+aînée « le poil argenté », puis s'en va sereinement, fêtée, vers ~10 jours) et l'ANTICHAMBRE
+DU HÉRON (si on ne la ramène pas sous ~3 jours, elle s'en va tout doux de là-bas). Dans les
+deux cas : une carte d'adieu (« elle a bien vécu »), puis un œuf reprend le fil — le mémorial
+et l'héritage de la Phase 1 font le reste. Le réglage est GLOBAL (survit aux générations).
+Module pur `lifecycle.js` (seuils réglables, `isElder`/`endOfLife`, le héron prime sur l'âge)
+testé ; migration douce (`rec.lifecycle`, `s.elderSeen`). Tests `lifecycle.test.js` + smoke
+(bouton OFF par défaut, activation via confirmation, réversible). 425 tests sim.*
 v4.1.0 : Le cœur long-terme, Phase 1 — la lignée & le mémorial 🕊️. Jusqu'ici,
 « Recommencer à zéro » effaçait la loutre. Désormais, elle PASSE LE RELAIS : la loutre
 sortante rejoint un mémorial (nom, personnalité, âge vécu, portrait, génération), et la

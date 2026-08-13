@@ -434,6 +434,27 @@ test('télémétrie : bouton présent dans ⚙️, toggle et toast', async () =>
   $('btn-set-close').click();
 });
 
+/* ---------------- v4.2 : cycle de vie complet (opt-in) ---------------- */
+
+test('cycle de vie : bouton présent, OFF par défaut, activable via confirmation', async () => {
+  $('lvl-badge').click(); $('m-gear').click();
+  const btn = $('b-lifecycle');
+  assert.ok(btn, 'bouton b-lifecycle présent');
+  assert.match(btn.textContent, /NON/, 'éteint par défaut (jeu cozy intact)');
+  assert.equal(L.records.lifecycle, false);
+  btn.click(); // ouvre la confirmation maison
+  assert.ok(!$('ovl-confirm').classList.contains('hidden'), 'demande confirmation avant d\'activer');
+  $('btn-confirm-yes').click();
+  await new Promise(r => setTimeout(r, 20));
+  assert.equal(L.records.lifecycle, true, 'activé après confirmation');
+  assert.match(btn.textContent, /OUI/);
+  btn.click(); // coupé immédiatement, sans confirmation
+  await new Promise(r => setTimeout(r, 20));
+  assert.equal(L.records.lifecycle, false, 'réversible à tout moment');
+  assert.match(btn.textContent, /NON/);
+  $('btn-set-close').click();
+});
+
 /* ---------------- v2.7.1 : fermer les menus sans scroller ---------------- */
 
 test('réglages : le numéro de version est affiché (cohérent avec package.json)', async () => {

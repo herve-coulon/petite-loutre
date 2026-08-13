@@ -56,6 +56,7 @@ import { weatherFor, sicknessBonus, WEATHER_LABELS } from './weather.js';
 import { ITEMS, RARITIES, itemById, bonusOf, rollDrop, milestoneItem, describeBonus, cosmeticPrice, treasurePrice } from './items.js';
 import { pickTrait, traitById, isFavorite, favoriteLine, bondGain, bondLevel } from './personality.js';
 import { makeAncestor, inheritTrait, isRealOtter } from './lineage.js';
+import { endOfLife, isElder } from './lifecycle.js';
 
 const $ = id => document.getElementById(id);
 const now = () => Date.now();
@@ -2383,6 +2384,52 @@ function startNew() {
   ui.updateHUD(s, mg, rec);
 }
 
+/* ---------------- Le cycle de vie complet (v4.2) ----------------
+   Opt-in (⚙️ rec.lifecycle), éteint par défaut : le jeu cozy reste intact.
+   Une fois allumé, la loutre devient aînée après une longue vie, puis s'en va
+   paisiblement — jamais un échec. Elle rejoint alors la lignée (mémorial +
+   héritage, cf. startNew) et un œuf reprend le fil. Le grand départ vient aussi
+   d'une trop longue absence chez le héron (l'antichambre douce). */
+let passingInProgress = false;
+
+function checkLifecycle(t) {
+  if (!s || !rec || !rec.lifecycle) return;
+  if (passingInProgress || s.gameOver || s.stage === 'egg') return;
+  const age = ageMs(s, t);
+  // L'annonce des cheveux d'argent, une seule fois.
+  if (!s.elderSeen && isElder(age)) {
+    s.elderSeen = true;
+    persist();
+    ui.log('🌾 ' + (s.name || 'Elle') + ' est devenue une aînée — le poil argenté, le cœur plein d\'histoires.');
+  }
+  const awayMs = s.away ? (t - (s.awayAt || t)) : null;
+  const cause = endOfLife({ ageMs: age, awayMs, lifecycle: true });
+  if (cause) passAway(cause, t);
+}
+
+// Le grand départ : une carte d'adieu paisible, puis l'œuf de la génération suivante.
+function passAway(cause, t) {
+  passingInProgress = true;
+  const name = s.name || 'Ta loutre';
+  s.diedAt = t;         // fige l'âge pour le mémorial (cf. ageMs)
+  s.gameOver = true;    // suspend la simulation le temps de l'adieu
+  persist();
+  if (sfx.over) sfx.over();
+  vibrate([40, 60, 40]);
+  const vecu = ui.fmtAge ? ui.fmtAge(s, t) : '';
+  const card = cause === 'age'
+    ? { kicker: 'Une belle vie', big: '🕊️', title: name + ' s\'en est allée paisiblement',
+        reward: 'Elle a bien vécu' + (vecu ? ' — ' + vecu : '') + '. Elle veille sur la lignée.', rewardColor: 'var(--accent)' }
+    : { kicker: 'Adieu tout doux', big: '🕊️', title: name + ' est restée auprès du héron',
+        reward: 'Elle s\'en est allée sereinement. La lignée, elle, continue.', rewardColor: 'var(--accent)' };
+  ui.celebrate(card);
+  ui.log('🕊️ ' + name + ' nous a quittés en paix. ' +
+    (cause === 'age' ? 'Quelle belle vie…' : 'Le héron veillera sur elle…') +
+    ' Un œuf reprend le fil de la lignée.');
+  // On laisse la carte respirer, puis l'œuf de la génération suivante arrive.
+  setTimeout(() => { passingInProgress = false; startNew(); }, 2600);
+}
+
 function tick() {
   if (!s) return;
   const t = now();
@@ -2406,6 +2453,7 @@ function tick() {
     checkStreak();
     ui.log('✨ Nouveau jour ! ' + dailyEvent(dayKey(t)).label);
   }
+  checkLifecycle(t);   // le cycle de vie complet (v4.2) : aînée, puis grand départ paisible
   ui.updateHUD(s, mg, rec);
   updatePlaceBtn();  // la tanière n'est accessible que quand la loutre est là (hors œuf/héron/mini-jeu)
   maybeHint();       // révèle une astuce de geste une fois le tuto de base terminé
@@ -2730,6 +2778,20 @@ function boot() {
       ? '🗣️ Dialogues vivants activés — les habitants varient leur accueil.'
       : '🗣️ Dialogues vivants coupés — retour aux dialogues écrits.');
   });
+  const lifecycleLabel = () => { const b = $('b-lifecycle'); if (b) b.textContent = '🌿 CYCLE DE VIE COMPLET : ' + (rec && rec.lifecycle ? 'OUI' : 'NON'); };
+  $('b-lifecycle').addEventListener('click', () => {
+    sfx.press();
+    const on = !(rec && rec.lifecycle);
+    if (on) {
+      ui.askConfirm('Activer le cycle de vie complet ?\nTes loutres vieilliront et s\'en iront un jour, paisiblement et fêtées — jamais une défaite. La lignée continue à chaque fois. (Réversible ici à tout moment.)', () => {
+        rec.lifecycle = true; persistRec(); lifecycleLabel();
+        ui.toast('🌿 Cycle de vie complet activé — chaque vie compte.');
+      });
+    } else {
+      rec.lifecycle = false; persistRec(); lifecycleLabel();
+      ui.toast('🌿 Cycle de vie complet coupé — tes loutres restent auprès de toi.');
+    }
+  });
   $('b-reset').addEventListener('click', () => {
     const passe = isRealOtter(s)
       ? (s.name || 'Ta loutre') + ' rejoindra la lignée (mémorial et portraits, dans le Carnet 📖) et un œuf reprendra le fil — la suivante héritera souvent de son caractère.'
@@ -3048,6 +3110,7 @@ function boot() {
     $('b-push').textContent = '🔔 RAPPELS : ' + (s && s.push ? 'OUI' : 'NON');
     $('b-telemetry').textContent = '📊 STATISTIQUES ANONYMES : ' + (s && s.telemetry !== false ? 'OUI' : 'NON');
     livingLabel();
+    lifecycleLabel();
     ui.showOverlay('ovl-set');
   };
 

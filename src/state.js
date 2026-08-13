@@ -46,6 +46,7 @@ export function newState(now = Date.now(), rnd = Math.random) {
     generation: 1,   // La lignée (v4.1) : rang dans le fil des vies (1 = la fondatrice)
     heirOf: null,    // nom de la loutre dont celle-ci descend (null pour la 1re)
     heirTrait: null, // trait hérité à appliquer au baptême (null → tirage libre)
+    elderSeen: false, // La vieillesse (v4.2) : l'annonce « aînée » a-t-elle été faite ?
     bond: 0,         // lien/affinité avec CETTE loutre, grandit avec les soins
     telemetry: true,      // statistiques anonymes (opt-out dans ⚙️)
     telemetryId: null,    // identifiant aléatoire, généré au 1er ping
@@ -73,6 +74,7 @@ function normalizeState(o) {
   if (typeof o.generation !== 'number' || o.generation < 1) o.generation = 1;   // lignée (v4.1)
   if (o.heirOf === undefined) o.heirOf = null;
   if (o.heirTrait === undefined) o.heirTrait = null;
+  if (typeof o.elderSeen !== 'boolean') o.elderSeen = false; // v4.2
   if (typeof o.livingDialogues !== 'boolean') o.livingDialogues = true;    // v3.95 : local, ON par défaut
   // Bascule UNIQUE : les saves d'avant la version locale (Kimi, réglage à false et
   // inopérant sans clé) passent une fois au nouveau défaut ON. L'utilisateur peut re-couper.
@@ -174,7 +176,8 @@ export function newRecords() {
     visited: [],         // lieux déjà découverts (carte de la vallée + arrivée mise en scène)
     seasonGifts: {},     // cadeaux de saison réclamés, par clé (cf. seasonpass.js)
     almanach: {},        // Almanach : paliers réclamés par (saison, année) → [indices] (cf. almanach.js)
-    memorial: []         // La lignée (v4.1) : les loutres passées {name,trait,fur,hat,ageMs,generation}
+    memorial: [],        // La lignée (v4.1) : les loutres passées {name,trait,fur,hat,ageMs,generation}
+    lifecycle: false     // Le cycle de vie complet (v4.2) : mortalité douce, opt-in, survit aux générations
   };
 }
 
@@ -209,6 +212,7 @@ function normalizeRecords(o) {
   if (!Array.isArray(o.found)) o.found = [];
   if (!Array.isArray(o.foundKinds)) o.foundKinds = [];   // album des sortes (Carnet)
   if (!Array.isArray(o.memorial)) o.memorial = [];       // la lignée (v4.1)
+  if (typeof o.lifecycle !== 'boolean') o.lifecycle = false; // cycle de vie complet (v4.2)
   if (!Array.isArray(o.visited)) o.visited = [];
   if (!o.seasonGifts || typeof o.seasonGifts !== 'object') o.seasonGifts = {};
   if (!o.almanach || typeof o.almanach !== 'object') o.almanach = {};   // Almanach de saison
