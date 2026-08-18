@@ -622,50 +622,71 @@ export function renderEncounter(o, gang, need, h) {
       : 'Offre-lui ' + left + ' poisson' + (left > 1 ? 's' : '') + ' pour gagner son amitié.'));
 }
 
-/** Bannière de quête : la première quête du jour non terminée + sa progression. */
-export function renderDailies(s, rec) {
-  const el = $('quest');
-  const zh = $('zone-hint');
-  if (!el) return;
-  if (!s || s.stage === 'egg' || s.gameOver || !s.qDaily) {
-    el.classList.add('hidden');
-    if (zh) zh.classList.add('hidden');
-    return;
-  }
-  el.classList.remove('hidden');
-  // Repli persisté (É4) : replié, la bannière tient sur une ligne discrète.
-  el.classList.toggle('collapsed', !!s.questCollapsed);
-  const tg = $('quest-toggle');
-  if (tg) {
-    tg.textContent = s.questCollapsed ? '▸' : '▾';
-    tg.setAttribute('aria-label', s.questCollapsed ? 'Déplier les objectifs' : 'Replier les objectifs');
-  }
-  // Contexte de filtrage : même logique que questCtx() dans main.js
+// Contexte de filtrage des quêtes (même logique que questCtx() dans main.js).
+function questContextFor(s, rec) {
   const niveau = Math.max(levelFromXp((rec && rec.xp) || 0).level, (rec && rec.levelReached) || 1);
   const unlocked2 = [];
   if (niveau >= UNLOCK_LEVEL.treat) unlocked2.push('treat');
   if (niveau >= UNLOCK_LEVEL.slide) unlocked2.push('slide');
   if (niveau >= UNLOCK_LEVEL.dive) unlocked2.push('dive');
   if (niveau >= UNLOCK_LEVEL.battle) unlocked2.push('battle');
-  const ctx = { level: niveau, unlocked: unlocked2, world: s.place === 'monde' };
-  const qs = dailyQuests(s.qDaily.date, ctx);
-  const q = qs.find(q => !s.qDaily.done.includes(q.id)) || qs[qs.length - 1];
-  const done = s.qDaily.done.includes(q.id);
-  const prog = Math.min(s.qDaily.progress[q.key] || 0, q.target);
-  setTxt('quest-text', q.icon + ' ' + (q.label || q.name || ''));
-  const f = $('quest-fill'); if (f) f.style.width = Math.round(prog / q.target * 100) + '%';
-  setTxt('quest-prog', done ? '✓' : prog + '/' + q.target);
-  el.classList.toggle('done', done);
+  return { level: niveau, unlocked: unlocked2, world: s.place === 'monde' };
+}
+
+/** Pastille 🎯 des défis : compte les défis accomplis / total (détail dans l'overlay). */
+export function renderDailies(s, rec) {
+  const pill = $('pill-quests');
+  const zh = $('zone-hint');
+  if (pill) {
+    if (!s || s.stage === 'egg' || s.gameOver || !s.qDaily) {
+      pill.classList.add('hidden');
+    } else {
+      const qs = dailyQuests(s.qDaily.date, questContextFor(s, rec));
+      const done = qs.filter(q => s.qDaily.done.includes(q.id)).length;
+      setTxt('quest-count', done + '/' + qs.length);
+      pill.classList.toggle('all-done', qs.length > 0 && done === qs.length);
+      pill.classList.remove('hidden');
+    }
+  }
   // Bandeau « lieu du jour » : visible quand le monde est ouvert
   if (zh) {
-    if (s.place === 'monde') {
-      const jour = zoneDuJour(dayKey());
-      const z = ZONES[jour];
+    if (s && s.place === 'monde' && s.stage !== 'egg' && !s.gameOver) {
+      const z = ZONES[zoneDuJour(dayKey())];
       zh.textContent = '★ ' + z.name.toLowerCase() + ' : trouvailles ×2';
       zh.classList.remove('hidden');
     } else {
       zh.classList.add('hidden');
     }
+  }
+}
+
+/** Le détail des 3 défis du jour, pour l'overlay 🎯 (icône, libellé, barre, progression). */
+export function renderQuestList(s, rec) {
+  const box = $('quests-list');
+  if (!box || !s || !s.qDaily) return;
+  const qs = dailyQuests(s.qDaily.date, questContextFor(s, rec));
+  const doneCount = qs.filter(q => s.qDaily.done.includes(q.id)).length;
+  setTxt('quests-sub', doneCount === qs.length
+    ? 'Tous les défis du jour sont relevés — bravo ! 🎉'
+    : doneCount + ' sur ' + qs.length + ' accomplis · reviennent chaque jour.');
+  let html = '';
+  for (const q of qs) {
+    const done = s.qDaily.done.includes(q.id);
+    const prog = Math.min(s.qDaily.progress[q.key] || 0, q.target);
+    const pct = Math.round(prog / q.target * 100);
+    html += '<div class="q-item' + (done ? ' done' : '') + '">' +
+      '<span class="q-ic">' + q.icon + '</span>' +
+      '<div class="q-col"><span class="q-label">' + esc(q.label || q.name || '') + '</span>' +
+      '<div class="q-bar"><div class="q-track"><div class="q-fill" style="width:' + pct + '%"></div></div>' +
+      '<span class="q-prog">' + (done ? '✓' : prog + '/' + q.target) + '</span></div></div></div>';
+  }
+  box.innerHTML = html;
+  // Rappel du lieu du jour (bonus trouvailles) dans l'overlay
+  const zn = $('quests-zone');
+  if (zn) {
+    const z = ZONES[zoneDuJour(dayKey())];
+    zn.textContent = '★ Lieu du jour : ' + z.name + ' — trouvailles ×2 dans la vallée.';
+    zn.classList.remove('hidden');
   }
 }
 

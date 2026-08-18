@@ -321,6 +321,17 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v4.5.0 : Les défis du jour derrière une pastille 🎯 (+ plus de variété). Correctif d'affichage :
+la bannière de quête FIXE en bas d'écran encombrait la vue et chevauchait le journal sur les
+écrans courts. Elle disparaît au profit d'une pastille compacte « 🎯 x/3 » dans la rangée des
+compteurs (dorée quand les 3 défis sont relevés) ; la toucher ouvre un overlay propre qui liste
+les 3 défis du jour (icône, libellé, barre de progression, ✓) + le rappel du lieu du jour. On
+gagne toute la hauteur que la bannière volait. Côté contenu : le pool passe de 21 à 39 défis
+(paliers plus fins en soin/pêche, 2e/3e paliers combat·toboggan·plongée·monde) et le tirage
+quotidien garantit désormais 3 activités DISTINCTES (jamais « 2 repas » ET « 3 repas » le même
+jour). Tests `quests.test.js` (clés distinctes) + smoke (pastille visible, 0/3→3/3 dorée, overlay
+à 3 défis). Vérifié navigateur : plus de chevauchement, pastille + overlay nickel, zéro erreur.
+428 tests.*
 v4.4.0 : Les slots de sauvegarde — plusieurs loutres en parallèle 🗂️. On peut désormais
 élever jusqu'à 3 loutres, chacune dans son monde COMPLET et ISOLÉ (sa loutre, sa lignée, sa
 collection, ses monnaies). ⚙️ Réglages → « 🗂️ Changer de loutre… » ouvre un écran qui liste

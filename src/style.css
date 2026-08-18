@@ -42,6 +42,30 @@ html,body{
 .pill.purse{cursor:pointer;}
 .pill.purse:active{transform:translateY(1px); box-shadow:0 2px 6px rgba(38,54,78,.2);}
 
+/* La pastille des défis (v4.5) : compacte, tappable ; dorée quand tout est relevé. */
+.pill.quests{cursor:pointer; margin-left:auto;}
+.pill.quests:active{transform:translateY(1px); box-shadow:0 2px 6px rgba(38,54,78,.2);}
+.pill.quests.hidden{display:none !important;}
+.pill.quests.all-done{border-color:var(--gold); color:#7a5a12;
+  box-shadow:0 0 0 3px rgba(201,162,75,.22), 0 3px 10px rgba(38,54,78,.18);}
+
+/* Le détail des défis, dans l'overlay 🎯 */
+#quests-list{display:flex; flex-direction:column; gap:8px; margin:10px 0 4px;}
+.q-item{display:flex; align-items:center; gap:11px; padding:9px 11px;
+  background:var(--paper); border:2px solid var(--ink); border-radius:12px;
+  box-shadow:0 3px 10px rgba(38,54,78,.12);}
+.q-item.done{border-color:var(--green); background:rgba(45,140,90,.08);}
+.q-ic{flex:none; font-size:22px; line-height:1;}
+.q-col{flex:1 1 auto; display:flex; flex-direction:column; min-width:0; gap:5px;}
+.q-label{font-weight:700; font-size:13px; color:var(--ink); text-align:left;}
+.q-bar{display:flex; align-items:center; gap:8px;}
+.q-track{flex:1; height:9px; background:var(--track); border:2px solid var(--ink);
+  border-radius:999px; overflow:hidden;}
+.q-fill{height:100%; width:0%; background:var(--teal); transition:width .4s cubic-bezier(.3,.9,.4,1);}
+.q-item.done .q-fill{background:var(--green);}
+.q-prog{font-size:12px; font-weight:700; color:var(--teal); min-width:30px; text-align:right;}
+.q-item.done .q-prog{color:var(--green);}
+
 /* ---------------- Le Marché (hub économique, v3.96) ---------------- */
 .marche-purse{display:flex; gap:8px; justify-content:center; margin:6px 0 12px;}
 .mp-coin{display:flex; align-items:center; gap:5px; padding:6px 12px; border-radius:999px;
@@ -450,39 +474,7 @@ canvas#cv{
   border-radius:10px; padding:5px 10px;
 }
 
-/* ---------------- Bannière de quête ---------------- */
-#quest{
-  position:relative;
-  flex:none; display:flex; flex-direction:column; gap:5px; cursor:pointer;
-  background:var(--paper); border:2.5px solid var(--ink); border-radius:12px;
-  padding:9px 14px; box-shadow:0 4px 16px rgba(38,54,78,.18), 0 1px 3px rgba(0,0,0,.08);
-  transition:transform .15s ease;
-}
-#quest.hidden{display:none !important;}
-/* Bandeau de quêtes repliable (É4) : replié, il tient sur une ligne discrète pour
-   laisser respirer l'eau — le petit chevron ▾/▸ ouvre et referme (état persisté). */
-#quest-toggle{
-  position:absolute; top:5px; right:7px; width:24px; height:24px; padding:0;
-  border:none; background:transparent; color:var(--dim); font-size:13px; line-height:24px;
-  text-align:center; cursor:pointer; border-radius:6px;
-}
-#quest-toggle:active{transform:scale(.88);}
-#quest.collapsed{padding:6px 34px 6px 14px;}
-#quest.collapsed .quest-text{
-  font-size:12px; font-weight:700; opacity:.72; white-space:nowrap;
-  overflow:hidden; text-overflow:ellipsis;
-}
-#quest.collapsed .quest-bar{display:none;}
-.quest-text{font-size:15px; font-weight:700; color:var(--ink);}
-.quest-bar{display:flex; align-items:center; gap:8px;}
-.quest-bar .track{
-  flex:1; height:10px; background:var(--track); border:2px solid var(--ink);
-  border-radius:999px; overflow:hidden;
-}
-.quest-bar .fill{height:100%; width:0%; background:var(--teal);
-  transition:width .4s cubic-bezier(.3,.9,.4,1);}
-#quest-prog{font-size:13px; font-weight:700; color:var(--teal); min-width:30px; text-align:right;}
-#quest.done #quest-prog{color:var(--green);}
+/* Bandeau « lieu du jour » (les défis vivent désormais derrière la pastille 🎯). */
 #zone-hint{font-size:12px; font-weight:600; color:var(--teal); text-align:center;
   padding:2px 0; opacity:.85;}
 #zone-hint.hidden{display:none !important;}

@@ -1613,6 +1613,9 @@ const barterHandlers = {
 function refreshBarter() { ui.renderBarter(barterData(), barterHandlers); }
 function openBarter() { if (!rec) return; sfx.press(); refreshBarter(); ui.showOverlay('ovl-barter'); }
 
+// Les défis du jour (v4.5) : détail sur demande, via la pastille 🎯.
+function openQuests() { if (!s || !s.qDaily) return; sfx.press(); ui.renderQuestList(s, rec); ui.showOverlay('ovl-quests'); }
+
 // Le souvenir jouable (v4.3) : rejouer le rêve d'une aïeule de la lignée.
 function openSouvenir(anc) { if (!anc) return; sfx.press(); vibrate(8); ui.openSouvenir(anc, remembrance(anc)); }
 
@@ -3143,19 +3146,10 @@ function boot() {
   $('pt-atelier').addEventListener('click', openWorkshop);   // atelier de trésors (É5)
   $('pt-crue').addEventListener('click', openCrue);          // La Crue de la semaine (É5b)
 
-  // la bannière de quête ouvre le détail (quêtes + succès)
-  $('quest').addEventListener('click', openAch);
-  $('quest').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') openAch(); });
-  // …et le chevron la replie/déplie (état persisté), sans ouvrir le détail (É4)
-  const qtg = $('quest-toggle');
-  if (qtg) qtg.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (!s) return;
-    s.questCollapsed = !s.questCollapsed;
-    sfx.press(); vibrate(6);
-    persist();
-    ui.renderDailies(s, rec);
-  });
+  // La pastille 🎯 ouvre le détail des défis du jour (v4.5 : plus de bannière fixe).
+  $('pill-quests').addEventListener('click', openQuests);
+  $('pill-quests').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openQuests(); } });
+  $('btn-quests-close').addEventListener('click', () => { sfx.press(); ui.hideOverlay('ovl-quests'); });
   // barre d'actions qui s'estompe au repos, se réveille au moindre geste (É4)
   ['pointerdown', 'keydown'].forEach(ev =>
     document.addEventListener(ev, wakeActionbar, { passive: true }));
@@ -3255,6 +3249,7 @@ function boot() {
     'ovl-carnet': () => ui.hideOverlay('ovl-carnet'),
     'ovl-souvenir': () => ui.closeSouvenir(),
     'ovl-slots': () => ui.hideOverlay('ovl-slots'),
+    'ovl-quests': () => ui.hideOverlay('ovl-quests'),
     'ovl-almanach': () => ui.hideOverlay('ovl-almanach'),
     'ovl-dojo': closeDojo,
     'ovl-encounter': () => closeEncounter(false),

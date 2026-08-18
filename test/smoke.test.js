@@ -479,6 +479,31 @@ test('slots : toucher un emplacement libre demande confirmation (sans recharger 
   assert.ok($('ovl-slots').classList.contains('hidden'), 'le ✕ ferme l\'écran');
 });
 
+/* ---------------- v4.5 : défis du jour derrière une pastille 🎯 ---------------- */
+
+test('défis : plus de bannière fixe, une pastille 🎯 qui ouvre le détail des 3 défis', () => {
+  // plus de bannière persistante #quest
+  assert.equal($('quest'), null, 'l\'ancienne bannière fixe a disparu');
+  // pin le contexte (les tests précédents ont pu monter le niveau) : niveau 1, hors monde
+  L.records.xp = 0; L.records.levelReached = 0; L.state.place = 'berge';
+  L.state.qDaily = { date: dayKey(), progress: {}, done: [] };
+  L.step(0);
+  const pill = $('pill-quests');
+  assert.ok(pill && !pill.classList.contains('hidden'), 'la pastille des défis est visible en jeu');
+  assert.match($('quest-count').textContent, /^0\/3$/, 'aucun défi accompli au départ');
+  pill.click();
+  assert.ok(!$('ovl-quests').classList.contains('hidden'), 'la pastille ouvre le détail');
+  const items = $('quests-list').querySelectorAll('.q-item');
+  assert.equal(items.length, 3, 'les 3 défis du jour sont listés');
+  // tout accomplir → la pastille passe à 3/3 et se pare d'or
+  L.state.qDaily.done = dailyQuests(dayKey(), { level: 1, unlocked: [], world: false }).map(q => q.id);
+  L.step(0);
+  assert.match($('quest-count').textContent, /^3\/3$/, 'tous accomplis');
+  assert.ok($('pill-quests').classList.contains('all-done'), 'la pastille devient dorée');
+  $('ovl-quests').querySelector('.ovl-x').click();
+  assert.ok($('ovl-quests').classList.contains('hidden'), 'le ✕ referme le détail');
+});
+
 /* ---------------- v2.7.1 : fermer les menus sans scroller ---------------- */
 
 test('réglages : le numéro de version est affiché (cohérent avec package.json)', async () => {

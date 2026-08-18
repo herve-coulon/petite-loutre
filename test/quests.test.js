@@ -92,6 +92,15 @@ describe('dailyQuests', () => {
     const qs = dailyQuests('2026-07-25');
     assert.equal(qs.length, 3);
   });
+
+  it('trois activités DISTINCTES : jamais deux quêtes de même clé le même jour', () => {
+    for (let d = 1; d <= 60; d++) {
+      const date = '2026-09-' + String((d % 30) + 1).padStart(2, '0') + '-' + d;
+      const qs = dailyQuests(date, { level: 20, unlocked: ['treat', 'slide', 'dive', 'battle'], world: true });
+      const keys = qs.map(q => q.key);
+      assert.equal(new Set(keys).size, keys.length, 'clés dupliquées le ' + date + ' : ' + keys.join(','));
+    }
+  });
 });
 
 /* ── dailyQuests : jamais d\'inéligible dans le résultat ───────────────── */

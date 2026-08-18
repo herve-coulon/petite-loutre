@@ -66,6 +66,7 @@
     <div id="pill-fish" class="pill purse" role="button" tabindex="0" aria-label="Poissons — ouvrir le Marché"><span class="ic">🐟</span><b id="fish-num">0</b></div>
     <div id="pill-shell" class="pill purse" role="button" tabindex="0" aria-label="Coquillages — ouvrir le Marché"><span class="ic">🐚</span><b id="shell-num">0</b></div>
     <div id="streak" class="pill streak"><span class="ic">🔥</span><b id="streak-num">0</b></div>
+    <div id="pill-quests" class="pill quests hidden" role="button" tabindex="0" aria-label="Défis du jour — voir les objectifs"><span class="ic">🎯</span><b id="quest-count">0/3</b></div>
   </div>
 
   <!-- Rangée 3 : les 5 jauges -->
@@ -98,12 +99,8 @@
     <p id="log" aria-live="polite">…</p>
   </div>
 
-  <!-- Bannière de quête -->
-  <div id="quest" class="hidden" role="button" tabindex="0" aria-label="Objectifs du jour">
-    <button id="quest-toggle" type="button" aria-label="Replier les objectifs">▾</button>
-    <div class="quest-text" id="quest-text">…</div>
-    <div class="quest-bar"><div class="track"><div class="fill" id="quest-fill"></div></div><span id="quest-prog"></span></div>
-  </div>
+  <!-- Les défis du jour vivent désormais derrière la pastille 🎯 (rangée compteurs)
+       pour ne plus encombrer l'écran. Seul le bandeau « lieu du jour » reste ici. -->
   <div id="zone-hint" class="hidden"></div>
 
   <!-- Barre d'actions -->
@@ -275,6 +272,16 @@
     <p class="small">Chaque emplacement est un monde à part : sa loutre, sa lignée, sa collection.</p>
     <div id="slots-list"></div>
     <button class="act ghost" id="btn-slots-close" style="width:100%">FERMER</button>
+  </div>
+
+  <!-- Les défis du jour (v4.5) : les 3 objectifs quotidiens, sur demande. -->
+  <div id="ovl-quests" class="ovl scroll hidden" role="dialog" aria-modal="true" aria-label="Défis du jour">
+    <button class="ovl-x" aria-label="Fermer">✕</button>
+    <p class="big">🎯 Défis du jour</p>
+    <p id="quests-sub" class="small"></p>
+    <div id="quests-list"></div>
+    <p id="quests-zone" class="set-note hidden"></p>
+    <button class="act ghost" id="btn-quests-close" style="width:100%">FERMER</button>
   </div>
 
   <!-- Écran « Profil de la loutre », ouvert depuis la pastille de niveau.
