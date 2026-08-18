@@ -321,6 +321,14 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v4.5.1 : Correctif — bouton fantôme retiré 🌿. Le bouton rond « Jardin » (b-garden) traînait
+dans la colonne de droite : la fonctionnalité avait déménagé dans le monde ouvert (zone jardin),
+mais le bouton était resté — masqué par l'attribut HTML `hidden`… sauf que `.roundbtn{display:flex}`
+l'emportait sur `[hidden]`, donc il s'affichait quand même, en vert vif « disponible », SANS aucun
+gestionnaire : le toucher ne faisait rien. Audit complet des boutons : c'était le SEUL sans
+handler de toute l'app (les autres boutons ronds verrouillés — plongée/toboggan/combat — sont
+intentionnels : 🔒 + « Niv X », tapables pour expliquer comment débloquer). Bouton supprimé ;
+la colonne de droite ne montre plus que les 4 vraies actions. Vérifié navigateur.*
 v4.5.0 : Les défis du jour derrière une pastille 🎯 (+ plus de variété). Correctif d'affichage :
 la bannière de quête FIXE en bas d'écran encombrait la vue et chevauchait le journal sur les
 écrans courts. Elle disparaît au profit d'une pastille compacte « 🎯 x/3 » dans la rangée des
