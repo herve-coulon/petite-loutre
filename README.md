@@ -321,6 +321,15 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v4.7.0 : Chaque montée de niveau redonne quelque chose 💎. Audit gameplay → le point #1 : après
+le niveau 10, monter d'un niveau ne débloquait plus rien de neuf (les trésors de palier ne tombent
+qu'aux niveaux 3/5/7/10/13/16/19… — 2-3 niveaux « creux » entre chacun), et les gemmes (monnaie
+premium : friandise express, trousse de soins, achats au Marché) étaient rares (troc seulement).
+Désormais CHAQUE montée de niveau crédite des gemmes — flux croissant (`2 + niveau/5`) avec jackpot
+aux paliers (+5 tous les 5 niveaux, +12 tous les 10). Les niveaux creux ne sont plus vides, et le
+Marché a enfin de quoi tourner sur toute l'ascension. La carte de niveau affiche « 💎 +N » (en plus
+du trésor / déblocage éventuel). Fonction pure `levelUpGems(level)` (level.js) + tests. Vérifié
+navigateur : niveau 5 → trésor Brindille + 8 💎, carte de célébration nickel. 424 tests sim.*
 v4.6.1 : Ménage de code (santé, zéro changement visible) 🧹. Audit du dépôt → deux vrais gains.
 (1) `world.js` supprimé : ancien système « échelles/lieux » (89 lignes) remplacé de longue date
 par les zones de `tilemap.js`, plus aucun de ses exports importé nulle part — mais toujours livré

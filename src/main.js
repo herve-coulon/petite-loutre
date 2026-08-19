@@ -12,7 +12,7 @@ import { dailyShareText } from './share.js';
 import { dailyEvent, butterflyPos } from './events.js';
 import * as music from './music.js';
 import * as ambient from './ambient.js';
-import { XP, levelFromXp, titleFor } from './level.js';
+import { XP, levelFromXp, titleFor, levelUpGems } from './level.js';
 import { bumpQuest, completedQuests, ensureDaily, dayKey, isEligible, questContext } from './quests.js';
 import { addSeasonTreat } from './seasonpass.js';
 import { ALMANACH_TIERS, tierState, almanachProgress, almanachCompletion, almanachHasClaimable, claimTier } from './almanach.js';
@@ -2286,16 +2286,26 @@ function gainXp(n) {
       const mid = milestoneItem(lv);
       if (mid && !rec.items.includes(mid)) { rec.items.push(mid); gotItems.push(itemById(mid)); }
     }
+    // Gemmes de montée (v4.7) : chaque niveau franchi en donne — le level-up
+    // redonne toujours quelque chose, et le Marché a de quoi tourner.
+    let gemsWon = 0;
+    for (let lv = before + 1; lv <= L.level; lv++) gemsWon += levelUpGems(lv);
+    if (gemsWon > 0) rec.gems = (rec.gems || 0) + gemsWon;
+    const gemLine = gemsWon > 0 ? '💎 +' + gemsWon + ' gemme' + (gemsWon > 1 ? 's' : '') : '';
+    const gemLog = gemsWon > 0 ? ' (+' + gemsWon + ' 💎)' : '';
     const opened = featuresOpenedBetween(before, L.level);
     let reward, rewardColor;
     if (gotItems.length) {
       const it = gotItems[gotItems.length - 1];
-      reward = '🎁 Trésor ' + RARITIES[it.rarity].label.toLowerCase() + '<br>' + it.emoji + ' <b>' + esc(it.name) + '</b>';
+      reward = '🎁 Trésor ' + RARITIES[it.rarity].label.toLowerCase() + '<br>' + it.emoji + ' <b>' + esc(it.name) + '</b>' + (gemLine ? '<br>' + gemLine : '');
       rewardColor = RARITIES[it.rarity].color;
-      ui.log('🏅 Niveau ' + L.level + ' ! Trésor ' + RARITIES[it.rarity].label.toLowerCase() + ' : ' + it.emoji + ' ' + it.name + ' ! Équipe-le dans 🎩.');
+      ui.log('🏅 Niveau ' + L.level + ' ! Trésor ' + RARITIES[it.rarity].label.toLowerCase() + ' : ' + it.emoji + ' ' + it.name + ' ! Équipe-le dans 🎩.' + gemLog);
     } else if (opened.length) {
-      reward = '🔓 Débloqué<br><b>' + opened.join(' + ') + '</b>';
-      ui.log('⭐ Niveau ' + L.level + ' ! Débloqué : ' + opened.join(' + ') + ' ! Va essayer !');
+      reward = '🔓 Débloqué<br><b>' + opened.join(' + ') + '</b>' + (gemLine ? '<br>' + gemLine : '');
+      ui.log('⭐ Niveau ' + L.level + ' ! Débloqué : ' + opened.join(' + ') + ' ! Va essayer !' + gemLog);
+    } else if (gemLine) {
+      reward = gemLine + '<br>🍡 Friandise rechargée';
+      ui.log('Niveau ' + L.level + ' ! Récompense : ' + gemsWon + ' 💎 + friandise rechargée. 🍡');
     } else {
       reward = '🍡 Friandise rechargée';
       ui.log('Niveau ' + L.level + ' ! Récompense : friandise rechargée. 🍡');

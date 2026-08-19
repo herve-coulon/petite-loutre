@@ -30,6 +30,20 @@ export function xpCost(level) {
 }
 
 /**
+ * Gemmes offertes en ATTEIGNANT ce niveau (v4.7). Chaque montée redonne quelque
+ * chose : un petit flux croissant qui remplit les niveaux « creux » entre deux
+ * trésors de palier, avec un jackpot aux niveaux ronds — de quoi alimenter le
+ * Marché sur toute l'ascension. Nul au niveau 1 (départ).
+ */
+export function levelUpGems(level) {
+  if (level <= 1) return 0;
+  let g = 2 + Math.floor(level / 5);   // base croissante : 2 → 12 sur 50 niveaux
+  if (level % 10 === 0) g += 12;       // gros palier tous les 10 niveaux
+  else if (level % 5 === 0) g += 5;    // palier moyen tous les 5
+  return g;
+}
+
+/**
  * Niveau atteint pour un total d'XP.
  * @returns {{level:number, cur:number, next:number}} cur/next = progression dans le niveau
  */

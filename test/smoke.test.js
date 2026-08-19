@@ -623,11 +623,13 @@ test('montée de niveau : toast étoilé, friandise rechargée, sauvegardé', ()
   L.records.xp = cur + (Lc.next - Lc.cur) - 2; // à 2 XP du niveau suivant
   L.state.lastTreat = Date.now(); // friandise en recharge
   L.state.hunger = 50;
+  const gems0 = L.records.gems || 0;
   $('b-feed').click();
   assert.ok($('ovl-cheer').classList.contains('show'), 'bannière de célébration affichée');
   assert.match($('cheer-kicker').textContent, /niveau/i, 'la bannière annonce le niveau');
   assert.match($('cheer-big').textContent, /^\d+$/, 'le numéro de niveau est affiché');
   assert.equal(L.state.lastTreat, 0, 'récompense : friandise rechargée');
+  assert.ok((L.records.gems || 0) > gems0, 'récompense : la montée de niveau crédite des gemmes (v4.7)');
   assert.notEqual($('lvl-badge').textContent, lv0, 'le badge a changé de niveau');
   const savedRec = JSON.parse(window.localStorage.getItem('petite_loutre_records_v1'));
   assert.equal(savedRec.xp, L.records.xp, 'XP persistée');

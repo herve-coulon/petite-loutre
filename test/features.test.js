@@ -10,7 +10,7 @@ import { PAL } from '../src/sprites.js';
 import { unlockedFurs } from '../src/skins.js';
 import { FUR_REMAP } from '../src/otter-art.js';
 import { COFFRE_ZONES, EPREUVE_ZONES } from '../src/tilemap.js';
-import { levelFromXp, xpCost } from '../src/level.js';
+import { levelFromXp, xpCost, levelUpGems } from '../src/level.js';
 import { milestoneItem } from '../src/items.js';
 
 const T0 = 1_750_000_000_000;
@@ -250,6 +250,19 @@ test('levelReached : zones toujours ouvertes après perte d\'XP', () => {
   rec.xp -= xpCost(12) + xpCost(11);
   const effLevel = Math.max(levelFromXp(rec.xp).level, rec.levelReached);
   assert.ok(effLevel >= 12, 'niveau effectif >= 12 : cascade reste ouverte');
+});
+
+test('levelUpGems : chaque niveau donne des gemmes, jackpot aux niveaux ronds', () => {
+  assert.equal(levelUpGems(1), 0, 'niveau de départ : rien');
+  assert.ok(levelUpGems(2) > 0, 'un niveau ordinaire donne quelque chose');
+  // croissant : un haut niveau donne au moins autant qu'un bas (hors paliers)
+  assert.ok(levelUpGems(48) > levelUpGems(2), 'la base croît avec le niveau');
+  // jackpot des niveaux ronds : 10 > 9 et > 11 (paliers ×10)
+  assert.ok(levelUpGems(10) > levelUpGems(9), 'palier ×10 plus généreux');
+  assert.ok(levelUpGems(10) > levelUpGems(11));
+  // palier ×5 intermédiaire : 5 > 4 et > 6
+  assert.ok(levelUpGems(5) > levelUpGems(4), 'palier ×5 plus généreux');
+  assert.ok(levelUpGems(20) > levelUpGems(19), 'palier ×10 au niveau 20 aussi');
 });
 
 test('levelReached : milestoneItem pas redonné (double octroi protégé)', () => {
