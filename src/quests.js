@@ -1,6 +1,21 @@
 // Quêtes du jour : 3 micro-objectifs quotidiens (les mêmes pour tout le monde,
 // tirés de façon déterministe à partir de la date). Module pur.
 import { hashSeed, makeRng } from './battle.js';
+import { UNLOCK_LEVEL } from './constants.js';
+
+// Fonctionnalités à débloquage par niveau, utilisées par les prérequis de quêtes.
+// (Ajouter une activité ici suffit : plus de logique dupliquée entre main.js et ui.js.)
+export const QUEST_FEATURES = ['treat', 'slide', 'dive', 'battle', 'garden'];
+
+/** Le contexte de filtrage des quêtes, dérivé du niveau et du lieu. Source unique. */
+export function questContext(level, world) {
+  const lvl = level || 1;
+  return {
+    level: lvl,
+    unlocked: QUEST_FEATURES.filter(f => lvl >= UNLOCK_LEVEL[f]),
+    world: !!world
+  };
+}
 
 // Chaque entrée du pool gagne un champ `need` déclaratif.
 // Les quêtes dont le need n'est pas satisfait par le contexte joueur sont

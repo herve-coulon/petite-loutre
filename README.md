@@ -321,6 +321,14 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v4.6.1 : Ménage de code (santé, zéro changement visible) 🧹. Audit du dépôt → deux vrais gains.
+(1) `world.js` supprimé : ancien système « échelles/lieux » (89 lignes) remplacé de longue date
+par les zones de `tilemap.js`, plus aucun de ses exports importé nulle part — mais toujours livré
+dans le PRECACHE et testé (78 lignes de tests pour du code mort). Retiré du dépôt, du sw.js et de
+package.json. (2) Contexte des quêtes UNIFIÉ : `questCtx()` (main.js) et `questContextFor()` (ui.js)
+calculaient exactement la même chose en double — vrai risque de désynchro (il fallait éditer les
+deux à chaque nouvelle activité). Source unique `questContext(level, world)` + `QUEST_FEATURES`
+dans quests.js ; les deux appelants n'en sont plus que des enveloppes. Tests verts (423 sim).*
 v4.6.0 : Le Jardin devient une vraie activité 🌿🦋. Suite du correctif v4.5.1 : plutôt que de
 supprimer le bouton Jardin, on lui donne enfin un rôle. Le 🌿 revient dans la colonne de droite
 comme ACTION DE PREMIER PLAN (verrou « Niv 4 » comme plongée/toboggan, tapable pour expliquer le

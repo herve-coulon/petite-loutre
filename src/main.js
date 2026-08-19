@@ -13,7 +13,7 @@ import { dailyEvent, butterflyPos } from './events.js';
 import * as music from './music.js';
 import * as ambient from './ambient.js';
 import { XP, levelFromXp, titleFor } from './level.js';
-import { bumpQuest, completedQuests, ensureDaily, dayKey, isEligible } from './quests.js';
+import { bumpQuest, completedQuests, ensureDaily, dayKey, isEligible, questContext } from './quests.js';
 import { addSeasonTreat } from './seasonpass.js';
 import { ALMANACH_TIERS, tierState, almanachProgress, almanachCompletion, almanachHasClaimable, claimTier } from './almanach.js';
 import { dailyDojo, judgeParry, parryScore, nextCombo, beltFor, dojoReward } from './dojo.js';
@@ -143,13 +143,7 @@ const unlocked = (feat) => curLevel() >= UNLOCK_LEVEL[feat];
 
 /** Contexte de filtrage des quêtes : level, features débloquées, monde ouvert. */
 function questCtx() {
-  const unlocked2 = [];
-  if (unlocked('treat')) unlocked2.push('treat');
-  if (unlocked('slide')) unlocked2.push('slide');
-  if (unlocked('dive')) unlocked2.push('dive');
-  if (unlocked('battle')) unlocked2.push('battle');
-  if (unlocked('garden')) unlocked2.push('garden');
-  return { level: curLevel(), unlocked: unlocked2, world: !!(s && s.place === 'monde') };
+  return questContext(curLevel(), s && s.place === 'monde');
 }
 const UNLOCK_LABEL = { treat: '🍡 Friandise', slide: '🛝 Toboggan', battle: '⚔️ Combat', dive: '🤿 Plongée' };
 /** Activités qui s'ouvrent en passant de `before` à `after` (annonce de palier). */

@@ -5,7 +5,7 @@ import { levelFromXp, titleFor } from './level.js';
 import { HATS, unlockedHats } from './accessories.js';
 import { FURS, DECORS, unlockedFurs, unlockedDecors } from './skins.js';
 import { ACHIEVEMENTS } from './achievements.js';
-import { dailyQuests, dayKey } from './quests.js';
+import { dailyQuests, dayKey, questContext } from './quests.js';
 import { dailyEvent } from './events.js';
 import { seasonInfo } from './seasons.js';
 import { ITEMS, RARITIES, MILESTONES, describeBonus, itemById, cosmeticPrice, treasurePrice } from './items.js';
@@ -622,16 +622,10 @@ export function renderEncounter(o, gang, need, h) {
       : 'Offre-lui ' + left + ' poisson' + (left > 1 ? 's' : '') + ' pour gagner son amitié.'));
 }
 
-// Contexte de filtrage des quêtes (même logique que questCtx() dans main.js).
+// Contexte de filtrage des quêtes — source unique partagée avec main.js (quests.js).
 function questContextFor(s, rec) {
   const niveau = Math.max(levelFromXp((rec && rec.xp) || 0).level, (rec && rec.levelReached) || 1);
-  const unlocked2 = [];
-  if (niveau >= UNLOCK_LEVEL.treat) unlocked2.push('treat');
-  if (niveau >= UNLOCK_LEVEL.slide) unlocked2.push('slide');
-  if (niveau >= UNLOCK_LEVEL.dive) unlocked2.push('dive');
-  if (niveau >= UNLOCK_LEVEL.battle) unlocked2.push('battle');
-  if (niveau >= UNLOCK_LEVEL.garden) unlocked2.push('garden');
-  return { level: niveau, unlocked: unlocked2, world: s.place === 'monde' };
+  return questContext(niveau, s.place === 'monde');
 }
 
 /** Pastille 🎯 des défis : compte les défis accomplis / total (détail dans l'overlay). */
