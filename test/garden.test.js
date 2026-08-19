@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { newGame, tickGame, harvestAt, waterAt, gardenProgress, GROW_TIME, FROG_LIVE, FLOWER_POINTS, FROG_POINTS } from '../src/garden.js';
+import { newGame, tickGame, harvestAt, waterAt, gardenProgress, GROW_TIME, FROG_LIVE, FLOWER_POINTS, FROG_POINTS,
+  BUTTERFLY_POINTS, RARE_FLOWER_POINTS, BOUQUET_TARGET, BOUQUET_BONUS } from '../src/garden.js';
 
 describe('garden', () => {
   it('newGame initialise correctement', () => {
@@ -74,5 +75,54 @@ describe('garden', () => {
     assert.ok(g.flowers.length > 0, 'une graine est apparue');
     tickGame(g, 5500, rnd);
     assert.ok(g.frogs.length > 0, 'une grenouille est apparue');
+  });
+
+  // ── v4.6 : papillons, fleurs rares, bouquet bonus ──
+  it('harvestAt attrape un papillon (+2)', () => {
+    const g = newGame(1000);
+    g.butterflies.push({ baseX: 40, x: 40, y: 120, appearedAt: 1000 });
+    const got = harvestAt(g, 40, 120, 12);
+    assert.equal(got.type, 'butterfly');
+    assert.equal(g.score, BUTTERFLY_POINTS);
+    assert.equal(g.butterfliesCaught, 1);
+  });
+
+  it('une fleur rare vaut plus qu\'une fleur normale', () => {
+    const g = newGame(1000);
+    g.flowers.push({ x: 20, y: 200, plantedAt: 0, stage: 'bloom', rare: true });
+    const got = harvestAt(g, 20, 200, 12);
+    assert.equal(got.type, 'flower');
+    assert.equal(got.rare, true);
+    assert.equal(g.score, RARE_FLOWER_POINTS);
+    assert.ok(RARE_FLOWER_POINTS > FLOWER_POINTS);
+  });
+
+  it('tickGame fait apparaître des papillons', () => {
+    const g = newGame(1000);
+    const rnd = () => 0.5;
+    tickGame(g, 4700, rnd); // nextButterfly = 2400, après l'intro
+    assert.ok(g.butterflies.length > 0, 'un papillon est apparu');
+  });
+
+  it('bouquet bonus : récolter BOUQUET_TARGET fleurs donne un bonus à la fin', () => {
+    const g = newGame(1000);
+    for (let i = 0; i < BOUQUET_TARGET; i++) {
+      g.flowers.push({ x: 20, y: 200, plantedAt: 0, stage: 'bloom' });
+      harvestAt(g, 20, 200, 12);
+    }
+    assert.equal(g.harvested, BOUQUET_TARGET);
+    const scoreBefore = g.score;
+    const res = tickGame(g, 26000);
+    assert.equal(res.bonus, BOUQUET_BONUS, 'bonus versé');
+    assert.equal(res.score, scoreBefore + BOUQUET_BONUS, 'le bonus s\'ajoute au score');
+    assert.equal(res.flowers, BOUQUET_TARGET);
+  });
+
+  it('pas de bouquet bonus sous le seuil', () => {
+    const g = newGame(1000);
+    g.flowers.push({ x: 20, y: 200, plantedAt: 0, stage: 'bloom' });
+    harvestAt(g, 20, 200, 12);
+    const res = tickGame(g, 26000);
+    assert.equal(res.bonus, 0);
   });
 });

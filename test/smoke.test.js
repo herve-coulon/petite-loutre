@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { JSDOM } from 'jsdom';
-import { dailyQuests, dayKey } from '../src/quests.js';
+import { dailyQuests, dayKey, QUEST_POOL } from '../src/quests.js';
 import { seasonGiftKey } from '../src/seasonpass.js';
 import { levelFromXp } from '../src/level.js';
 import { seasonFor } from '../src/seasons.js';
@@ -504,6 +504,32 @@ test('défis : plus de bannière fixe, une pastille 🎯 qui ouvre le détail de
   assert.ok($('ovl-quests').classList.contains('hidden'), 'le ✕ referme le détail');
 });
 
+/* ---------------- v4.6 : le bouton Jardin, action de premier plan ---------------- */
+
+test('jardin : le bouton 🌿 existe, verrouillé sous le niveau 4, débloqué et actionnable ensuite', () => {
+  const b = $('b-garden');
+  assert.ok(b, 'le bouton Jardin est de retour dans la colonne de droite');
+  const savedXp = L.records.xp, savedReached = L.records.levelReached;
+  const savedPlace = L.state.place, savedEnergy = L.state.energy, savedSleep = L.state.sleeping;
+  // le verrou se lit sur le NIVEAU dérivé de l'XP (pas levelReached)
+  L.records.xp = 0; L.records.levelReached = 0; L.state.place = 'berge';
+  L.state.sleeping = false; L.state.away = false; L.state.gameOver = false; L.state.energy = 80;
+  L.step(0);
+  assert.ok(b.classList.contains('locked'), 'verrouillé au niveau 1');
+  assert.match(b.innerHTML, /🔒/);
+  assert.match(b.innerHTML, /Niv 4/, 'indique le niveau requis');
+  // niveau élevé → débloqué (icône 🌿) et actionnable (pas disabled)
+  L.records.xp = 100000;
+  L.step(0);
+  assert.ok(!b.classList.contains('locked'), 'débloqué à haut niveau');
+  assert.match(b.innerHTML, /🌿/, 'affiche l\'icône jardin');
+  assert.equal(b.disabled, false, 'le bouton est actionnable');
+  // restauration complète (état partagé entre tests)
+  L.records.xp = savedXp; L.records.levelReached = savedReached;
+  L.state.place = savedPlace; L.state.energy = savedEnergy; L.state.sleeping = savedSleep;
+  L.step(0);
+});
+
 /* ---------------- v2.7.1 : fermer les menus sans scroller ---------------- */
 
 test('réglages : le numéro de version est affiché (cohérent avec package.json)', async () => {
@@ -572,7 +598,7 @@ test('partage du jour : bouton présent, clic sans API -> message propre', () =>
 test('XP : nourrir rapporte 5 XP, la barre de niveau est affichée', () => {
   // neutralise les quêtes du jour : sinon, selon la date, nourrir peut EN plus
   // compléter la quête « repas » et ajouter son bonus -> +5 non déterministe
-  L.state.qDaily = { date: dayKey(), progress: {}, done: dailyQuests(dayKey()).map(q => q.id) };
+  L.state.qDaily = { date: dayKey(), progress: {}, done: QUEST_POOL.map(q => q.id) };
   const xp0 = L.records.xp || 0;
   L.state.hunger = 50;
   L.state.sleeping = false;
@@ -587,7 +613,7 @@ test('montée de niveau : toast étoilé, friandise rechargée, sauvegardé', ()
   L.state.qDaily = {
     date: dayKey(),
     progress: {},
-    done: dailyQuests(dayKey()).map(q => q.id)
+    done: QUEST_POOL.map(q => q.id)
   };
   const lv0 = $('lvl-badge').textContent;
   // repart d'un niveau bas (les tests précédents peuvent avoir atteint le plafond 50)

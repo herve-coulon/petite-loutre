@@ -630,6 +630,7 @@ function questContextFor(s, rec) {
   if (niveau >= UNLOCK_LEVEL.slide) unlocked2.push('slide');
   if (niveau >= UNLOCK_LEVEL.dive) unlocked2.push('dive');
   if (niveau >= UNLOCK_LEVEL.battle) unlocked2.push('battle');
+  if (niveau >= UNLOCK_LEVEL.garden) unlocked2.push('garden');
   return { level: niveau, unlocked: unlocked2, world: s.place === 'monde' };
 }
 
@@ -764,10 +765,12 @@ export function updateHUD(s, mg, rec) {
     lock('b-dive', UNLOCK_LEVEL.dive, '<span class="ic">🤿</span>Plongée');
     lock('b-battle', UNLOCK_LEVEL.battle, '<span class="ic">⚔️</span>Combat');
     lock('b-slide', UNLOCK_LEVEL.slide, '<span class="ic">🛝</span>Toboggan');
+    lock('b-garden', UNLOCK_LEVEL.garden, '<span class="ic">🌿</span>Jardin');
     $('b-treat').disabled = dis || s.sleeping || diving;
     $('b-dive').disabled = dis || s.sleeping || diving;
     $('b-battle').disabled = dis || s.sleeping || diving;
     $('b-slide').disabled = dis || s.sleeping || diving;
+    $('b-garden').disabled = dis || s.sleeping || diving;
 
     // recharge visible : voile radial + compte à rebours (game feel de cooldown)
     setCooldown('b-treat', level >= UNLOCK_LEVEL.treat && !diving

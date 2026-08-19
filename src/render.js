@@ -2055,15 +2055,27 @@ export function makeRenderer(cv) {
           ctx.fillRect(f.x + 2, f.y - 4, 2, 8);
           ctx.fillRect(f.x, f.y - 5, 6, 3);
         } else if (f.stage === 'bloom') {
-          // fleur colorée — plus grande et plus visible
-          const hue = (f.x * 7 + f.y * 3) % 360;
-          ctx.fillStyle = 'hsl(' + hue + ',70%,60%)';
-          ctx.fillRect(f.x - 1, f.y - 7, 8, 6);
-          ctx.fillStyle = 'hsl(' + hue + ',80%,75%)';
-          ctx.fillRect(f.x, f.y - 6, 6, 3);
           // tige
           ctx.fillStyle = '#3a7a1a';
           ctx.fillRect(f.x + 2, f.y - 1, 2, 6);
+          if (f.rare) {
+            // fleur rare : dorée, avec un halo scintillant — vaut plus de points
+            ctx.fillStyle = 'rgba(255,224,120,.35)';
+            ctx.fillRect(f.x - 2, f.y - 9, 11, 9);
+            ctx.fillStyle = '#f6c945';
+            ctx.fillRect(f.x - 1, f.y - 8, 8, 7);
+            ctx.fillStyle = '#fff0b8';
+            ctx.fillRect(f.x + 1, f.y - 7, 5, 4);
+            ctx.fillStyle = '#e59a1e';
+            ctx.fillRect(f.x + 2, f.y - 6, 2, 2);
+          } else {
+            // fleur colorée — plus grande et plus visible
+            const hue = (f.x * 7 + f.y * 3) % 360;
+            ctx.fillStyle = 'hsl(' + hue + ',70%,60%)';
+            ctx.fillRect(f.x - 1, f.y - 7, 8, 6);
+            ctx.fillStyle = 'hsl(' + hue + ',80%,75%)';
+            ctx.fillRect(f.x, f.y - 6, 6, 3);
+          }
         } else if (f.stage === 'wilted' && !f.harvested) {
           ctx.fillStyle = 'rgba(120,100,60,.5)';
           ctx.fillRect(f.x + 1, f.y - 3, 6, 4);
@@ -2087,6 +2099,21 @@ export function makeRenderer(cv) {
         ctx.fillRect(fr.x + 7, fr.y + 1, 1, 1);
       }
 
+      // papillons — battent des ailes en dérivant (v4.6)
+      for (const b of (mg.butterflies || [])) {
+        if (b.caught) continue;
+        const flap = Math.sin(now / 90 + b.appearedAt) > 0;   // ailes ouvertes/repliées
+        const wx = flap ? 4 : 2;
+        ctx.fillStyle = '#e57ac0';
+        ctx.fillRect(b.x - wx, b.y - 2, wx, 5);               // aile gauche
+        ctx.fillRect(b.x + 2, b.y - 2, wx, 5);               // aile droite
+        ctx.fillStyle = '#f6a9d8';
+        ctx.fillRect(b.x - wx, b.y - 1, wx, 2);
+        ctx.fillRect(b.x + 2, b.y - 1, wx, 2);
+        ctx.fillStyle = '#3a2a3a';                            // corps
+        ctx.fillRect(b.x, b.y - 3, 2, 7);
+      }
+
       // bandeau : temps, score
       const left = Math.max(0, (mg.endsAt - now) / SEC);
       ctx.fillStyle = 'rgba(15,18,26,.8)'; ctx.fillRect(0, 0, CANVAS_W, 13);
@@ -2099,11 +2126,14 @@ export function makeRenderer(cv) {
       // indicateur d'action contextuel (bandeau sous le score)
       const hasBloom = (mg.flowers || []).some(f => f.stage === 'bloom' && !f.harvested);
       const hasFrog = (mg.frogs || []).some(f => !f.caught);
+      const hasBfly = (mg.butterflies || []).some(f => !f.caught);
       const hasSeed = (mg.flowers || []).some(f => f.stage === 'seed' || f.stage === 'sprout');
-      if (hasBloom || hasFrog) {
+      if (hasBloom || hasFrog || hasBfly) {
         ctx.fillStyle = 'rgba(15,18,26,.65)'; ctx.fillRect(0, 15, CANVAS_W, 10);
         ctx.fillStyle = '#ffe9a8'; ctx.font = '7px monospace';
-        const hint = hasFrog ? '🐸 touche la grenouille !' : '🌸 touche la fleur pour récolter';
+        const hint = hasBfly ? '🦋 attrape le papillon !'
+          : hasFrog ? '🐸 touche la grenouille !'
+          : '🌸 touche la fleur pour récolter';
         ctx.fillText(hint, 6, 23);
       } else if (hasSeed) {
         ctx.fillStyle = 'rgba(15,18,26,.55)'; ctx.fillRect(0, 15, CANVAS_W, 10);

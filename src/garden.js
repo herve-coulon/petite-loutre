@@ -1,6 +1,7 @@
 // Mini-jeu du jardin aquatique : logique pure.
 // On plante des graines sur l'eau, on les arrose, et on récolte les fleurs.
-// Les grenouilles sautent et rapportent des bonus si on les attrape.
+// Les grenouilles sautent et rapportent des bonus si on les attrape ; les
+// papillons (v4.6) dérivent dans l'air, et certaines fleurs rares valent plus.
 import { SEC, clamp } from './constants.js';
 
 export const GAME_DURATION = 25 * SEC;
@@ -13,17 +14,29 @@ export const FROG_POINTS = 3;
 export const FLOWER_POINTS = 1;
 export const WATER_DROP_POINTS = 1;
 
+// Nouveautés v4.6 : papillons, fleurs rares, bouquet bonus.
+export const BUTTERFLY_INTERVAL = 4200; // ms entre deux papillons
+export const BUTTERFLY_LIVE = 2800;     // ms de présence (ils dérivent)
+export const BUTTERFLY_POINTS = 2;
+export const RARE_CHANCE = 0.28;        // proportion de graines « rares »
+export const RARE_FLOWER_POINTS = 3;    // une fleur rare vaut plus
+export const BOUQUET_TARGET = 6;        // récolter autant de fleurs → bonus
+export const BOUQUET_BONUS = 5;
+
 export const INTRO_DURATION = 3200;  // ms d'affichage de l'overlay d'intro
 
 export function newGame(now = Date.now()) {
   return {
     mode: 'garden',
     score: 0,
-    flowers: [],    // {x, y, plantedAt, stage: 'seed'|'sprout'|'bloom'|'wilted'}
-    frogs: [],      // {x, y, appearedAt}
+    flowers: [],      // {x, y, plantedAt, stage:'seed'|'sprout'|'bloom'|'wilted', rare?}
+    frogs: [],        // {x, y, appearedAt}
+    butterflies: [],  // {baseX, x, y, appearedAt} — dérivent horizontalement
+    harvested: 0,     // fleurs récoltées (pour le bouquet bonus)
     lastTick: now,
     nextSeed: now + 600,
     nextFrog: now + 2000,
+    nextButterfly: now + 2400,
     startedAt: now,
     introUntil: now + INTRO_DURATION,
     duree: GAME_DURATION,
@@ -36,7 +49,7 @@ export function gardenProgress(mg, now) {
   return mg ? clamp((now - mg.startedAt) / (mg.duree || GAME_DURATION), 0, 1) : 0;
 }
 
-/** @returns {null | {type:'end', score, flowers, frogs}} */
+/** @returns {null | {type:'end', score, flowers, frogs, butterflies, bonus}} */
 export function tickGame(mg, now = Date.now(), rnd = Math.random) {
   if (!mg) return null;
   mg.lastTick = now;
@@ -53,12 +66,18 @@ export function tickGame(mg, now = Date.now(), rnd = Math.random) {
   // Grenouilles qui disparaissent
   mg.frogs = mg.frogs.filter(f => now - f.appearedAt < FROG_LIVE);
 
+  // Papillons : dérive horizontale (sinus) + disparition
+  for (const b of mg.butterflies) {
+    b.x = b.baseX + 26 * Math.sin((now - b.appearedAt) / 340);
+  }
+  mg.butterflies = mg.butterflies.filter(b => !b.caught && now - b.appearedAt < BUTTERFLY_LIVE);
+
   // Apparition de nouvelles graines (pas pendant l'intro)
   if (now >= mg.nextSeed && now < mg.endsAt - 1000 && now >= mg.startedAt + INTRO_DURATION) {
     const spots = waterSpots(mg);
     if (spots.length > 0) {
       const spot = spots[(rnd() * spots.length) | 0];
-      mg.flowers.push({ x: spot.x, y: spot.y, plantedAt: now, stage: 'seed' });
+      mg.flowers.push({ x: spot.x, y: spot.y, plantedAt: now, stage: 'seed', rare: rnd() < RARE_CHANCE });
     }
     mg.nextSeed = now + SEED_INTERVAL + rnd() * 600;
   }
@@ -69,9 +88,24 @@ export function tickGame(mg, now = Date.now(), rnd = Math.random) {
     mg.nextFrog = now + FROG_INTERVAL + rnd() * 1000;
   }
 
+  // Apparition de papillons (dans l'air, au-dessus de l'eau)
+  if (now >= mg.nextButterfly && now < mg.endsAt - 800) {
+    const baseX = 34 + rnd() * 92;
+    mg.butterflies.push({ baseX, x: baseX, y: 96 + rnd() * 70, appearedAt: now });
+    mg.nextButterfly = now + BUTTERFLY_INTERVAL + rnd() * 1200;
+  }
+
   if (now >= mg.endsAt) {
-    const harvested = mg.flowers.filter(f => f.harvested).length;
-    return { type: 'end', score: mg.score, flowers: harvested, frogs: mg.frogs.filter(f => !f.caught).length };
+    const bonus = mg.harvested >= BOUQUET_TARGET ? BOUQUET_BONUS : 0;
+    mg.score += bonus;
+    return {
+      type: 'end',
+      score: mg.score,
+      flowers: mg.harvested,
+      frogs: mg.frogs.filter(f => !f.caught).length,
+      butterflies: (mg.butterfliesCaught || 0),
+      bonus
+    };
   }
   return null;
 }
@@ -93,19 +127,31 @@ export function waterAt(mg, x, y) {
   return false;
 }
 
-/** Récolte une fleur en bloom ou une grenouille. */
+/** Récolte une fleur en bloom, ou attrape un papillon / une grenouille. */
 export function harvestAt(mg, x, y, pad = 18) {
   if (!mg) return false;
-  // Fleurs en fleur
+  // Fleurs en fleur (rares = plus de points)
   for (const f of mg.flowers) {
     if (f.stage === 'bloom' && !f.harvested) {
       const dx = f.x - x, dy = f.y - y;
       if (Math.abs(dx) < pad && Math.abs(dy) < pad) {
         f.harvested = true;
         f.stage = 'wilted';
-        mg.score += FLOWER_POINTS;
-        return { type: 'flower' };
+        mg.score += f.rare ? RARE_FLOWER_POINTS : FLOWER_POINTS;
+        mg.harvested = (mg.harvested || 0) + 1;
+        return { type: 'flower', rare: !!f.rare };
       }
+    }
+  }
+  // Papillons (plus grand rayon : ils bougent)
+  for (const b of mg.butterflies) {
+    if (b.caught) continue;
+    const dx = b.x - x, dy = b.y - y;
+    if (Math.abs(dx) < pad + 4 && Math.abs(dy) < pad + 4) {
+      b.caught = true;
+      mg.score += BUTTERFLY_POINTS;
+      mg.butterfliesCaught = (mg.butterfliesCaught || 0) + 1;
+      return { type: 'butterfly' };
     }
   }
   // Grenouilles

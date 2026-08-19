@@ -45,6 +45,9 @@ export const QUEST_POOL = [
   // ── Plongée (niv 6) ──
   { id: 'dive1', icon: '🤿', label: 'Faire 1 plongée', key: 'dives', target: 1, need: { feature: 'dive' } },
   { id: 'dive2', icon: '🐚', label: 'Faire 2 plongées', key: 'dives', target: 2, need: { feature: 'dive' } },
+  // ── Jardin (niv 4) ──
+  { id: 'garden1', icon: '🌿', label: 'Jardiner une fois', key: 'garden', target: 1, need: { feature: 'garden' } },
+  { id: 'garden2', icon: '🌷', label: 'Jardiner 2 fois', key: 'garden', target: 2, need: { feature: 'garden', level: 6 } },
   // ── Vallée / monde ouvert ──
   { id: 'finds2', icon: '🗺️', label: 'Ramasser 2 trouvailles', key: 'finds', target: 2, need: { world: true } },
   { id: 'finds3', icon: '🗺️', label: 'Ramasser 3 trouvailles', key: 'finds', target: 3, need: { world: true } },

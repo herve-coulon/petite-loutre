@@ -263,7 +263,9 @@ test('partage : cases, compte, niveau, flamme et lien', () => {
 test('partage : quête réussie -> une case cochée ; pas de flamme à 1 jour', () => {
   const s = otter();
   const date = dayKey(T0);
-  const quests = dailyQuests(date);
+  // même contexte que dailyShareText (rec niv 1, rien de débloqué) : sinon des
+  // quêtes à prérequis (jardin, combat…) fausseraient le tirage sans ctx.
+  const quests = dailyQuests(date, { level: 1, unlocked: [], world: s.place === 'monde' });
   s.qDaily = { date, progress: {}, done: [quests[0].id] };
   const txt = dailyShareText(s, { xp: 0, streakCount: 1 }, T0);
   assert.match(txt, /✅/, 'au moins une case cochée');

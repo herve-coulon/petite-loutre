@@ -148,6 +148,7 @@ function questCtx() {
   if (unlocked('slide')) unlocked2.push('slide');
   if (unlocked('dive')) unlocked2.push('dive');
   if (unlocked('battle')) unlocked2.push('battle');
+  if (unlocked('garden')) unlocked2.push('garden');
   return { level: curLevel(), unlocked: unlocked2, world: !!(s && s.place === 'monde') };
 }
 const UNLOCK_LABEL = { treat: '🍡 Friandise', slide: '🛝 Toboggan', battle: '⚔️ Combat', dive: '🤿 Plongée' };
@@ -462,6 +463,20 @@ function actSlide() {
   ui.updateHUD(s, mg, rec);
 }
 
+// Le jardin en action de premier plan (v4.6) : accessible depuis la berge, comme
+// le toboggan/la plongée — plus besoin de voyager jusqu'à la zone du monde ouvert.
+function actGarden() {
+  if (busy() || s.sleeping) return;
+  if (!unlocked('garden')) { ui.log('🌿 Le jardin s\'ouvre au niveau ' + UNLOCK_LEVEL.garden + ' ! ⭐'); return; }
+  if (s.energy < 10) { ui.log(s.name + ' est trop fatiguée pour jardiner…'); return; }
+  press();
+  mg = newGarden(now());
+  ambient.startGardenAmbient();
+  sfx.press();
+  ui.log('Jardin ! Plante et arrose les graines, récolte les fleurs (🌷 les rares valent +3), et attrape papillons 🦋 et grenouilles 🐸 !');
+  ui.updateHUD(s, mg, rec);
+}
+
 function endSlide(res) {
   const sc = res.score, bumps = res.bumps, best = res.bestCombo || 0;
   // Éjectée du torrent : la descente s'arrête net et la loutre en garde des
@@ -518,14 +533,16 @@ function endGarden(res) {
   mg = null;
   if (sc >= 8) R.burst('confetti', 20, s.stage);
   else if (sc > 0) R.burst('sparkle', 6, s.stage);
-  if (sc >= 8) { sfx.happy(); ui.log('Magnifique jardin ! ' + sc + ' points de récolte ! 🌸🎉'); }
-  else if (sc > 0) { sfx.eat(); ui.log(sc + ' point' + (sc > 1 ? 's' : '') + ' de jardin ! 🌿'); }
+  const bouquet = (res.bonus || 0) > 0 ? ' Bouquet complet, +' + res.bonus + ' 💐 !' : '';
+  if (sc >= 8) { sfx.happy(); ui.log('Magnifique jardin ! ' + sc + ' points de récolte !' + bouquet + ' 🌸🎉'); }
+  else if (sc > 0) { sfx.eat(); ui.log(sc + ' point' + (sc > 1 ? 's' : '') + ' de jardin !' + bouquet + ' 🌿'); }
   else { sfx.sad(); ui.log('Les graines n\'ont pas poussé… il faudra réessayer ! 🌱'); }
   gainXp(XP.game + sc * XP.fish);
   checkUnlocks();
   persist();
   ui.updateHUD(s, mg, rec);
   quest('games');
+  quest('garden');
   if (sc > 0) quest('fish', sc);
   tryDrop();
   careBond('play');
@@ -1381,6 +1398,8 @@ function onCanvasPointer(e) {
       const got = harvestAt(mg, x, y, pad);
       if (got) {
         if (got.type === 'frog') { sfx.gardenFrog(); vibrate(10); feel('soft'); ui.toast('🐸 Grenouille attrapée ! +3'); }
+        else if (got.type === 'butterfly') { sfx.gardenFrog(); vibrate(8); feel('soft'); R.burst('sparkle', 5, s.stage); ui.toast('🦋 Papillon attrapé ! +2'); }
+        else if (got.rare) { sfx.gardenHarvest(); vibrate(9); feel('soft'); R.burst('sparkle', 8, s.stage); ui.toast('🌷 Fleur rare récoltée ! +3'); }
         else { sfx.gardenHarvest(); vibrate(6); feel('soft'); ui.toast('🌸 Fleur récoltée ! +1'); }
       } else if (waterAt(mg, x, y)) {
         sfx.gardenWater(); vibrate(4); ui.toast('💧 Graine arrosée !');
@@ -2717,6 +2736,7 @@ function boot() {
   $('b-treat').addEventListener('click', actTreat);
   $('b-dive').addEventListener('click', actDive);
   $('b-slide').addEventListener('click', actSlide);
+  $('b-garden').addEventListener('click', actGarden);
   $('b-dojo').addEventListener('click', openDojo);        // Dojo de parade (v4.0)
   $('dojo-parry').addEventListener('click', dojoTap);
   $('b-care').addEventListener('click', actCare);

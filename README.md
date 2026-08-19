@@ -321,6 +321,20 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v4.6.0 : Le Jardin devient une vraie activité 🌿🦋. Suite du correctif v4.5.1 : plutôt que de
+supprimer le bouton Jardin, on lui donne enfin un rôle. Le 🌿 revient dans la colonne de droite
+comme ACTION DE PREMIER PLAN (verrou « Niv 4 » comme plongée/toboggan, tapable pour expliquer le
+déblocage) et lance le mini-jeu jardin DIRECTEMENT depuis la berge — plus besoin de voyager
+jusqu'à la zone du monde ouvert. Nouvelle variété dans le jardin : des PAPILLONS 🦋 qui dérivent
+dans l'air (attrape-les, +2), des FLEURS RARES dorées qui valent +3 au lieu de +1, et un BOUQUET
+BONUS (+5) si on récolte au moins 6 fleurs dans la partie. + un défi quotidien « Jardiner » (2
+paliers). Module `garden.js` enrichi (papillons à dérive sinusoïdale, flag rare, compteur de
+récolte) et testé ; rendu des papillons (ailes qui battent) et des fleurs rares (halo doré) ;
+`endGarden` compte le défi jardin et annonce le bouquet. Correction au passage : les quêtes à
+prérequis n'étaient éligibles « sans contexte » que par défaut — tests de neutralisation durcis
+(tout le pool marqué fait). Vérifié navigateur : bouton débloqué qui lance le jardin depuis la
+berge, quête complétée ; le rendu canvas des nouveautés est couvert par les tests unitaires
+(boucle rAF gelée en aperçu). 433 tests sim.*
 v4.5.1 : Correctif — bouton fantôme retiré 🌿. Le bouton rond « Jardin » (b-garden) traînait
 dans la colonne de droite : la fonctionnalité avait déménagé dans le monde ouvert (zone jardin),
 mais le bouton était resté — masqué par l'attribut HTML `hidden`… sauf que `.roundbtn{display:flex}`
