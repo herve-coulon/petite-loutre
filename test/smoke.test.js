@@ -593,12 +593,34 @@ test('partage du jour : bouton présent, clic sans API -> message propre', () =>
   $('btn-ach-close').click();
 });
 
+/* ---------------- v4.7 : bonus de variété (jeu libre récompensé) ---------------- */
+
+test('variété : la 1re activité du jour donne un bonus, pas les suivantes', () => {
+  // neutralise défis, poissons en réserve, journée d'activités vierge
+  L.state.qDaily = { date: dayKey(), progress: {}, done: QUEST_POOL.map(q => q.id) };
+  L.state.dayActs = { date: dayKey(), done: [] };
+  L.records.fish = 50;
+  L.state.hunger = 40; L.state.sleeping = false; L.state.away = false; L.state.gameOver = false;
+  const xpA = L.records.xp || 0;
+  $('b-feed').click(); // 1er repas du jour : base 5 + variété 5 = 10
+  const gain1 = L.records.xp - xpA;
+  assert.ok(L.state.dayActs.done.includes('feed'), 'le repas est marqué fait aujourd\'hui');
+  assert.equal(gain1, 10, '1re fois : repas (5) + bonus de variété (5)');
+  // 2e repas : plus de bonus
+  L.state.hunger = 40;
+  const xpB = L.records.xp;
+  $('b-feed').click();
+  assert.equal(L.records.xp - xpB, 5, '2e repas : base seule, pas de bonus');
+  assert.equal(L.state.dayActs.done.filter(k => k === 'feed').length, 1, 'pas de doublon dans le suivi');
+});
+
 /* ---------------- v2.6 : niveaux ---------------- */
 
 test('XP : nourrir rapporte 5 XP, la barre de niveau est affichée', () => {
   // neutralise les quêtes du jour : sinon, selon la date, nourrir peut EN plus
   // compléter la quête « repas » et ajouter son bonus -> +5 non déterministe
   L.state.qDaily = { date: dayKey(), progress: {}, done: QUEST_POOL.map(q => q.id) };
+  L.state.dayActs = { date: dayKey(), done: ['feed'] }; // neutralise le bonus de variété (déjà nourri aujourd'hui)
   const xp0 = L.records.xp || 0;
   L.state.hunger = 50;
   L.state.sleeping = false;
@@ -623,6 +645,7 @@ test('montée de niveau : toast étoilé, friandise rechargée, sauvegardé', ()
   L.records.xp = cur + (Lc.next - Lc.cur) - 2; // à 2 XP du niveau suivant
   L.state.lastTreat = Date.now(); // friandise en recharge
   L.state.hunger = 50;
+  L.state.dayActs = { date: dayKey(), done: ['feed'] }; // gain déterministe (pas de bonus de variété)
   const gems0 = L.records.gems || 0;
   $('b-feed').click();
   assert.ok($('ovl-cheer').classList.contains('show'), 'bannière de célébration affichée');

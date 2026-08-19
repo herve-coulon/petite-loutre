@@ -321,6 +321,15 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v4.8.0 : Bonus de variété — le jeu libre varié récompensé ✨. Audit gameplay, point #2 : les défis
+(25 XP) ne « nerfent » pas le jeu libre — pour les compléter il faut faire les gestes — mais un
+joueur cozy qui varie sans courir après les défis progressait lentement. Correction ADDITIVE (zéro
+nerf) : la 1re fois qu'on fait CHAQUE activité dans la journée (repas, bain, sieste, friandise,
+pêche, plongée, toboggan, jardin, combat) donne +5 XP, avec un petit toast « 1re … du jour ». Une
+journée VARIÉE rapporte donc davantage, sans toucher aux défis ni au rythme de retour quotidien ;
+répéter la même activité ne donne le bonus qu'une fois. Suivi `s.dayActs` (remis à zéro chaque
+jour). Tests unitaire + smoke (1er repas = base 5 + variété 5, 2e = base seule, pas de doublon).
+424 tests sim.*
 v4.7.0 : Chaque montée de niveau redonne quelque chose 💎. Audit gameplay → le point #1 : après
 le niveau 10, monter d'un niveau ne débloquait plus rien de neuf (les trésors de palier ne tombent
 qu'aux niveaux 3/5/7/10/13/16/19… — 2-3 niveaux « creux » entre chacun), et les gemmes (monnaie

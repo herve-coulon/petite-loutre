@@ -47,6 +47,7 @@ export function newState(now = Date.now(), rnd = Math.random) {
     heirOf: null,    // nom de la loutre dont celle-ci descend (null pour la 1re)
     heirTrait: null, // trait hérité à appliquer au baptême (null → tirage libre)
     elderSeen: false, // La vieillesse (v4.2) : l'annonce « aînée » a-t-elle été faite ?
+    dayActs: null,   // Bonus de variété (v4.7) : { date, done:[…] } — activités déjà faites aujourd'hui
     bond: 0,         // lien/affinité avec CETTE loutre, grandit avec les soins
     telemetry: true,      // statistiques anonymes (opt-out dans ⚙️)
     telemetryId: null,    // identifiant aléatoire, généré au 1er ping

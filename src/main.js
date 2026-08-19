@@ -167,6 +167,7 @@ function servirFriandise(t) {
   gainXp(XP.treat);
   afterAct();
   quest('treats');
+  varietyBonus('treat');
   careBond('treat');
 }
 
@@ -218,6 +219,7 @@ function resolveDive() {
   checkUnlocks();
   careBond('dive');
   quest('dives');
+  varietyBonus('dive');
 }
 
 function actFeed() {
@@ -243,6 +245,7 @@ function actFeed() {
   gainXp(XP.meal);
   afterAct();
   quest('meals');
+  varietyBonus('feed');
   careBond('feed');
   persistRec(); ui.updateHUD(s, mg, rec);
 }
@@ -266,6 +269,7 @@ function actWash() {
   gainXp(XP.wash);
   afterAct();
   quest('washes');
+  varietyBonus('wash');
   careBond('wash');
 }
 
@@ -278,6 +282,7 @@ function actSleep() {
     sfx.sleep(); ui.log(s.name + ' se blottit pour dormir… 💤');
     afterAct();
     quest('sleeps');
+    varietyBonus('sleep');
     careBond('sleep');
     return;
   }
@@ -411,6 +416,7 @@ function actPlay() {
   if (busy() || s.sleeping) return;
   if (s.energy < 12) { ui.log(s.name + ' est trop fatiguée pour jouer…'); return; }
   press();
+  varietyBonus('play');
   mg = newGame(now(), jeuBuffs(rec, equipBonus(s)));
   sfx.press();
   ui.log('Partie de pêche ! Attrape les poissons en les touchant !');
@@ -451,6 +457,7 @@ function actSlide() {
   if (!unlocked('slide')) { ui.log('🛝 Le toboggan s\'ouvre au niveau ' + UNLOCK_LEVEL.slide + ' ! ⭐'); return; }
   if (s.energy < 14) { ui.log(s.name + ' est trop fatiguée pour le toboggan…'); return; }
   press();
+  varietyBonus('slide');
   mg = newSlide(now(), jeuBuffs(rec, equipBonus(s)));
   sfx.press();
   ui.log('Toboggan ! Tape le couloir pour gober les 🐟 et esquiver les 🪨 !');
@@ -464,6 +471,7 @@ function actGarden() {
   if (!unlocked('garden')) { ui.log('🌿 Le jardin s\'ouvre au niveau ' + UNLOCK_LEVEL.garden + ' ! ⭐'); return; }
   if (s.energy < 10) { ui.log(s.name + ' est trop fatiguée pour jardiner…'); return; }
   press();
+  varietyBonus('garden');
   mg = newGarden(now());
   ambient.startGardenAmbient();
   sfx.press();
@@ -2342,6 +2350,20 @@ function tryDrop(boost = 1) {
 }
 
 /** Progression de quête + récompense immédiate si terminée. */
+// Bonus de variété (v4.7) : la 1re fois qu'on fait chaque activité DANS LA JOURNÉE,
+// un petit +XP — récompense une journée cozy VARIÉE, sans toucher aux défis.
+const VARIETY_XP = 5;
+const VARIETY_LABEL = { feed: 'repas', wash: 'bain', sleep: 'sieste', treat: 'friandise', play: 'pêche', dive: 'plongée', slide: 'toboggan', garden: 'jardin', battle: 'combat' };
+function varietyBonus(key) {
+  if (!s || s.gameOver || s.stage === 'egg') return;
+  const d = dayKey(now());
+  if (!s.dayActs || s.dayActs.date !== d) s.dayActs = { date: d, done: [] };
+  if (s.dayActs.done.includes(key)) return;   // déjà fait aujourd'hui → pas de bonus
+  s.dayActs.done.push(key);
+  ui.toast('✨ 1re ' + (VARIETY_LABEL[key] || 'activité') + ' du jour — variété +' + VARIETY_XP + ' XP');
+  gainXp(VARIETY_XP);
+}
+
 function quest(key, n = 1) {
   if (!s || s.stage === 'egg' || s.gameOver) return;
   bumpQuest(s, key, n, now());
@@ -2763,6 +2785,7 @@ function boot() {
     ui.updateBattleUI(battle, now());
     gainXp(XP.battle);
     quest('battles');
+    varietyBonus('battle');
   };
   /** Ouvre l'arène sur l'écran de préparation (adversaire sauvage proposé). */
   const openBattle = () => {
