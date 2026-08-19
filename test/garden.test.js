@@ -1,128 +1,117 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { newGame, tickGame, harvestAt, waterAt, gardenProgress, GROW_TIME, FROG_LIVE, FLOWER_POINTS, FROG_POINTS,
-  BUTTERFLY_POINTS, RARE_FLOWER_POINTS, BOUQUET_TARGET, BOUQUET_BONUS } from '../src/garden.js';
+import {
+  newGame, tickGame, harvestAt, waterAt, gardenProgress, plotState,
+  GROW_TIME, BLOOM_WINDOW, PEAK_POINTS, EDGE_POINTS, RARE_MULT, BOUQUET_TARGET, BOUQUET_BONUS
+} from '../src/garden.js';
 
-describe('garden', () => {
-  it('newGame initialise correctement', () => {
+// Prépare un parterre à un âge donné (ms depuis le semis) et renvoie {mg, p, now}.
+function withPlot(ageMs, extra = {}) {
+  const now = 100000;
+  const mg = newGame(now);
+  const p = mg.plots[0];
+  p.stage = 'growing'; p.plantedAt = now - ageMs; Object.assign(p, extra);
+  return { mg, p, now, x: p.x, y: p.y };
+}
+
+describe('garden (v4.9 — récolte au bon moment)', () => {
+  it('newGame : 6 parterres vides, score 0', () => {
     const g = newGame(1000);
     assert.equal(g.mode, 'garden');
     assert.equal(g.score, 0);
-    assert.equal(g.flowers.length, 0);
-    assert.equal(g.frogs.length, 0);
-    assert.equal(g.startedAt, 1000);
+    assert.equal(g.plots.length, 6);
+    assert.ok(g.plots.every(p => p.stage === 'empty'));
     assert.equal(g.endsAt, 1000 + 25000);
   });
 
   it('gardenProgress va de 0 à 1', () => {
     const g = newGame(0);
-    assert.equal(gardenProgress(g, 0), 0);
     assert.equal(gardenProgress(g, 12500), 0.5);
-    assert.equal(gardenProgress(g, 25000), 1);
     assert.equal(gardenProgress(null, 0), 0);
   });
 
-  it('tickGame fait pousser les graines (seed → sprout → bloom)', () => {
-    const g = newGame(1000);
-    g.flowers.push({ x: 20, y: 200, plantedAt: 1000, stage: 'seed' });
-    // après GROW_TIME : sprout
-    tickGame(g, 1000 + GROW_TIME);
-    assert.equal(g.flowers[0].stage, 'sprout');
-    // après GROW_TIME * 1.8 : bloom
-    tickGame(g, 1000 + Math.ceil(GROW_TIME * 1.8));
-    assert.equal(g.flowers[0].stage, 'bloom');
+  it('plotState : phases de croissance selon l\'âge', () => {
+    const { p, now } = withPlot(0);
+    assert.equal(plotState(p, now).phase, 'seed');
+    assert.equal(plotState({ ...p, plantedAt: now - GROW_TIME * 0.5 }, now).phase, 'sprout');
+    assert.equal(plotState({ ...p, plantedAt: now - GROW_TIME * 0.8 }, now).phase, 'bud');
+    // en floraison : bloomT ∈ [0,1]
+    const bloom = plotState({ ...p, plantedAt: now - GROW_TIME - BLOOM_WINDOW * 0.5 }, now);
+    assert.equal(bloom.phase, 'bloom');
+    assert.ok(Math.abs(bloom.bloomT - 0.5) < 0.01);
+    // après la fenêtre : fané
+    assert.equal(plotState({ ...p, plantedAt: now - GROW_TIME - BLOOM_WINDOW - 10 }, now).phase, 'wilt');
   });
 
-  it('tickGame termine après la durée', () => {
-    const g = newGame(1000);
-    const res = tickGame(g, 26000);
-    assert.equal(res.type, 'end');
-    assert.equal(typeof res.score, 'number');
-  });
-
-  it('harvestAt récolte une fleur en bloom', () => {
-    const g = newGame(1000);
-    g.flowers.push({ x: 20, y: 200, plantedAt: 0, stage: 'bloom' });
-    const got = harvestAt(g, 20, 200, 12);
+  it('harvestAt : PILE à la pleine floraison = parfait, points max', () => {
+    const { mg, now, x, y } = withPlot(GROW_TIME + BLOOM_WINDOW * 0.5); // pic
+    mg.plots[0].stage = 'bloom';
+    const got = harvestAt(mg, x, y, 22, now);
     assert.equal(got.type, 'flower');
-    assert.equal(g.score, FLOWER_POINTS);
-    assert.equal(g.flowers[0].stage, 'wilted');
+    assert.equal(got.perfect, true);
+    assert.equal(got.points, PEAK_POINTS);
+    assert.equal(mg.score, PEAK_POINTS);
+    assert.equal(mg.perfects, 1);
+    assert.equal(mg.harvested, 1);
+    assert.equal(mg.plots[0].stage, 'empty', 'le parterre se libère');
   });
 
-  it('harvestAt attrape une grenouille', () => {
-    const g = newGame(1000);
-    g.frogs.push({ x: 30, y: 210, appearedAt: 1000 });
-    const got = harvestAt(g, 30, 210, 12);
-    assert.equal(got.type, 'frog');
-    assert.equal(g.score, FROG_POINTS);
+  it('harvestAt : en bordure de floraison = pas parfait, peu de points', () => {
+    const { mg, now, x, y } = withPlot(GROW_TIME + 40); // tout début de floraison
+    mg.plots[0].stage = 'bloom';
+    const got = harvestAt(mg, x, y, 22, now);
+    assert.equal(got.perfect, false);
+    assert.equal(got.points, EDGE_POINTS);
+    assert.ok(PEAK_POINTS > EDGE_POINTS);
   });
 
-  it('waterAt arrose une graine et avance sa pousse', () => {
-    const g = newGame(1000);
-    g.flowers.push({ x: 20, y: 200, plantedAt: 1000, stage: 'seed' });
-    const ok = waterAt(g, 20, 200);
-    assert.equal(ok, true);
-    assert.equal(g.waterDrops, 1);
-    // plantedAt reculé de 600ms → pousse plus vite
-    assert.ok(g.flowers[0].plantedAt < 1000);
-  });
-
-  it('tickGame fait apparaître des graines et des grenouilles', () => {
-    const g = newGame(1000);
-    const rnd = () => 0.5;
-    // nextSeed = 1600, nextFrog = 3000, intro finit à 4200
-    tickGame(g, 4500, rnd);
-    assert.ok(g.flowers.length > 0, 'une graine est apparue');
-    tickGame(g, 5500, rnd);
-    assert.ok(g.frogs.length > 0, 'une grenouille est apparue');
-  });
-
-  // ── v4.6 : papillons, fleurs rares, bouquet bonus ──
-  it('harvestAt attrape un papillon (+2)', () => {
-    const g = newGame(1000);
-    g.butterflies.push({ baseX: 40, x: 40, y: 120, appearedAt: 1000 });
-    const got = harvestAt(g, 40, 120, 12);
-    assert.equal(got.type, 'butterfly');
-    assert.equal(g.score, BUTTERFLY_POINTS);
-    assert.equal(g.butterfliesCaught, 1);
-  });
-
-  it('une fleur rare vaut plus qu\'une fleur normale', () => {
-    const g = newGame(1000);
-    g.flowers.push({ x: 20, y: 200, plantedAt: 0, stage: 'bloom', rare: true });
-    const got = harvestAt(g, 20, 200, 12);
-    assert.equal(got.type, 'flower');
+  it('harvestAt : une fleur rare vaut le double', () => {
+    const { mg, now, x, y } = withPlot(GROW_TIME + BLOOM_WINDOW * 0.5, { rare: true });
+    mg.plots[0].stage = 'bloom';
+    const got = harvestAt(mg, x, y, 22, now);
     assert.equal(got.rare, true);
-    assert.equal(g.score, RARE_FLOWER_POINTS);
-    assert.ok(RARE_FLOWER_POINTS > FLOWER_POINTS);
+    assert.equal(got.points, PEAK_POINTS * RARE_MULT);
   });
 
-  it('tickGame fait apparaître des papillons', () => {
+  it('harvestAt : ne récolte PAS un parterre pas encore en fleur', () => {
+    const { mg, now, x, y } = withPlot(500); // encore graine
+    mg.plots[0].stage = 'growing';
+    assert.equal(harvestAt(mg, x, y, 22, now), false);
+    assert.equal(mg.score, 0);
+  });
+
+  it('waterAt : arrose une POUSSE et avance sa maturité ; pas une fleur', () => {
+    const { mg, now, x, y } = withPlot(1000);
+    mg.plots[0].stage = 'growing';
+    const before = mg.plots[0].plantedAt;
+    assert.equal(waterAt(mg, x, y, 22), true);
+    assert.ok(mg.plots[0].plantedAt < before, 'la maturité avance');
+    // en fleur : l'arrosage ne fait rien (on récolte, on n\'arrose pas)
+    mg.plots[0].stage = 'bloom';
+    assert.equal(waterAt(mg, x, y, 22), false);
+  });
+
+  it('tickGame : sème automatiquement dans un parterre libre après l\'intro', () => {
     const g = newGame(1000);
     const rnd = () => 0.5;
-    tickGame(g, 4700, rnd); // nextButterfly = 2400, après l'intro
-    assert.ok(g.butterflies.length > 0, 'un papillon est apparu');
+    tickGame(g, 1000 + 3300 + 200, rnd); // après INTRO_DURATION + nextSow
+    assert.ok(g.plots.some(p => p.stage !== 'empty'), 'un semis a eu lieu');
   });
 
-  it('bouquet bonus : récolter BOUQUET_TARGET fleurs donne un bonus à la fin', () => {
+  it('tickGame : bouquet bonus à la fin si assez de fleurs récoltées', () => {
     const g = newGame(1000);
-    for (let i = 0; i < BOUQUET_TARGET; i++) {
-      g.flowers.push({ x: 20, y: 200, plantedAt: 0, stage: 'bloom' });
-      harvestAt(g, 20, 200, 12);
-    }
-    assert.equal(g.harvested, BOUQUET_TARGET);
-    const scoreBefore = g.score;
-    const res = tickGame(g, 26000);
-    assert.equal(res.bonus, BOUQUET_BONUS, 'bonus versé');
-    assert.equal(res.score, scoreBefore + BOUQUET_BONUS, 'le bonus s\'ajoute au score');
+    g.harvested = BOUQUET_TARGET;
+    const before = g.score;
+    const res = tickGame(g, 27000);
+    assert.equal(res.type, 'end');
+    assert.equal(res.bonus, BOUQUET_BONUS);
+    assert.equal(res.score, before + BOUQUET_BONUS);
     assert.equal(res.flowers, BOUQUET_TARGET);
   });
 
-  it('pas de bouquet bonus sous le seuil', () => {
+  it('tickGame : pas de bonus sous le seuil', () => {
     const g = newGame(1000);
-    g.flowers.push({ x: 20, y: 200, plantedAt: 0, stage: 'bloom' });
-    harvestAt(g, 20, 200, 12);
-    const res = tickGame(g, 26000);
-    assert.equal(res.bonus, 0);
+    g.harvested = 1;
+    assert.equal(tickGame(g, 27000).bonus, 0);
   });
 });

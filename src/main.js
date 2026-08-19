@@ -475,7 +475,7 @@ function actGarden() {
   mg = newGarden(now());
   ambient.startGardenAmbient();
   sfx.press();
-  ui.log('Jardin ! Plante et arrose les graines, récolte les fleurs (🌷 les rares valent +3), et attrape papillons 🦋 et grenouilles 🐸 !');
+  ui.log('Jardin ! Récolte chaque fleur à PLEINE FLORAISON (halo lumineux) — parfait = +3 ! Arrose 💧 les pousses pour les hâter. 🌸');
   ui.updateHUD(s, mg, rec);
 }
 
@@ -522,8 +522,6 @@ function endSlide(res) {
 }
 
 /* ---------------- Jardin aquatique (3e mini-jeu) ---------------- */
-// actGarden supprimé — le jardin se lance automatiquement en entrant dans la zone jardin
-
 function endGarden(res) {
   const sc = res.score;
   ambient.stopGardenAmbient();
@@ -536,9 +534,10 @@ function endGarden(res) {
   if (sc >= 8) R.burst('confetti', 20, s.stage);
   else if (sc > 0) R.burst('sparkle', 6, s.stage);
   const bouquet = (res.bonus || 0) > 0 ? ' Bouquet complet, +' + res.bonus + ' 💐 !' : '';
-  if (sc >= 8) { sfx.happy(); ui.log('Magnifique jardin ! ' + sc + ' points de récolte !' + bouquet + ' 🌸🎉'); }
-  else if (sc > 0) { sfx.eat(); ui.log(sc + ' point' + (sc > 1 ? 's' : '') + ' de jardin !' + bouquet + ' 🌿'); }
-  else { sfx.sad(); ui.log('Les graines n\'ont pas poussé… il faudra réessayer ! 🌱'); }
+  const parfaits = (res.perfects || 0) > 0 ? ' (' + res.perfects + ' pleine' + (res.perfects > 1 ? 's' : '') + ' floraison' + (res.perfects > 1 ? 's' : '') + ' ✨)' : '';
+  if (sc >= 8) { sfx.happy(); ui.log('Magnifique jardin ! ' + sc + ' points de récolte' + parfaits + ' !' + bouquet + ' 🌸🎉'); }
+  else if (sc > 0) { sfx.eat(); ui.log(sc + ' point' + (sc > 1 ? 's' : '') + ' de jardin' + parfaits + ' !' + bouquet + ' 🌿'); }
+  else { sfx.sad(); ui.log('Aucune fleur récoltée à temps… guette la pleine floraison ! 🌱'); }
   gainXp(XP.game + sc * XP.fish);
   checkUnlocks();
   persist();
@@ -1396,15 +1395,19 @@ function onCanvasPointer(e) {
   if (mg) {
     if (mg.mode === 'slide') { setSlideLane(mg, laneAt(x)); vibrate(6); }
     else if (mg.mode === 'garden') {
-      // clic : récolte (fleur ou grenouille) ou arrosage
-      const got = harvestAt(mg, x, y, pad);
+      // clic : récolter un parterre EN FLORAISON (points selon le timing) ou arroser une pousse
+      const got = harvestAt(mg, x, y, pad, now());
       if (got) {
-        if (got.type === 'frog') { sfx.gardenFrog(); vibrate(10); feel('soft'); ui.toast('🐸 Grenouille attrapée ! +3'); }
-        else if (got.type === 'butterfly') { sfx.gardenFrog(); vibrate(8); feel('soft'); R.burst('sparkle', 5, s.stage); ui.toast('🦋 Papillon attrapé ! +2'); }
-        else if (got.rare) { sfx.gardenHarvest(); vibrate(9); feel('soft'); R.burst('sparkle', 8, s.stage); ui.toast('🌷 Fleur rare récoltée ! +3'); }
-        else { sfx.gardenHarvest(); vibrate(6); feel('soft'); ui.toast('🌸 Fleur récoltée ! +1'); }
+        const rareTag = got.rare ? ' rare 🌷' : '';
+        if (got.perfect) {
+          sfx.gardenHarvest(); vibrate([8, 30, 8]); feel('med'); R.burst('confetti', 8, s.stage);
+          ui.toast('✨ Parfait' + rareTag + ' ! +' + got.points);
+        } else {
+          sfx.gardenHarvest(); vibrate(6); feel('soft'); R.burst('sparkle', 4, s.stage);
+          ui.toast('🌸 Récoltée' + rareTag + ' +' + got.points + ' (vise la pleine floraison !)');
+        }
       } else if (waterAt(mg, x, y)) {
-        sfx.gardenWater(); vibrate(4); ui.toast('💧 Graine arrosée !');
+        sfx.gardenWater(); vibrate(4); ui.toast('💧 Arrosée — elle mûrit plus vite !');
       }
     }
     else if (clickGame(mg, x, y, pad)) { R.splashAt(x, y); sfx.catch(); vibrate(8); feel('soft'); }

@@ -1,47 +1,50 @@
-// Mini-jeu du jardin aquatique : logique pure.
-// On plante des graines sur l'eau, on les arrose, et on récolte les fleurs.
-// Les grenouilles sautent et rapportent des bonus si on les attrape ; les
-// papillons (v4.6) dérivent dans l'air, et certaines fleurs rares valent plus.
+// Le jardin (v4.9) — un jeu de RÉCOLTE AU BON MOMENT, distinct de la pêche.
+// Aucune cible mobile à taper : des parterres FIXES où les fleurs poussent sur
+// place (graine → pousse → bouton → PLEINE FLORAISON → fané). Tout le sel est
+// dans le TIMING — récolter chaque fleur pile à sa pleine floraison. Arroser une
+// pousse la fait mûrir plus vite (pour étaler les floraisons). Logique pure.
 import { SEC, clamp } from './constants.js';
 
 export const GAME_DURATION = 25 * SEC;
-export const SEED_INTERVAL = 1800;   // ms entre deux graines
-export const GROW_TIME = 2200;       // ms pour qu'une graine devienne une fleur
-export const FLOWER_LIVE = 4000;     // ms avant qu'une fleur fanee ne disparaisse
-export const FROG_INTERVAL = 3500;   // ms entre deux grenouilles
-export const FROG_LIVE = 1200;       // ms pendant laquelle une grenouille est visible
-export const FROG_POINTS = 3;
-export const FLOWER_POINTS = 1;
-export const WATER_DROP_POINTS = 1;
+export const GROW_TIME = 3600;       // ms : graine → début de floraison
+export const BLOOM_WINDOW = 2400;    // ms : durée de la pleine floraison (fenêtre de récolte)
+export const WILT_TIME = 1600;       // ms : temps fané avant que le parterre se libère
+export const SOW_INTERVAL = 1300;    // ms entre deux semis automatiques
+export const WATER_BOOST = 750;      // ms gagnés en arrosant une pousse
 
-// Nouveautés v4.6 : papillons, fleurs rares, bouquet bonus.
-export const BUTTERFLY_INTERVAL = 4200; // ms entre deux papillons
-export const BUTTERFLY_LIVE = 2800;     // ms de présence (ils dérivent)
-export const BUTTERFLY_POINTS = 2;
-export const RARE_CHANCE = 0.28;        // proportion de graines « rares »
-export const RARE_FLOWER_POINTS = 3;    // une fleur rare vaut plus
-export const BOUQUET_TARGET = 6;        // récolter autant de fleurs → bonus
+// Fenêtre « parfaite » : le tiers central de la floraison (0.33..0.67).
+export const PEAK_LO = 0.34, PEAK_HI = 0.66;
+
+export const RARE_CHANCE = 0.26;     // proportion de graines « rares » (dorées)
+export const EDGE_POINTS = 1;        // récolte en début/fin de floraison
+export const PEAK_POINTS = 3;        // récolte pile à la pleine floraison
+export const RARE_MULT = 2;          // une fleur rare vaut le double
+export const BOUQUET_TARGET = 6;     // récolter autant de fleurs → bonus de fin
 export const BOUQUET_BONUS = 5;
 
-export const INTRO_DURATION = 3200;  // ms d'affichage de l'overlay d'intro
+export const INTRO_DURATION = 3200;
+
+// 6 parterres fixes, en grille 3×2 (canvas 160 de large).
+const PLOT_XS = [32, 80, 128];
+const PLOT_YS = [206, 274];
 
 export function newGame(now = Date.now()) {
+  const plots = [];
+  for (const y of PLOT_YS) for (const x of PLOT_XS) {
+    plots.push({ x, y, stage: 'empty', plantedAt: 0, rare: false });
+  }
   return {
     mode: 'garden',
     score: 0,
-    flowers: [],      // {x, y, plantedAt, stage:'seed'|'sprout'|'bloom'|'wilted', rare?}
-    frogs: [],        // {x, y, appearedAt}
-    butterflies: [],  // {baseX, x, y, appearedAt} — dérivent horizontalement
-    harvested: 0,     // fleurs récoltées (pour le bouquet bonus)
+    plots,
+    harvested: 0,
+    perfects: 0,
     lastTick: now,
-    nextSeed: now + 600,
-    nextFrog: now + 2000,
-    nextButterfly: now + 2400,
+    nextSow: now + 500,
     startedAt: now,
     introUntil: now + INTRO_DURATION,
     duree: GAME_DURATION,
-    endsAt: now + GAME_DURATION,
-    waterDrops: 0   // eau dépensée (score de précision)
+    endsAt: now + GAME_DURATION
   };
 }
 
@@ -49,132 +52,86 @@ export function gardenProgress(mg, now) {
   return mg ? clamp((now - mg.startedAt) / (mg.duree || GAME_DURATION), 0, 1) : 0;
 }
 
-/** @returns {null | {type:'end', score, flowers, frogs, butterflies, bonus}} */
+// L'état d'un parterre à l'instant `now` : phase de croissance + « maturité »
+// (bloomT ∈ [0,1] pendant la floraison, -1 sinon). Sert au rendu ET au score.
+export function plotState(p, now) {
+  if (p.stage === 'empty') return { phase: 'empty', bloomT: -1 };
+  const age = now - p.plantedAt;
+  if (age < GROW_TIME) {
+    const g = age / GROW_TIME;
+    const phase = g < 0.34 ? 'seed' : g < 0.7 ? 'sprout' : 'bud';
+    return { phase, bloomT: -1, grow: g };
+  }
+  const bloomAge = age - GROW_TIME;
+  if (bloomAge < BLOOM_WINDOW) return { phase: 'bloom', bloomT: bloomAge / BLOOM_WINDOW };
+  return { phase: 'wilt', bloomT: -1 };
+}
+
+/** @returns {null | {type:'end', score, flowers, perfects, bonus}} */
 export function tickGame(mg, now = Date.now(), rnd = Math.random) {
   if (!mg) return null;
   mg.lastTick = now;
 
-  // Mise à jour des graines → pousse
-  for (const f of mg.flowers) {
-    if (f.stage === 'seed' && now >= f.plantedAt + GROW_TIME) f.stage = 'sprout';
-    else if (f.stage === 'sprout' && now >= f.plantedAt + GROW_TIME * 1.8) f.stage = 'bloom';
-    else if (f.stage === 'bloom' && now >= f.plantedAt + GROW_TIME * 3.2) f.stage = 'wilted';
-  }
-  // Fleurs fanées : supprimées après un moment
-  mg.flowers = mg.flowers.filter(f => f.stage !== 'wilted' || now < f.plantedAt + FLOWER_LIVE + GROW_TIME * 3.2);
-
-  // Grenouilles qui disparaissent
-  mg.frogs = mg.frogs.filter(f => now - f.appearedAt < FROG_LIVE);
-
-  // Papillons : dérive horizontale (sinus) + disparition
-  for (const b of mg.butterflies) {
-    b.x = b.baseX + 26 * Math.sin((now - b.appearedAt) / 340);
-  }
-  mg.butterflies = mg.butterflies.filter(b => !b.caught && now - b.appearedAt < BUTTERFLY_LIVE);
-
-  // Apparition de nouvelles graines (pas pendant l'intro)
-  if (now >= mg.nextSeed && now < mg.endsAt - 1000 && now >= mg.startedAt + INTRO_DURATION) {
-    const spots = waterSpots(mg);
-    if (spots.length > 0) {
-      const spot = spots[(rnd() * spots.length) | 0];
-      mg.flowers.push({ x: spot.x, y: spot.y, plantedAt: now, stage: 'seed', rare: rnd() < RARE_CHANCE });
+  // Parterres fanés depuis assez longtemps → se libèrent (re-semables)
+  for (const p of mg.plots) {
+    if (p.stage !== 'empty') {
+      const age = now - p.plantedAt;
+      if (age >= GROW_TIME + BLOOM_WINDOW + WILT_TIME) { p.stage = 'empty'; p.rare = false; }
+      else if (age >= GROW_TIME + BLOOM_WINDOW) p.stage = 'wilt';
+      else if (age >= GROW_TIME) p.stage = 'bloom';
+      else p.stage = 'growing';
     }
-    mg.nextSeed = now + SEED_INTERVAL + rnd() * 600;
   }
 
-  // Apparition de grenouilles
-  if (now >= mg.nextFrog && now < mg.endsAt - 800) {
-    mg.frogs.push({ x: 16 + rnd() * 128, y: 200 + rnd() * 40, appearedAt: now });
-    mg.nextFrog = now + FROG_INTERVAL + rnd() * 1000;
-  }
-
-  // Apparition de papillons (dans l'air, au-dessus de l'eau)
-  if (now >= mg.nextButterfly && now < mg.endsAt - 800) {
-    const baseX = 34 + rnd() * 92;
-    mg.butterflies.push({ baseX, x: baseX, y: 96 + rnd() * 70, appearedAt: now });
-    mg.nextButterfly = now + BUTTERFLY_INTERVAL + rnd() * 1200;
+  // Semis automatique dans un parterre libre (pas pendant l'intro)
+  if (now >= mg.nextSow && now < mg.endsAt - 1200 && now >= mg.startedAt + INTRO_DURATION) {
+    const free = mg.plots.filter(p => p.stage === 'empty');
+    if (free.length) {
+      const p = free[(rnd() * free.length) | 0];
+      p.stage = 'growing'; p.plantedAt = now; p.rare = rnd() < RARE_CHANCE;
+    }
+    mg.nextSow = now + SOW_INTERVAL + rnd() * 500;
   }
 
   if (now >= mg.endsAt) {
     const bonus = mg.harvested >= BOUQUET_TARGET ? BOUQUET_BONUS : 0;
     mg.score += bonus;
-    return {
-      type: 'end',
-      score: mg.score,
-      flowers: mg.harvested,
-      frogs: mg.frogs.filter(f => !f.caught).length,
-      butterflies: (mg.butterfliesCaught || 0),
-      bonus
-    };
+    return { type: 'end', score: mg.score, flowers: mg.harvested, perfects: mg.perfects, bonus };
   }
   return null;
 }
 
-/** Crée une flaque d'eau au clic — arrose une graine proche. */
-export function waterAt(mg, x, y) {
+// Arrose une POUSSE (avant floraison) pour la faire mûrir plus vite — utile pour
+// étaler des floraisons qui arriveraient toutes en même temps.
+export function waterAt(mg, x, y, pad = 22) {
   if (!mg) return false;
-  for (const f of mg.flowers) {
-    if (f.stage === 'seed' || f.stage === 'sprout') {
-      const dx = f.x - x, dy = f.y - y;
-      if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
-        // Arrosage : avance la pousse
-        f.plantedAt -= 600;
-        mg.waterDrops++;
-        return true;
-      }
+  for (const p of mg.plots) {
+    if (p.stage === 'growing' && Math.abs(p.x - x) < pad && Math.abs(p.y - y) < pad) {
+      p.plantedAt -= WATER_BOOST;    // avance la maturité
+      return true;
     }
   }
   return false;
 }
 
-/** Récolte une fleur en bloom, ou attrape un papillon / une grenouille. */
-export function harvestAt(mg, x, y, pad = 18) {
+// Récolte un parterre EN FLORAISON. Les points dépendent du TIMING :
+// pile à la pleine floraison (fenêtre « parfaite ») = max ; en bordure = peu.
+// @returns {null | {type:'flower', rare, perfect, points}}
+export function harvestAt(mg, x, y, pad = 22, now = Date.now()) {
   if (!mg) return false;
-  // Fleurs en fleur (rares = plus de points)
-  for (const f of mg.flowers) {
-    if (f.stage === 'bloom' && !f.harvested) {
-      const dx = f.x - x, dy = f.y - y;
-      if (Math.abs(dx) < pad && Math.abs(dy) < pad) {
-        f.harvested = true;
-        f.stage = 'wilted';
-        mg.score += f.rare ? RARE_FLOWER_POINTS : FLOWER_POINTS;
-        mg.harvested = (mg.harvested || 0) + 1;
-        return { type: 'flower', rare: !!f.rare };
-      }
-    }
+  for (const p of mg.plots) {
+    if (p.stage !== 'bloom') continue;
+    if (Math.abs(p.x - x) >= pad || Math.abs(p.y - y) >= pad) continue;
+    const st = plotState(p, now);
+    const perfect = st.bloomT >= PEAK_LO && st.bloomT <= PEAK_HI;
+    let points = perfect ? PEAK_POINTS : EDGE_POINTS;
+    if (p.rare) points *= RARE_MULT;
+    mg.score += points;
+    mg.harvested += 1;
+    if (perfect) mg.perfects += 1;
+    const rare = p.rare;
+    p.stage = 'empty'; p.rare = false;   // le parterre se libère aussitôt
+    return { type: 'flower', rare, perfect, points };
   }
-  // Papillons (plus grand rayon : ils bougent)
-  for (const b of mg.butterflies) {
-    if (b.caught) continue;
-    const dx = b.x - x, dy = b.y - y;
-    if (Math.abs(dx) < pad + 4 && Math.abs(dy) < pad + 4) {
-      b.caught = true;
-      mg.score += BUTTERFLY_POINTS;
-      mg.butterfliesCaught = (mg.butterfliesCaught || 0) + 1;
-      return { type: 'butterfly' };
-    }
-  }
-  // Grenouilles
-  for (const f of mg.frogs) {
-    const dx = f.x - x, dy = f.y - y;
-    if (Math.abs(dx) < pad && Math.abs(dy) < pad) {
-      mg.score += FROG_POINTS;
-      f.caught = true;
-      return { type: 'frog' };
-    }
-  }
-  mg.frogs = mg.frogs.filter(f => !f.caught);
   return false;
-}
-
-/** Cases d'eau disponibles (pas trop proches des graines existantes). */
-function waterSpots(mg) {
-  const spots = [];
-  for (let x = 16; x < 144; x += 20) {
-    for (let y = 180; y < 260; y += 20) {
-      const tooClose = mg.flowers.some(f => Math.abs(f.x - x) < 18 && Math.abs(f.y - y) < 18);
-      if (!tooClose) spots.push({ x, y });
-    }
-  }
-  return spots;
 }

@@ -321,6 +321,18 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v4.9.0 : Le jardin réinventé — récolte au bon moment 🌸⏱️. Problème : le jardin (taper des fleurs
+/ grenouilles / papillons qui apparaissent) rejouait exactement le VERBE de la pêche (viser des
+cibles). Deux jeux débloqués par niveau qui se ressemblaient. Le jardin a désormais un verbe
+DISTINCT : le TIMING. Six parterres FIXES où les fleurs poussent sur place (graine → pousse →
+bouton → PLEINE FLORAISON → fané) ; on récolte chacune PILE à sa pleine floraison — un halo
+lumineux pulse pendant la fenêtre « parfaite » (tiers central) : parfait = +3, en bordure = +1,
+raté = 0. Arroser 💧 une pousse la fait mûrir plus vite (pour étaler des floraisons simultanées).
+Plus AUCUNE cible mobile à taper : c'est de la lecture de maturité et de la patience, pas des
+réflexes. Fleurs rares dorées (×2) et bouquet bonus conservés ; grenouilles/papillons retirés (ils
+étaient le « taper des cibles » de trop). Réécriture pure de garden.js (`plotState`, timing du
+`harvestAt`) + rendu parterres/halo + tests refondus. Vérifié navigateur : parterres, pousses,
+indice « laisse pousser 💧 », récolte « vise la pleine floraison », zéro erreur. 422 tests sim.*
 v4.8.0 : Bonus de variété — le jeu libre varié récompensé ✨. Audit gameplay, point #2 : les défis
 (25 XP) ne « nerfent » pas le jeu libre — pour les compléter il faut faire les gestes — mais un
 joueur cozy qui varie sans courir après les défis progressait lentement. Correction ADDITIVE (zéro

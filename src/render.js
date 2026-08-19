@@ -10,7 +10,7 @@ import { seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 import { WATER_Y, TELL_MS, COMBO_STEP as FISH_COMBO_STEP, GOBE_MS as FISH_GOBE_MS, fishProgress } from './minigame.js';
 import { itemById, RARITIES, ITEMS } from './items.js';
 import { LANE_X, SLIDE_OTTER_Y, COMBO_STEP, GOBE_MS, VIES_MAX, slideProgress } from './toboggan.js';
-import { GROW_TIME as GARDEN_GROW, FLOWER_LIVE as GARDEN_LIVE, gardenProgress } from './garden.js';
+import { gardenProgress, plotState, PEAK_LO, PEAK_HI } from './garden.js';
 import { TILE, SHEET_M, WORLD_W, WORLD_H, T, TD, FIND_ICON, FAUNE, groundTile, decorTile, zoneGates, zoneUnlocked, zoneReq, pathEdge } from './tilemap.js';
 import { mix, skyColors } from './sky.js';   // ciel/décor : source unique heure→palette (jamais le CSS)
 import { otterArt, drawAnim, frameAt, animForMood, ANATOMY, ANIMS } from './otter-art.js';
@@ -2036,82 +2036,57 @@ export function makeRenderer(cv) {
     // mini-jeu : jardin aquatique (planter, arroser, récolter)
     if (mg && mg.mode === 'garden') {
       const now = Date.now();
-      // fond d'eau douce
-      ctx.fillStyle = 'rgba(30,70,100,.25)'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      ctx.fillStyle = 'rgba(18,50,70,.18)'; ctx.fillRect(0, 170, CANVAS_W, 100);
+      // fond de jardin : terre chaude + herbe (ce n'est plus l'eau)
+      ctx.fillStyle = '#6a8f4a'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = 'rgba(90,120,60,.5)'; ctx.fillRect(0, 26, CANVAS_W, CANVAS_H - 26);
 
-      // graines / pousses / fleurs
-      for (const f of (mg.flowers || [])) {
-        const age = now - f.plantedAt;
-        if (f.stage === 'seed') {
-          // graine brune — plus grosse pour être visible et touchable
-          ctx.fillStyle = '#8b6914';
-          ctx.fillRect(f.x, f.y, 5, 4);
-          ctx.fillStyle = '#a07818';
-          ctx.fillRect(f.x + 1, f.y + 1, 3, 2);
-        } else if (f.stage === 'sprout') {
-          // tige verte avec deux petites feuilles
-          ctx.fillStyle = '#4a8c2a';
-          ctx.fillRect(f.x + 2, f.y - 4, 2, 8);
-          ctx.fillRect(f.x, f.y - 5, 6, 3);
-        } else if (f.stage === 'bloom') {
-          // tige
-          ctx.fillStyle = '#3a7a1a';
-          ctx.fillRect(f.x + 2, f.y - 1, 2, 6);
-          if (f.rare) {
-            // fleur rare : dorée, avec un halo scintillant — vaut plus de points
-            ctx.fillStyle = 'rgba(255,224,120,.35)';
-            ctx.fillRect(f.x - 2, f.y - 9, 11, 9);
-            ctx.fillStyle = '#f6c945';
-            ctx.fillRect(f.x - 1, f.y - 8, 8, 7);
-            ctx.fillStyle = '#fff0b8';
-            ctx.fillRect(f.x + 1, f.y - 7, 5, 4);
-            ctx.fillStyle = '#e59a1e';
-            ctx.fillRect(f.x + 2, f.y - 6, 2, 2);
-          } else {
-            // fleur colorée — plus grande et plus visible
-            const hue = (f.x * 7 + f.y * 3) % 360;
-            ctx.fillStyle = 'hsl(' + hue + ',70%,60%)';
-            ctx.fillRect(f.x - 1, f.y - 7, 8, 6);
-            ctx.fillStyle = 'hsl(' + hue + ',80%,75%)';
-            ctx.fillRect(f.x, f.y - 6, 6, 3);
-          }
-        } else if (f.stage === 'wilted' && !f.harvested) {
-          ctx.fillStyle = 'rgba(120,100,60,.5)';
-          ctx.fillRect(f.x + 1, f.y - 3, 6, 4);
+      let anyPeak = false;
+      for (const p of (mg.plots || [])) {
+        const st = plotState(p, now);
+        // parterre : petite butte de terre
+        ctx.fillStyle = '#6b4a2a'; ctx.fillRect(p.x - 9, p.y + 4, 18, 5);
+        ctx.fillStyle = '#7d5834'; ctx.fillRect(p.x - 8, p.y + 4, 16, 2);
+        if (st.phase === 'empty') {
+          // trois petits sillons prêts à semer
+          ctx.fillStyle = 'rgba(40,28,16,.4)';
+          ctx.fillRect(p.x - 5, p.y + 6, 2, 1); ctx.fillRect(p.x - 1, p.y + 6, 2, 1); ctx.fillRect(p.x + 3, p.y + 6, 2, 1);
+          continue;
         }
-      }
-
-      // grenouilles — plus grosses pour être attrapables au doigt
-      for (const fr of (mg.frogs || [])) {
-        if (fr.caught) continue;
-        ctx.fillStyle = '#3a9a2a';
-        ctx.fillRect(fr.x, fr.y, 10, 7);
-        ctx.fillStyle = '#2a7a1a';
-        ctx.fillRect(fr.x + 1, fr.y - 1, 3, 2);
-        ctx.fillRect(fr.x + 6, fr.y - 1, 3, 2);
-        // yeux
-        ctx.fillStyle = '#ffe';
-        ctx.fillRect(fr.x + 1, fr.y, 3, 3);
-        ctx.fillRect(fr.x + 6, fr.y, 3, 3);
-        ctx.fillStyle = '#111';
-        ctx.fillRect(fr.x + 2, fr.y + 1, 1, 1);
-        ctx.fillRect(fr.x + 7, fr.y + 1, 1, 1);
-      }
-
-      // papillons — battent des ailes en dérivant (v4.6)
-      for (const b of (mg.butterflies || [])) {
-        if (b.caught) continue;
-        const flap = Math.sin(now / 90 + b.appearedAt) > 0;   // ailes ouvertes/repliées
-        const wx = flap ? 4 : 2;
-        ctx.fillStyle = '#e57ac0';
-        ctx.fillRect(b.x - wx, b.y - 2, wx, 5);               // aile gauche
-        ctx.fillRect(b.x + 2, b.y - 2, wx, 5);               // aile droite
-        ctx.fillStyle = '#f6a9d8';
-        ctx.fillRect(b.x - wx, b.y - 1, wx, 2);
-        ctx.fillRect(b.x + 2, b.y - 1, wx, 2);
-        ctx.fillStyle = '#3a2a3a';                            // corps
-        ctx.fillRect(b.x, b.y - 3, 2, 7);
+        if (st.phase === 'seed') {
+          ctx.fillStyle = '#8b6914'; ctx.fillRect(p.x - 1, p.y, 3, 3);
+        } else if (st.phase === 'sprout') {
+          ctx.fillStyle = '#4a8c2a'; ctx.fillRect(p.x, p.y - 5, 2, 9);
+          ctx.fillRect(p.x - 3, p.y - 4, 3, 2); ctx.fillRect(p.x + 2, p.y - 3, 3, 2);
+        } else if (st.phase === 'bud') {
+          ctx.fillStyle = '#3a7a1a'; ctx.fillRect(p.x, p.y - 4, 2, 8);   // tige
+          ctx.fillStyle = p.rare ? '#c9a24b' : '#5a8a3a';                // bouton fermé
+          ctx.fillRect(p.x - 2, p.y - 8, 6, 5);
+        } else if (st.phase === 'bloom') {
+          // tige
+          ctx.fillStyle = '#3a7a1a'; ctx.fillRect(p.x, p.y - 3, 2, 8);
+          const peak = st.bloomT >= PEAK_LO && st.bloomT <= PEAK_HI;
+          if (peak) {
+            anyPeak = true;
+            // halo pulsant : le signal « récolte MAINTENANT »
+            const pulse = 0.35 + 0.25 * Math.sin(now / 120);
+            ctx.fillStyle = (p.rare ? 'rgba(255,224,120,' : 'rgba(255,255,255,') + pulse.toFixed(2) + ')';
+            ctx.fillRect(p.x - 6, p.y - 13, 14, 13);
+          }
+          // corolle : petite en ouverture, pleine au pic, retombante en fin
+          const openF = st.bloomT < PEAK_LO ? 0.6 : st.bloomT > PEAK_HI ? 0.7 : 1;
+          const w = Math.round(9 * openF), h = Math.round(7 * openF);
+          if (p.rare) {
+            ctx.fillStyle = '#f6c945'; ctx.fillRect(p.x + 1 - (w >> 1), p.y - 4 - h, w, h);
+            ctx.fillStyle = '#fff0b8'; ctx.fillRect(p.x + 1 - (w >> 2), p.y - 3 - h, Math.max(2, w >> 1), Math.max(2, h - 2));
+          } else {
+            const hue = (p.x * 7 + p.y * 3) % 360;
+            ctx.fillStyle = 'hsl(' + hue + ',72%,60%)'; ctx.fillRect(p.x + 1 - (w >> 1), p.y - 4 - h, w, h);
+            ctx.fillStyle = 'hsl(' + hue + ',82%,78%)'; ctx.fillRect(p.x + 1 - (w >> 2), p.y - 3 - h, Math.max(2, w >> 1), Math.max(2, h - 2));
+          }
+        } else if (st.phase === 'wilt') {
+          ctx.fillStyle = 'rgba(120,100,60,.6)'; ctx.fillRect(p.x - 2, p.y - 2, 6, 4);
+          ctx.fillStyle = 'rgba(90,72,44,.5)'; ctx.fillRect(p.x + 1, p.y - 1, 2, 5);
+        }
       }
 
       // bandeau : temps, score
@@ -2123,22 +2098,12 @@ export function makeRenderer(cv) {
       ctx.fillStyle = 'rgba(168,230,160,.75)';
       ctx.fillRect(0, 13, Math.round(CANVAS_W * (1 - gardenProgress(mg, now))), 2);
 
-      // indicateur d'action contextuel (bandeau sous le score)
-      const hasBloom = (mg.flowers || []).some(f => f.stage === 'bloom' && !f.harvested);
-      const hasFrog = (mg.frogs || []).some(f => !f.caught);
-      const hasBfly = (mg.butterflies || []).some(f => !f.caught);
-      const hasSeed = (mg.flowers || []).some(f => f.stage === 'seed' || f.stage === 'sprout');
-      if (hasBloom || hasFrog || hasBfly) {
+      // indice contextuel : récolter au pic, sinon patienter/arroser
+      const hasGrowing = (mg.plots || []).some(p => p.stage === 'growing');
+      if (anyPeak || hasGrowing) {
         ctx.fillStyle = 'rgba(15,18,26,.65)'; ctx.fillRect(0, 15, CANVAS_W, 10);
-        ctx.fillStyle = '#ffe9a8'; ctx.font = '7px monospace';
-        const hint = hasBfly ? '🦋 attrape le papillon !'
-          : hasFrog ? '🐸 touche la grenouille !'
-          : '🌸 touche la fleur pour récolter';
-        ctx.fillText(hint, 6, 23);
-      } else if (hasSeed) {
-        ctx.fillStyle = 'rgba(15,18,26,.55)'; ctx.fillRect(0, 15, CANVAS_W, 10);
-        ctx.fillStyle = '#a8d8f0'; ctx.font = '7px monospace';
-        ctx.fillText('💧 touche les graines pour arroser', 6, 23);
+        ctx.fillStyle = anyPeak ? '#ffe9a8' : '#a8d8f0'; ctx.font = '7px monospace';
+        ctx.fillText(anyPeak ? '✨ pleine floraison — récolte vite !' : '🌱 laisse pousser (💧 pour hâter)', 6, 23);
       }
 
       // overlay d'intro : règles du jeu pendant 3 secondes
@@ -2146,31 +2111,29 @@ export function makeRenderer(cv) {
         const elapsed = now - mg.startedAt;
         const fade = elapsed > 2400 ? Math.max(0, 1 - (elapsed - 2400) / 800) : 1;
         ctx.fillStyle = 'rgba(10,18,30,' + (0.78 * fade).toFixed(2) + ')';
-        ctx.fillRect(20, 100, 120, 130);
+        ctx.fillRect(18, 96, 124, 140);
         ctx.strokeStyle = 'rgba(168,230,160,' + (0.6 * fade).toFixed(2) + ')';
         ctx.lineWidth = 1;
-        ctx.strokeRect(20, 100, 120, 130);
+        ctx.strokeRect(18, 96, 124, 140);
         ctx.fillStyle = 'rgba(255,233,168,' + fade.toFixed(2) + ')';
         ctx.font = '9px monospace'; ctx.textAlign = 'center';
-        ctx.fillText('🌿 JARDIN', 80, 118);
+        ctx.fillText('🌿 JARDIN', 80, 114);
         ctx.fillStyle = 'rgba(200,225,240,' + fade.toFixed(2) + ')';
         ctx.font = '7px monospace';
         const lines = [
-          'Des graines apparaissent',
-          'sur l\'eau.',
+          'Les fleurs poussent',
+          'dans les parterres.',
           '',
-          '💧 Touche une graine',
-          '   pour l\'arroser.',
-          '🌸 Touche une fleur',
-          '   pour la récolter.',
-          '🐸 Attrape les',
-          '   grenouilles !',
+          '🌸 Récolte chacune à',
+          '   PLEINE FLORAISON',
+          '   (halo lumineux) :',
+          '   parfait = +3 !',
+          '💧 Arrose une pousse',
+          '   pour la hâter.',
           '',
           '25 secondes !'
         ];
-        for (let i = 0; i < lines.length; i++) {
-          ctx.fillText(lines[i], 80, 132 + i * 9);
-        }
+        for (let i = 0; i < lines.length; i++) ctx.fillText(lines[i], 80, 128 + i * 9);
         ctx.textAlign = 'left';
       }
     }
