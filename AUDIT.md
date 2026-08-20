@@ -50,7 +50,7 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 | M2 | **Fonction Supabase `push` non versionnée** dans le dépôt (seul `telemetry` existait) — non reproductible, non auditable | `src/push.js:6`, `supabase/functions/` | ✅ **Corrigé** (fonction déployée téléchargée et versionnée dans `supabase/functions/push/` + migration des tables + `config.toml` + doc README) |
 | M3 | **Endpoint télémétrie public** sans rate limiting ni validation (id/day seulement truthy, types non vérifiés) | `supabase/functions/telemetry/index.ts` | ✅ **Corrigé et DÉPLOYÉ** (validation stricte : id 16 hex, jour valide borné, entiers bornés, corps ≤ 4 Ko ; gardes de volume jour/id ; erreurs génériques ; CORS restreint) — **vérifié en production** (200 valide / 400 invalide / 413 gros corps / CORS bloqué) |
 | M4 | **Politique RLS d'insertion ouverte à anon** (`with check (true)`) — insertion REST directe sans passer par la fonction | `telemetry_daily.sql:20-22` | ✅ **Corrigé, DÉPLOYÉ et VÉRIFIÉ** — politique supprimée + `revoke insert, update, delete` (anon/authenticated) sur `telemetry_daily`/`push_subs`/`push_config` ; test en prod : REST direct anon → `42501 permission denied` (401), fonction service_role → 200 |
-| M5 | **God files** : `main.js` 3 392 lignes / 142 fonctions / 46 imports ; `render.js` `makeRenderer` 2 216 lignes | `src/main.js`, `src/render.js` | ⏳ **À faire** (chantier multi-releases, voir §6) |
+| M5 | **God files** : `main.js` 3 392 lignes / 142 fonctions / 46 imports ; `render.js` `makeRenderer` 2 216 lignes | `src/main.js`, `src/render.js` | 🔄 **Chantier lancé** — **tranche 1 ✅ v4.10.7** : « La Crue » extraite dans `crue-controller.js` (contexte injecté, zéro état global partagé, 82 lignes retirées de main.js, 521 tests verts dont snapshots) ; reste : 25 autres sections |
 | M6 | **Échecs de sauvegarde silencieux** — `persist()` ignorait le retour de `saveState` (QuotaExceeded, mode privé…) | `state.js:112-119`, `main.js` | ✅ **Corrigé v4.10.1** (toast « stockage plein/bloqué », throttle 60 s) |
 | M7 | **Import de sauvegarde à validation superficielle** — jauges/nom non bornés, taille non limitée | `state.js:266-276` | ✅ **Corrigé v4.10.4** — bornes de taille (100 Ko), clamps des jauges (0-100, défauts sains), whitelist de stade, nom borné, NaN/Infinity (`1e999`) neutralisés, tableaux/chaînes tronqués — appliqué à l'import ET au chargement (`loadState`/`loadRecords`) + 7 tests |
 | M8 | **Raccourci manifest « Nourrir » mort** — `?action=feed` jamais lu | `manifest.webmanifest:15-21` | ✅ **Corrigé v4.10.1** (consommé au boot, URL nettoyée, testé) |
@@ -99,6 +99,8 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 | | `3d5586a` | Bump v4.10.5 |
 | **v4.10.6** | `021d41b` | **Seuils de jauge centralisés** (`GAUGE_LOW`/`GAUGE_HEALTH_LOW`/`SICK_HUNGER`/`SICK_CLEAN` — valeurs inchangées, une source ui/render/sim) + **kimi vérifié non déployé** (note README à jour) |
 | | `fb7c1fd` | Bump v4.10.6 |
+| **v4.10.7** | `c6029eb` | **Découpage de main.js — tranche 1** : « La Crue » extraite dans `src/crue-controller.js` (contexte injecté par `setupCrue`, ponts `crueDuelActive`/`resolveCrueDuel`/`crueBannerOnce`/`currentCrue`) ; 82 lignes retirées de main.js ; +1 test smoke (ouverture de l'overlay) |
+| | `1434a13` | Bump v4.10.7 |
 
 **Nouveaux tests ajoutés** (5) : raccourci PWA « Nourrir » (smoke), télémétrie — ID généré (smoke), `esc` / `clamp01` / `fmtDur` (`test/util.test.js`).
 
@@ -117,7 +119,7 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 6. ~~Nettoyage : undeploy `kimi-chat`~~ ✅ vérifié — kimi-chat n'est plus déployée (functions list : push + telemetry seulement) ; note README à jour. Reste cosmétique : migration vestigiale `telemetry_fix_id_type` (historique réécrit, sans conséquence), rotation d'ID à la réactivation de la télémétrie.
 
 ### 🏗️ Architecture (chantiers multi-releases)
-7. **Découper `main.js`** par domaines (Monde, Combat, Marché, Slots, Boot → modules `*Controller`) — les 20 bannières de sections sont le plan ; chaque tranche validée par les tests + snapshots visuels.
+7. **Découper `main.js`** par domaines (Monde, Combat, Marché, Slots, Boot → modules `*Controller`) — **tranche 1 faite** (La Crue, v4.10.7, méthode validée : une section par commit, contexte injecté, 521 tests + snapshots comme arbitres). Prochaines tranches recommandées : Dojo (autonome), Carte photo, Streak, puis Héron/Trésors, enfin Monde et Combat (les plus couplés).
 8. **Découper `makeRenderer`** en sous-renderers par scène (berge, monde, tanière, mini-jeux, effets).
 
 ### ✨ Qualité de code
