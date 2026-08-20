@@ -14,8 +14,8 @@ import { gangPower, fighterPower, MAX_MEMBERS } from './gang.js';
 import { makeFighter, encodeCard, TECHNIQUES, techniqueById, playerTechniques } from './battle.js';
 import { PASSIVE_TECHNIQUES, unlockedTechniques } from './skills.js';
 
-/** Échappe les caractères HTML dangereux pour un usage sûr dans innerHTML. */
-function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+import { esc, fmtDur } from './util.js';
+export { fmtDur };
 import { equipBonus } from './skins.js';
 import { paintOtter, paintBadge, paintDream } from './render.js';
 import { ZONES, ZONE_INTRO, FIND_ICON, FIND_NAME, SPECIALITE, COFFRE_ZONES, EPREUVE_ZONES, zoneDuJour, zoneLayout, zoneUnlocked, zoneReq } from './tilemap.js';
@@ -62,11 +62,7 @@ export function closeCheer() { $('ovl-cheer').classList.remove('show'); }
 
 export function fmtAge(s, now = Date.now()) {
   if (s.stage === 'egg') return 'bientôt là…';
-  const a = ageMs(s, now);
-  const d = Math.floor(a / (24 * H)), h = Math.floor((a % (24 * H)) / H), m = Math.floor((a % H) / MIN);
-  if (d > 0) return d + ' j ' + h + ' h';
-  if (h > 0) return h + ' h ' + m + ' min';
-  return m + ' min';
+  return fmtDur(ageMs(s, now));
 }
 
 const barPrev = {}; // dernière valeur par jauge -> détection des remontées
@@ -1002,13 +998,6 @@ export function setCoach(step) {
 }
 
 /** Durée en clair : "2 j 5 h", "3 h 12 min", "8 min". */
-export function fmtDur(ms) {
-  const d = Math.floor(ms / (24 * H)), h = Math.floor((ms % (24 * H)) / H), m = Math.floor((ms % H) / MIN);
-  if (d > 0) return d + ' j ' + h + ' h';
-  if (h > 0) return h + ' h ' + m + ' min';
-  return m + ' min';
-}
-
 /* ---------------- Garde-robe (chapeaux, pelages, décors) ---------------- */
 function sectionRows(list, items, unlocked, currentId, onPick, removable, rec, onBuy) {
   const gems = (rec && rec.gems) || 0;

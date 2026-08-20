@@ -59,10 +59,10 @@ import { pickTrait, traitById, isFavorite, favoriteLine, bondGain, bondLevel } f
 import { makeAncestor, inheritTrait, isRealOtter } from './lineage.js';
 import { endOfLife, isElder } from './lifecycle.js';
 import { remembrance } from './memory.js';
+import { esc } from './util.js';
 
 const $ = id => document.getElementById(id);
 const now = () => Date.now();
-const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const rawStore = (() => { try { return window.localStorage; } catch (e) { return null; } })();
 const SLOT_PTR = 'petite_loutre_slot';   // pointeur (localStorage brut) : quel slot est actif
 
@@ -102,6 +102,22 @@ let encounterOtter = null;    // loutre sauvage dont la rencontre est ouverte
 const isRecruited = id => !!rec && Array.isArray(rec.recruited) && rec.recruited.includes(id);
 const markRecruited = id => { if (rec && !isRecruited(id)) (rec.recruited = rec.recruited || []).push(id); };
 const BEFRIEND_NEED = 3;      // nombre d'attentions pour amadouer une loutre sauvage
+
+/* ---------------- Garde-fous globaux ----------------
+   Erreur inattendue (runtime, promesse rejetée…) : on sauvegarde et on prévient
+   clairement au lieu d'un écran figé sans explication. Throttlé : une alerte
+   max par 30 s. */
+let lastCrashToast = 0;
+function onGlobalError() {
+  try { saveState(s, storage, now()); } catch (e) {}
+  const t = now();
+  if (t - lastCrashToast > 30 * SEC) {
+    lastCrashToast = t;
+    ui.toast('⚠️ Une erreur inattendue est survenue — ta progression est sauvegardée. Recharge la page si le jeu se fige.');
+  }
+}
+window.addEventListener('error', onGlobalError);
+window.addEventListener('unhandledrejection', onGlobalError);
 
 const cv = $('cv');
 const R = makeRenderer(cv);
@@ -607,8 +623,6 @@ function togglePlace() {
 }
 
 /* ---------------- Le Monde : balade libre, rencontres, recrutement ---------------- */
-const clampN = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
-
 const isFound = id => !!rec && Array.isArray(rec.found) && rec.found.includes(id);
 
 /** Les loutres sauvages d'une zone. Plus on s'éloigne du foyer, plus elles sont fortes. */
@@ -1432,8 +1446,8 @@ function onCanvasPointer(e) {
       if (world && !encounterOtter) {
         const cam = worldCam();
         // on peut viser un peu au-delà du bord : c'est ainsi qu'on quitte la zone
-        let bx = clampN(x + cam.x, -TILE, WORLD_W + TILE);
-        let by = clampN(y + cam.y, -TILE, WORLD_H + TILE);
+        let bx = clamp(x + cam.x, -TILE, WORLD_W + TILE);
+        let by = clamp(y + cam.y, -TILE, WORLD_H + TILE);
         // TOUCHER LE BORD DE L'ÉCRAN, C'EST PARTIR. Un toucher ne visait qu'un
         // point de l'écran : pour gagner le bord de la CARTE il fallait une
         // dizaine de touchers d'affilée, et l'on croyait la zone close. Toucher

@@ -2,6 +2,8 @@
 // Graphe : destination ← master(volume) ← { sfx, music, ambient }.
 // Ça permet le réglage de volume et le ducking (baisser musique/ambiance
 // sous un son marquant). Tolérant : jamais d'erreur si l'audio est absent.
+import { clamp01 } from './util.js';
+
 let AC = null;
 let master = null, busSfx = null, busMusic = null, busAmb = null;
 let muted = false;
@@ -9,8 +11,6 @@ let volume = 0.7; // volume maître 0..1 (réglable dans ⚙️)
 
 export function setMuted(m) { muted = !!m; }
 export function isMuted() { return muted; }
-
-const clamp01 = v => Math.max(0, Math.min(1, v));
 
 function buildGraph(ac) {
   if (master) return;

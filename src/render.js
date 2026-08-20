@@ -249,7 +249,11 @@ export function squashScale(t) {
 const CONFETTI_COLS = ['#e5484d', '#f2c14e', '#5fc9e0', '#8ad05f', '#e8608a', '#ffffff'];
 
 export function makeRenderer(cv) {
+  // Garde-fou : sans canvas 2D, on lève une erreur CLAIRE (capturée par les
+  // handlers globaux de main.js) au lieu d'un écran blanc silencieux.
+  if (!cv || typeof cv.getContext !== 'function') throw new Error('Canvas manquant — le jeu ne peut pas s\'afficher.');
   const ctx = cv.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D non supporté par ce navigateur.');
   // HiDPI : on rend à la résolution native de l'écran pour un pixel art net.
   const dpr = Math.max(1, Math.min(typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1, 3));
   cv.width = CANVAS_W * dpr;

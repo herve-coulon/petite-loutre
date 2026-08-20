@@ -8,6 +8,7 @@
 //  - un COMBO récompense les prises enchaînées, un poisson manqué le brise ;
 //  - les poissons DORÉS valent gros mais sautent plus vite et moins haut.
 import { SEC } from './constants.js';
+import { clamp01 } from './util.js';
 
 export const GAME_DURATION = 20 * SEC;
 // Difficulté (v3.64). Mesuré au banc : l'ancienne pêche laissait prendre 100 %
@@ -22,8 +23,6 @@ export const COMBO_STEP = 3;     // un point bonus toutes les 3 prises d'affilé
 export const GOLD_POINTS = 5;
 export const MAX_IN_AIR = 3;      // au départ ; monte à MAX_IN_AIR_FIN sur la fin
 export const GOBE_MS = 260;       // durée pendant laquelle un poisson est « avalé »
-
-const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 export function newGame(now = Date.now(), opts = {}) {
   const duree = Math.round(GAME_DURATION * (opts.duree || 1));

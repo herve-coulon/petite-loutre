@@ -9,6 +9,7 @@
 //  - un COMBO récompense les enchaînements et se brise sur un rocher, ce qui
 //    crée un vrai choix : tenter le chapelet ou jouer la sécurité.
 import { SEC } from './constants.js';
+import { clamp01 } from './util.js';
 
 export const SLIDE_DURATION = 20 * SEC;
 export const LANES = 3;
@@ -28,8 +29,6 @@ export const GOBE_MS = 260;            // durée pendant laquelle un poisson est
 // Trois chocs et la loutre est ÉJECTÉE du torrent — la descente a enfin un enjeu.
 export const VIES_MAX = 3;
 export const DEGATS_EJECTION = 12;     // ce que l'éjection coûte à sa santé
-
-const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 export function newSlide(now = Date.now(), opts = {}) {
   const duree = Math.round(SLIDE_DURATION * (opts.duree || 1));

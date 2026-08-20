@@ -2,7 +2,8 @@
 // exploits du jour) à envoyer sur WhatsApp/Insta. Dessin canvas autonome,
 // aucune requête DOM — le document est injecté, tout le reste est pur.
 import { PAL, SPRITES, SPRITES_PORTRAITS } from './sprites.js';
-import { STAGES, H, MIN } from './constants.js';
+import { STAGES } from './constants.js';
+import { fmtDur } from './util.js';
 import { hatById } from './accessories.js';
 import { furById } from './skins.js';
 import { ageMs } from './sim.js';
@@ -10,13 +11,6 @@ import { levelFromXp, titleFor } from './level.js';
 
 export const CARD_W = 480, CARD_H = 600; // portrait 4:5, parfait pour les stories
 export const CARD_URL = 'https://herve-coulon.github.io/petite-loutre/';
-
-function fmtShort(ms) {
-  const d = Math.floor(ms / (24 * H)), h = Math.floor((ms % (24 * H)) / H), m = Math.floor((ms % H) / MIN);
-  if (d > 0) return d + ' j ' + h + ' h';
-  if (h > 0) return h + ' h ' + m + ' min';
-  return m + ' min';
-}
 
 /** Textes de la carte — pur, testé indépendamment du dessin. */
 export function cardData(s, rec, now = Date.now()) {
@@ -27,12 +21,12 @@ export function cardData(s, rec, now = Date.now()) {
   return {
     title: 'MA PETITE LOUTRE',
     name: (s.name || 'Loutre mystère').toUpperCase(),
-    stageLine: (STAGES[s.stage] || '') + ' · ' + fmtShort(ageMs(s, now)),
+    stageLine: (STAGES[s.stage] || '') + ' · ' + fmtDur(ageMs(s, now)),
     levelLine: 'NIV ' + lvl + ' · ' + titleFor(lvl),
     lines: [
       '🐟 Aujourd\'hui : ' + fish + ' poisson' + (fish > 1 ? 's' : '') + ' · ' + meals + ' repas',
       '🏆 Quêtes du jour : ' + done + '/3 réussies',
-      '⏳ Record de vie : ' + (rec && rec.bestAge > 0 ? fmtShort(rec.bestAge) : 'l\'aventure commence')
+      '⏳ Record de vie : ' + (rec && rec.bestAge > 0 ? fmtDur(rec.bestAge) : 'l\'aventure commence')
     ],
     url: 'herve-coulon.github.io/petite-loutre'
   };
