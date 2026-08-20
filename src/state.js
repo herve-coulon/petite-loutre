@@ -7,6 +7,80 @@ import { seasonGiftKey, GIFT_NEED_TREATS } from './seasonpass.js';   // migratio
 export const REC_KEY = 'petite_loutre_records_v1';
 const EXPORT_PREFIX = 'LOUTRE1.';
 
+/* ---------------- Assainissement (audit M7) ----------------
+   Un code de sauvegarde est une entrée NON fiable : taille non bornée, valeurs
+   absurdes (1e999 -> Infinity au parse, chaînes, null), clés inconnues.
+   On borne/clamp tout ce qui peut casser la simulation ou l'UI — sans jamais
+   rejeter une save légitime. Appliqué à l'import ET au chargement. */
+const MAX_SAVE_B64 = 100_000;   // ~75 Ko JSON — une save normale fait quelques Ko
+const MAX_STR = 64;             // longueur max d'une chaîne de champ
+const MAX_ARR = 5000;           // longueur max d'un tableau (tronqué, jamais rejeté)
+const STAGE_WHITELIST = ['egg', 'baby', 'child', 'adult'];
+
+function clampNum(v, def, lo, hi) {
+  const n = typeof v === 'number' && Number.isFinite(v) ? v : def;
+  return Math.min(hi, Math.max(lo, n));
+}
+
+/** Tue NaN/Infinity (dont 1e999 au parse), tronque chaînes et tableaux géants. */
+function hardenObject(o, depth = 0) {
+  if (!o || typeof o !== 'object' || depth > 12) return;
+  for (const k of Object.keys(o)) {
+    const v = o[k];
+    if (typeof v === 'number' && !Number.isFinite(v)) o[k] = 0;
+    else if (typeof v === 'string' && v.length > MAX_STR) o[k] = v.slice(0, MAX_STR);
+    else if (Array.isArray(v)) {
+      if (v.length > MAX_ARR) o[k] = v.slice(0, MAX_ARR);
+      hardenObject(o[k], depth + 1);
+    } else if (v && typeof v === 'object') hardenObject(v, depth + 1);
+  }
+}
+
+/** Champs numériques des records : doivent rester des nombres finis ≥ 0. */
+const NUMERIC_REC_FIELDS = [
+  'fish', 'shells', 'gems', 'xp', 'streakCount', 'streakBest', 'levelReached',
+  'bestAge', 'mealsTotal', 'bathsTotal', 'gamesTotal', 'fishTotal',
+  'perfectGames', 'slidesTotal', 'slideBest', 'perfectSlides', 'sleepsTotal',
+  'treasures', 'treatsTotal', 'questsDone', 'wins', 'battles', 'achSeen', 'otters'
+];
+
+function sanitizeState(s) {
+  // 1) ciblé sur les VALEURS D'ORIGINE (avant hardenObject : un 1e999 doit
+  //    retomber sur un défaut sain, pas sur 0).
+  // nom : chaîne bornée (64 — la saisie plafonne à 12, mais une vieille save
+  //    légitime peut porter plus), sinon null
+  s.name = typeof s.name === 'string' && s.name.trim() ? s.name.trim().slice(0, MAX_STR) : null;
+  // stade : whitelist, sinon on déduit de l'éclosion
+  if (!STAGE_WHITELIST.includes(s.stage)) s.stage = s.hatchedAt ? 'baby' : 'egg';
+  // jauges : dans [0,100], défauts sains si absurdes
+  s.hunger = clampNum(s.hunger, 80, 0, 100);
+  s.fun = clampNum(s.fun, 80, 0, 100);
+  s.energy = clampNum(s.energy, 80, 0, 100);
+  s.clean = clampNum(s.clean, 100, 0, 100);
+  s.health = clampNum(s.health, 100, 0, 100);
+  // horodatages : finis, bornés (pas de born du futur lointain, pas de NaN)
+  const nowT = Date.now();
+  s.born = clampNum(s.born, nowT, 0, nowT + 86400000);
+  if (s.hatchedAt != null && !Number.isFinite(s.hatchedAt)) s.hatchedAt = null;
+  if (s.diedAt != null && !Number.isFinite(s.diedAt)) s.diedAt = null;
+  if (typeof s.nextPoop !== 'number' || !Number.isFinite(s.nextPoop)) s.nextPoop = nowT + H;
+  // cacas : nombres uniquement, au plus 3 (comme le jeu)
+  s.poops = Array.isArray(s.poops)
+    ? s.poops.filter(p => typeof p === 'number' && Number.isFinite(p)).slice(0, 3)
+    : [];
+  // 2) générique : NaN/Infinity résiduels -> 0, chaînes/tableaux géants tronqués
+  hardenObject(s);
+  return s;
+}
+
+function sanitizeRecords(rec) {
+  hardenObject(rec);
+  for (const k of NUMERIC_REC_FIELDS) {
+    if (typeof rec[k] !== 'number' || !Number.isFinite(rec[k]) || rec[k] < 0) rec[k] = 0;
+  }
+  return rec;
+}
+
 export function newState(now = Date.now(), rnd = Math.random) {
   return {
     v: 2,
@@ -123,7 +197,8 @@ export function loadState(storage) {
   try {
     const raw = storage.getItem(SAVE_KEY);
     if (!raw) return null;
-    return normalizeState(JSON.parse(raw));
+    const st = normalizeState(JSON.parse(raw));
+    return st ? sanitizeState(st) : null;   // assainissement (audit M7) : même une save locale corrompue ne casse rien
   } catch (e) { return null; }
 }
 
@@ -232,7 +307,7 @@ export function loadRecords(storage) {
   try {
     const raw = storage.getItem(REC_KEY);
     if (!raw) return newRecords();
-    return normalizeRecords(JSON.parse(raw)) || newRecords();
+    return sanitizeRecords(normalizeRecords(JSON.parse(raw)) || newRecords());
   } catch (e) { return newRecords(); }
 }
 
@@ -267,10 +342,11 @@ export function importSave(code) {
   try {
     const trimmed = String(code).trim();
     if (!trimmed.startsWith(EXPORT_PREFIX)) return null;
+    if (trimmed.length > MAX_SAVE_B64) return null;   // borne anti-abus (audit M7)
     const payload = JSON.parse(fromB64(trimmed.slice(EXPORT_PREFIX.length)));
     const s = normalizeState(payload.s);
-    const rec = normalizeRecords(payload.rec) || newRecords();
     if (!s) return null;
-    return { s, rec };
+    const rec = sanitizeRecords(normalizeRecords(payload.rec) || newRecords());
+    return { s: sanitizeState(s), rec };
   } catch (e) { return null; }
 }
