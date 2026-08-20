@@ -36,7 +36,6 @@ function ctx() {
 export function audioCtx() { return ctx(); }
 
 /** Bus où brancher les sons — la musique et l'ambiance vivent ici. */
-export function sfxBus() { ctx(); return busSfx; }
 export function musicBus() { ctx(); return busMusic; }
 export function ambientBus() { ctx(); return busAmb; }
 

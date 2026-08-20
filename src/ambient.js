@@ -358,4 +358,3 @@ export function stopGardenAmbient() {
   stopGardenBeds();
 }
 
-export const isGardenPlaying = () => gardenActive;

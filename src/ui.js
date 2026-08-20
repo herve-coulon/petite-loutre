@@ -1,5 +1,5 @@
 // Couche DOM : HUD, jauges, overlays, messages. Aucune logique de jeu ici.
-import { STAGES, H, MIN, clamp, UNLOCK_LEVEL, TREAT_CD, DIVE_MS } from './constants.js';
+import { H, MIN, clamp, UNLOCK_LEVEL, TREAT_CD, DIVE_MS } from './constants.js';
 import { ageMs } from './sim.js';
 import { levelFromXp, titleFor } from './level.js';
 import { HATS, unlockedHats } from './accessories.js';

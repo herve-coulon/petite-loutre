@@ -13,7 +13,7 @@ import { dailyEvent, butterflyPos } from './events.js';
 import * as music from './music.js';
 import * as ambient from './ambient.js';
 import { XP, levelFromXp, titleFor, levelUpGems } from './level.js';
-import { bumpQuest, completedQuests, ensureDaily, dayKey, isEligible, questContext } from './quests.js';
+import { bumpQuest, completedQuests, ensureDaily, dayKey, questContext } from './quests.js';
 import { addSeasonTreat } from './seasonpass.js';
 import { ALMANACH_TIERS, tierState, almanachProgress, almanachCompletion, almanachHasClaimable, claimTier } from './almanach.js';
 import { dailyDojo, judgeParry, parryScore, nextCombo, beltFor, dojoReward } from './dojo.js';
@@ -37,8 +37,8 @@ import { registerSW, setupInstall, requestPersistentStorage, isIOS, isStandalone
 import { unlockedHats, hatById } from './accessories.js';
 import { unlockedFurs, unlockedDecors, equipBonus, furById, decorById } from './skins.js';
 import { newAchievements } from './achievements.js';
-import { encodeCard, decodeCard, newBattle, stepBattle, duelInput, wildFoe, makeFighter, playerTechniques, techniqueById } from './battle.js';
-import { combatBuffs, jeuBuffs, unlockedTechniques, PASSIVE_TECHNIQUES } from './skills.js';
+import { encodeCard, decodeCard, newBattle, stepBattle, duelInput, wildFoe, makeFighter, playerTechniques } from './battle.js';
+import { combatBuffs, jeuBuffs, PASSIVE_TECHNIQUES } from './skills.js';
 import { isoWeekKey, crueOfWeek, medalFor, claimCrueRewards } from './crue.js';
 import { livingLine } from './dialogue.js';
 import { chasseurRode, newChasseur, stepChasseur, DEGATS_CAPTURE } from './chasseur.js';
@@ -53,8 +53,8 @@ import {
 import { makeCard, CARD_URL } from './photocard.js';
 import { nextBeat, markSeen, coachStep } from './story.js';
 import { seasonFor, seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
-import { weatherFor, sicknessBonus, WEATHER_LABELS } from './weather.js';
-import { ITEMS, RARITIES, itemById, bonusOf, rollDrop, milestoneItem, describeBonus, cosmeticPrice, treasurePrice } from './items.js';
+import { weatherFor, sicknessBonus } from './weather.js';
+import { ITEMS, RARITIES, itemById, rollDrop, milestoneItem, describeBonus, cosmeticPrice, treasurePrice } from './items.js';
 import { pickTrait, traitById, isFavorite, favoriteLine, bondGain, bondLevel } from './personality.js';
 import { makeAncestor, inheritTrait, isRealOtter } from './lineage.js';
 import { endOfLife, isElder } from './lifecycle.js';
@@ -2080,8 +2080,18 @@ function updateVolumeLabel() {
 }
 
 /* ---------------- Persistance ---------------- */
-function persist() { saveState(s, storage, now()); }
-function persistRec() { saveRecords(rec, storage); }
+let lastStorageWarn = 0;
+/** Sauvegarde honnête : si le stockage échoue (plein, bloqué — mode privé…),
+    on prévient au lieu de laisser le joueur croire qu'il progresse.
+    Throttlé : une alerte max par minute, pas de spam. */
+function warnStorage() {
+  const t = now();
+  if (t - lastStorageWarn < 60 * SEC) return;
+  lastStorageWarn = t;
+  ui.toast('⚠️ Sauvegarde impossible (stockage plein ou bloqué) — copie vite ton code dans ⚙️ !');
+}
+function persist() { if (!saveState(s, storage, now())) warnStorage(); }
+function persistRec() { if (!saveRecords(rec, storage)) warnStorage(); }
 
 // Badge « ! » du Cadeau : visible seulement quand un cadeau de saison est réclamable.
 function refreshGift() {
@@ -2599,9 +2609,14 @@ function tick() {
   updateCoach();     // garde le surlignage du tutoriel en phase (dodo, overlays…)
   seasonHint();      // rappelle le contre-geste si le froid/la chaleur la malmène
   syncMusic(); // (re)démarre dès que l'audio est débloqué, coupe si veille/fin
-  // Télémétrie : un ping par jour, jamais pendant l'œuf, ID généré au 1er envoi.
+  // Télémétrie : un ping par jour, jamais pendant l'œuf. L'ID anonyme est généré
+  // ICI, HORS du garde canSendTelemetry qui l'exige : avant ce fix, il n'était
+  // créé qu'à l'intérieur du bloc gardé -> code mort -> aucun ping jamais envoyé.
+  if (s && s.telemetry && s.name && s.stage !== 'egg' && !s.telemetryId) {
+    s.telemetryId = newTelemetryId();
+    persist();
+  }
   if (s && canSendTelemetry(s) && s.lastTelemetryDay !== dayKey(t)) {
-    if (!s.telemetryId) s.telemetryId = newTelemetryId();
     s.lastTelemetryDay = dayKey(t);
     sendTelemetry(s, rec, curLevel());
     persist();
@@ -2695,6 +2710,19 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
+/* ---------------- Raccourci PWA (manifest.webmanifest) ----------------
+   Le manifeste déclare le raccourci « Nourrir » -> ./?action=feed, mais rien ne
+   le consommait (le raccourci était inerte). Ici on nourrit la loutre dès
+   l'arrivée, puis on retire le paramètre de l'URL : un simple refresh ne
+   re-nourrit pas. Sans effet si aucune loutre nourrissable (œuf, héron, dodo…). */
+function consumeBootAction() {
+  if (typeof window === 'undefined' || !window.location) return;
+  const p = new URLSearchParams(window.location.search);
+  if (p.get('action') !== 'feed') return;
+  try { window.history.replaceState(null, '', window.location.pathname + window.location.hash); } catch (e) {}
+  actFeed();
+}
+
 /* ---------------- Boot ---------------- */
 function boot() {
   registerSW();
@@ -2742,6 +2770,7 @@ function boot() {
   }
   ui.updateHUD(s, mg, rec);
   updatePlaceBtn();
+  consumeBootAction(); // raccourci PWA « Nourrir » (manifest) : ?action=feed
 
   $('btn-start').addEventListener('click', () => { sfx.press(); vibrate(15); enableMotion(); startNew(); });
   window.addEventListener('devicemotion', onMotion);
@@ -3386,6 +3415,7 @@ window.__loutre = {
   },
   step(ms) { applyEvents(stepSim(s, ms, { simNow: now() })); ui.updateHUD(s, mg, rec); },
   startNew, actFeed, actWash, actSleep, actHeal, actPlay, actTreat, actDive, actSlide, actCare, pet,
+  consumeBootAction,
   get battle() { return battle; }
 };
 

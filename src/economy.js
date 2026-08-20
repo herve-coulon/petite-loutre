@@ -12,7 +12,6 @@ export function nextTier(t) {
 }
 
 // ── Repas : un vrai poisson rassasie plus qu'une friandise gratuite. ──
-export const MEAL_FISH_COST = 1;
 export const MEAL_HUNGER = 34;   // vs +10 pour la friandise de secours
 
 // ── Recrutement en POISSONS : doux et progressif selon la taille de l'escouade. ──

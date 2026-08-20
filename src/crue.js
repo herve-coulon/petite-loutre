@@ -16,7 +16,7 @@ export function isoWeekKey(date = new Date()) {
 
 // Les habillages météo possibles de la Crue (la météo existante l'habille).
 export const CRUE_WEATHERS = ['orage', 'brume', 'canicule', 'crue', 'grand-vent'];
-export const CRUE_WEATHER_LABEL = {
+const CRUE_WEATHER_LABEL = {
   orage: 'Crue d\'orage', brume: 'Crue de brume', canicule: 'Crue de canicule',
   crue: 'Grande Crue', 'grand-vent': 'Crue de grand-vent'
 };

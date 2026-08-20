@@ -51,6 +51,9 @@ before(async () => {
   global.getComputedStyle = window.getComputedStyle.bind(window);
   global.requestAnimationFrame = cb => { rafCbs.push(cb); return rafCbs.length; };
   global.setInterval = (fn) => { tickFns.push(fn); return tickFns.length; };
+  // Jamais de vrai réseau en test : la télémétrie (fixée depuis v4.10.x) ping
+  // désormais réellement -> on coupe fetch pour garder les tests hermétiques.
+  global.fetch = async () => ({ ok: false, json: async () => ({}) });
 
   await import('../src/main.js');
   L = window.__loutre;
@@ -93,6 +96,19 @@ test('éclosion -> nommage', () => {
   assert.equal(L.state.name, 'Kiwi');
   assert.ok($('ovl-name').classList.contains('hidden'));
   assert.ok(!$('actionbar').classList.contains('hidden'));
+});
+
+test('télémétrie : l\'ID anonyme est généré une fois la loutre nommée (fix du code mort)', () => {
+  // Régression : l'ID n'était créé qu'À L'INTÉRIEUR du bloc gardé par
+  // canSendTelemetry (qui exige l'ID) -> aucun ping n'était jamais envoyé.
+  Object.assign(L.state, { telemetry: true, name: 'Kiwi', stage: 'baby', telemetryId: null, lastTelemetryDay: null });
+  tick();
+  assert.match(L.state.telemetryId, /^[0-9a-f]{16}$/, 'un ID anonyme 16 hex est généré');
+  assert.equal(L.state.lastTelemetryDay, dayKey(), 'le ping du jour est marqué envoyé');
+  // l'ID persiste (pas de re-génération au tick suivant)
+  const id = L.state.telemetryId;
+  tick();
+  assert.equal(L.state.telemetryId, id, 'l\'ID est stable');
 });
 
 test('fil narratif : Chapitre 1 s\'affiche, puis les premiers pas guident vers Manger', () => {
@@ -167,6 +183,26 @@ test('actions : manger, laver, dodo, soigner', () => {
   tick(); // le HUD active le bouton soigner
   $('b-heal').click();
   assert.equal(L.state.sick, false);
+});
+
+test('raccourci PWA « Nourrir » : ?action=feed nourrit puis nettoie l\'URL', () => {
+  // état sain et nourrissable, poisson en réserve (beforeEach en met 999)
+  Object.assign(L.state, { stage: 'child', sleeping: false, away: false, gameOver: false, divingUntil: 0, hunger: 40 });
+  const hungerBefore = L.state.hunger;
+  const fishBefore = L.records.fish;
+
+  window.history.replaceState(null, '', '/?action=feed');
+  assert.equal(window.location.search, '?action=feed', 'URL porte le paramètre du raccourci');
+  L.consumeBootAction();
+  assert.ok(L.state.hunger > hungerBefore, 'la loutre a été nourrie à l\'arrivée');
+  assert.equal(L.records.fish, fishBefore - 1, 'un poisson a été dépensé');
+  assert.equal(window.location.search, '', 'paramètre retiré après consommation (pas de re-repas au refresh)');
+  assert.equal(window.location.pathname, '/', 'le chemin de l\'URL est préservé');
+
+  // sans le paramètre, rien ne se passe (recharge simulée)
+  L.state.hunger = 40;
+  L.consumeBootAction();
+  assert.equal(L.state.hunger, 40, 'aucun repas sans le paramètre action=feed');
 });
 
 test('mini-jeu : lancement et fin propre', () => {

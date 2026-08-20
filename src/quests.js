@@ -5,7 +5,7 @@ import { UNLOCK_LEVEL } from './constants.js';
 
 // Fonctionnalités à débloquage par niveau, utilisées par les prérequis de quêtes.
 // (Ajouter une activité ici suffit : plus de logique dupliquée entre main.js et ui.js.)
-export const QUEST_FEATURES = ['treat', 'slide', 'dive', 'battle', 'garden'];
+const QUEST_FEATURES = ['treat', 'slide', 'dive', 'battle', 'garden'];
 
 /** Le contexte de filtrage des quêtes, dérivé du niveau et du lieu. Source unique. */
 export function questContext(level, world) {
