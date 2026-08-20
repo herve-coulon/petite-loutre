@@ -1,6 +1,6 @@
 {
   "name": "petite-loutre",
-  "version": "4.10.8",
+  "version": "4.10.9",
   "description": "Ma Petite Loutre — tamagotchi pixel art en temps réel, PWA installable sur mobile",
   "type": "module",
   "private": true,
