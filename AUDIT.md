@@ -68,7 +68,7 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 | m5 | Canvas sans garde-fou → écran blanc si non supporté ; aucune gestion d'erreur globale | ✅ **Corrigé v4.10.3** (erreur claire + handlers `error`/`unhandledrejection` avec sauvegarde) |
 | m6 | CSP incomplète (`base-uri`/`object-src`/`form-action` absents ; `unsafe-inline` style pour 3 styles) | ⏳ À faire |
 | m7 | Pas de headers de sécurité sur gh-pages (HSTS…) — limite plateforme | ⏳ À faire si migration CDN |
-| m8 | Pas de retry télémétrie (ping perdu si hors-ligne) | ⏳ À faire |
+| m8 | Pas de retry télémétrie (ping perdu si hors-ligne) | ✅ **Corrigé v4.10.5** — le jour n'est marqué envoyé qu'au SUCCÈS ; échec → réessai throttlé 10 min (`s.nextTelemetryRetry`, persistant) ; `sendTelemetry` borné à 8 s (AbortController) ; tests unitaires + smoke |
 | m9 | Mix français/anglais dans les identifiants | ⏳ À faire (convention) |
 | m10 | `esc()` n'échappe pas l'apostrophe (non exploité) | ⏳ À faire |
 | m11 | `manifest.id` en dur vers l'URL gh-pages ; « screenshot » = icône 512 (pas une vraie capture) | ⏳ À faire |
@@ -95,6 +95,8 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 | | — | **Déploiements prod** : `functions deploy telemetry` (M3) + application de la migration M4 (SQL Editor / db push) — **tous deux vérifiés en production** (200 valide / 400-413 abus / REST anon refusé 42501, clé anon du dépôt toujours valide) |
 | **v4.10.4** | `8703235` | **`importSave` durci (M7)** : borne de taille (100 Ko), clamps des jauges, whitelist de stade, nom borné, NaN/Infinity (`1e999`) → défauts sains, chaînes/tableaux tronqués ; appliqué aussi à `loadState`/`loadRecords` + `test/state.test.js` (7 tests) |
 | | `b84f6a5` | Bump v4.10.4 |
+| **v4.10.5** | `f1089a4` | **Retry télémétrie (m8)** : jour marqué uniquement au succès, réessai throttlé 10 min, timeout fetch 8 s ; tests unitaires `sendTelemetry` + smoke mis à jour |
+| | `3d5586a` | Bump v4.10.5 |
 
 **Nouveaux tests ajoutés** (5) : raccourci PWA « Nourrir » (smoke), télémétrie — ID généré (smoke), `esc` / `clamp01` / `fmtDur` (`test/util.test.js`).
 
@@ -109,7 +111,7 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 2. ~~**Durcir l'edge function `telemetry`** (M3)~~ ✅ fait (validation stricte, gardes de volume, erreurs génériques, CORS restreint) — reste à **déployer** la nouvelle version (`supabase functions deploy telemetry`).
 3. ~~**`revoke insert, update, delete … from anon`** sur `telemetry_daily` (M4)~~ ✅ fait ET déployé (migration `20260820100000_telemetry_harden.sql` + `push_subs`/`push_config`) — vérifié en prod : REST anon refusé.
 4. ~~**Durcir `importSave`** (M7)~~ ✅ fait v4.10.4 (whitelist de champs, bornes, taille max + tests d'import malveillant).
-5. **Retry télémétrie** (m8) : file d'attente au prochain tick si le ping échoue.
+5. ~~**Retry télémétrie** (m8)~~ ✅ fait v4.10.5 (jour marqué au succès, réessai throttlé 10 min, timeout 8 s).
 6. Nettoyage : undeploy `kimi-chat` à distance, rotation d'ID à la réactivation de la télémétrie.
 
 ### 🏗️ Architecture (chantiers multi-releases)
