@@ -55,6 +55,7 @@ const PRECACHE = [
   './src/seasonpass.js',
   './src/almanach.js',
   './src/dojo.js',
+  './src/dojo-controller.js',
   './src/economy.js',
   './src/crue.js',
   './src/crue-controller.js',
