@@ -557,8 +557,8 @@ au nom de la loutre et seedée par le jour+lieu (varie chaque jour, stable dans 
 journée). Le réglage ⚙️ « Dialogues vivants » passe ON par défaut (plus rien à
 payer) avec bascule unique pour les anciennes saves ; on peut toujours revenir aux
 dialogues écrits. `kimi-client.js` + `kimi-cache-key.js` sortent du PRECACHE (bundle
-joueurs allégé, Option B) ; l'Edge Function `kimi-chat` reste déployée mais dormante,
-plus aucun appel réseau ni clé requise. Tests purs `dialogue.test.js` réécrits
+joueurs allégé, Option B) ; l'Edge Function `kimi-chat` restait déployée mais dormante,
+plus aucun appel réseau ni clé requise (retirée du projet Supabase depuis — vérifié 08/2026). Tests purs `dialogue.test.js` réécrits
 (déterminisme, variété jour à jour, priorité météo/saison, sans emoji). Vérifié
 navigateur : réglage ON par défaut, module servi générant bien « voix + remarque
 météo » qui varie par jour, zéro erreur console. 473 tests.*

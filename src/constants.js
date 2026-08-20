@@ -1,7 +1,7 @@
 // Constantes de jeu — ajuster ici pour équilibrer.
 // ⚠️ GAME_VERSION : à incrémenter avec package.json et sw.js à chaque release
 // (affichée dans ⚙️ Réglages pour vérifier ce que le téléphone exécute).
-export const GAME_VERSION = '4.10.5';
+export const GAME_VERSION = '4.10.6';
 export const SEC = 1000;
 export const MIN = 60 * SEC;
 export const H = 60 * MIN;
@@ -11,6 +11,15 @@ export const HATCH_MS = 2 * MIN;        // éclosion 2 min après adoption
 export const CHILD_AT = 24 * H;         // bébé -> jeune loutre à J+1
 export const ADULT_AT = 72 * H;         // jeune -> adulte à J+3
 export const MAX_OFFLINE = 7 * 24 * H;  // rattrapage hors-ligne plafonné
+
+// Seuils de jauge (audit M10) : UNE source pour l'alerte visuelle, partagée par
+// le DOM (ui.js) et le canvas (render.js) — les deux doivent rester synchrones.
+export const GAUGE_LOW = 20;          // jauge « basse » : barre rouge + glow
+export const GAUGE_HEALTH_LOW = 35;   // santé « critique » côté rendu canvas
+// Seuils de MALADIE (sim.js) — VOLONTAIREMENT plus stricts que l'alerte visuelle :
+// la barre prévient AVANT que le risque ne grimpe. Ne pas aligner sur GAUGE_LOW.
+export const SICK_HUNGER = 15;        // risque maladie si faim < 15
+export const SICK_CLEAN = 25;         // risque maladie si propreté < 25
 
 // Décroissance par heure (éveillée) — v2.3 : rythme plus nerveux
 export const R = { hunger: 6, fun: 5, energy: 3, clean: 2.5 };

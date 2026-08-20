@@ -1,5 +1,5 @@
 // Couche DOM : HUD, jauges, overlays, messages. Aucune logique de jeu ici.
-import { H, MIN, clamp, UNLOCK_LEVEL, TREAT_CD, DIVE_MS } from './constants.js';
+import { H, MIN, clamp, UNLOCK_LEVEL, TREAT_CD, DIVE_MS, GAUGE_LOW } from './constants.js';
 import { ageMs } from './sim.js';
 import { levelFromXp, titleFor } from './level.js';
 import { HATS, unlockedHats } from './accessories.js';
@@ -70,9 +70,9 @@ function setBar(id, v) {
   const el = $(id);
   const val = clamp(v, 0, 100);
   el.style.width = val + '%';
-  el.classList.toggle('low', v < 20);
+  el.classList.toggle('low', v < GAUGE_LOW);
   const bar = el.closest && (el.closest('.mg') || el.closest('.bar'));
-  if (bar) bar.classList.toggle('crit', v < 20);       // alerte : glow
+  if (bar) bar.classList.toggle('crit', v < GAUGE_LOW);       // alerte : glow
   const gauge = el.closest && el.closest('.gauge');
   if (gauge) gauge.setAttribute('aria-valuenow', Math.round(val));
   const prev = barPrev[id];

@@ -1,6 +1,6 @@
 // Rendu canvas 160x120 (mis à l'échelle en CSS, image-rendering: pixelated).
 import { PAL, SPRITES, SPRITES_MONDE, SPRITES_PORTRAITS } from './sprites.js';
-import { HATCH_MS, MIN, SEC, SEASON_FX } from './constants.js';
+import { HATCH_MS, MIN, SEC, SEASON_FX, GAUGE_LOW, GAUGE_HEALTH_LOW } from './constants.js';
 import { hatById } from './accessories.js';
 import { furById } from './skins.js';
 import { moodOf, pickIdle, canIdle, IDLE_FRAMES } from './mood.js';
@@ -1858,7 +1858,7 @@ export function makeRenderer(cv) {
       if (ph === 2) ctx.fillText('Z', ox + 47, oy - 14);
     }
     if (!s.sleeping && s.stage !== 'egg' && !mg) {
-      const urgent = s.hunger < 20 || s.fun < 20 || s.clean < 20 || s.health < 35;
+      const urgent = s.hunger < GAUGE_LOW || s.fun < GAUGE_LOW || s.clean < GAUGE_LOW || s.health < GAUGE_HEALTH_LOW;
       if (urgent && (frame >> 4) % 2 === 0) {
         ctx.fillStyle = '#e5484d';
         ctx.fillRect(ox + 36, oy - 14, 3, 8); ctx.fillRect(ox + 36, oy - 4, 3, 3);

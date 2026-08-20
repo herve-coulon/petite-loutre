@@ -1,6 +1,6 @@
 // Moteur de simulation PUR : aucune dépendance DOM, horloge et hasard injectés.
 // Toute la vie de la loutre passe par ici — en direct comme en rattrapage hors-ligne.
-import { H, MIN, HATCH_MS, CHILD_AT, ADULT_AT, MAX_OFFLINE, R, RS, SEASON_FX, AWAY_GRACE, clamp } from './constants.js';
+import { H, MIN, HATCH_MS, CHILD_AT, ADULT_AT, MAX_OFFLINE, R, RS, SEASON_FX, AWAY_GRACE, clamp, SICK_HUNGER, SICK_CLEAN } from './constants.js';
 import { seasonFor } from './seasons.js';
 import { equipBonus } from './skins.js';
 
@@ -87,7 +87,7 @@ export function stepSim(s, dt, opts = {}) {
   // Maladie (probabilité par heure simulée) — l'hiver, le froid fait attraper froid
   // La météo (pluie, brouillard, verglas) augmente aussi le risque.
   if (!s.sick) {
-    let p = 0.004 + s.poops.length * 0.02 + (s.clean < 25 ? 0.03 : 0) + (s.hunger < 15 ? 0.02 : 0);
+    let p = 0.004 + s.poops.length * 0.02 + (s.clean < SICK_CLEAN ? 0.03 : 0) + (s.hunger < SICK_HUNGER ? 0.02 : 0);
     if (cold) {
       const coldTerm = SEASON_FX.COLD_SICK
         + (s.energy < SEASON_FX.COLD_LOW_ENERGY ? SEASON_FX.COLD_SICK_TIRED : 0)
