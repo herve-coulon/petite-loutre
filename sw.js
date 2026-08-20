@@ -16,6 +16,7 @@ const PRECACHE = [
   './src/lifecycle.js',
   './src/memory.js',
   './src/slots.js',
+  './src/slots-controller.js',
   './src/sim.js',
   './src/sprites.js',
   './src/accessories.js',

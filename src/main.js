@@ -7,6 +7,7 @@ import {
 import { setupStreak, checkStreak } from './streak-controller.js';
 import { setupHeron, actCare } from './heron-controller.js';
 import { setupTreasure, tryDrop } from './treasure-controller.js';
+import { setupSlots, openSlots } from './slots-controller.js';
 import { greeting } from './mood.js';
 import * as push from './push.js';
 import { canSendTelemetry, sendTelemetry, newTelemetryId } from './telemetry.js';
@@ -24,7 +25,7 @@ import {
   newState, saveState, loadState, clearSave,
   loadRecords, saveRecords, exportSave, importSave, REC_KEY
 } from './state.js';
-import { SLOT_COUNT, slotKey, clampSlot, summarize } from './slots.js';
+import { slotKey, clampSlot } from './slots.js';
 import { stepSim, simulateOffline, ageMs } from './sim.js';
 import { newGame, tickGame, clickGame, WATER_Y } from './minigame.js';
 import { recruitFishCost, dailyBarter, canCraft, craftChoices, nextTier, TIERS, MEAL_HUNGER, CRAFT_NEED } from './economy.js';
@@ -1675,18 +1676,6 @@ function reloadApp() { try { location.reload(); } catch (e) {} }
 
 function loadSlotState(slot) { return loadState(makeSlotStorage(rawStore, slot)); } // lecture seule
 
-function slotSummaries() {
-  const list = [];
-  for (let i = 1; i <= SLOT_COUNT; i++) {
-    const st = (i === activeSlot) ? s : loadSlotState(i);
-    list.push({ slot: i, active: i === activeSlot, sum: summarize(st) });
-  }
-  return list;
-}
-
-function openSlots() { sfx.press(); ui.hideOverlay('ovl-set'); refreshSlots(); ui.showOverlay('ovl-slots'); }
-function refreshSlots() { ui.renderSlots(slotSummaries(), { onPick: pickSlot, onDelete: askDeleteSlot }); }
-
 // Bascule vers `target` : on sauve le slot COURANT, on déplace le pointeur, puis on
 // recharge. On NE réoriente PAS le `storage` en place — sinon un tick tardif écrirait
 // la loutre courante dans le slot cible. Le boot chargera le slot cible proprement.
@@ -1696,31 +1685,12 @@ function commitSlot(target) {
   switching = true;                        // gèle les écritures jusqu'au reload
   if (rawStore) rawStore.setItem(SLOT_PTR, String(clampSlot(target)));
 }
-
-function pickSlot(target) {
-  target = clampSlot(target);
-  if (target === activeSlot) { ui.hideOverlay('ovl-slots'); return; }
-  const st = loadSlotState(target);
-  const occupied = !summarize(st).empty;
-  const msg = occupied
-    ? 'Passer à cette loutre ?\nTa loutre actuelle est sauvegardée dans son emplacement — tu la retrouveras intacte.'
-    : 'Commencer une nouvelle loutre dans cet emplacement libre ?\nTa loutre actuelle est sauvegardée et t\'attendra ici.';
-  ui.askConfirm(msg, () => { commitSlot(target); reloadApp(); });
+// Effacer les clés d'un AUTRE emplacement (le contrôleur garde le garde-fou « pas l'actif »).
+function deleteSlotKeys(target) {
+  if (rawStore) { rawStore.removeItem(slotKey(SAVE_KEY, target)); rawStore.removeItem(slotKey(REC_KEY, target)); }
 }
-
-// On n'efface que les AUTRES emplacements. La loutre active se gère en jeu
-// (⚙️ Recommencer) — ça évite de re-sauver par mégarde ce qu'on vient d'effacer.
-function askDeleteSlot(target) {
-  target = clampSlot(target);
-  if (target === activeSlot) return;
-  const sum = summarize(loadSlotState(target));
-  if (sum.empty) return;
-  const who = sum.name || 'cette loutre';
-  ui.askConfirm('Effacer définitivement l\'emplacement de ' + who + ' ?\nToute sa lignée et sa collection seront perdues. (Sans effet sur ta loutre actuelle.)', () => {
-    if (rawStore) { rawStore.removeItem(slotKey(SAVE_KEY, target)); rawStore.removeItem(slotKey(REC_KEY, target)); }
-    sfx.press(); refreshSlots();
-  });
-}
+/* L'écran de gestion des slots est extrait dans slots-controller.js (audit M5) —
+   openSlots y vit ; le cœur ci-dessus (storage, switching, commitSlot) reste ici. */
 
 /* ---------------- Atelier (É5) : 3 doublons → 1 trésor du palier supérieur ---------------- */
 let workshopChoice = null;   // { tier, ids } quand on choisit le trésor à forger
@@ -2532,6 +2502,13 @@ function boot() {
     persistRec: () => persistRec(),
     gainXp: (n) => gainXp(n),
     burst: (kind, n, stage) => R.burst(kind, n, stage)
+  });
+  setupSlots({
+    getState: () => s,
+    getActiveSlot: () => activeSlot,
+    loadSlot: (slot) => loadSlotState(slot),
+    switchTo: (target) => { commitSlot(target); reloadApp(); },
+    deleteSlot: (target) => deleteSlotKeys(target)
   });
   consumeBootAction(); // raccourci PWA « Nourrir » (manifest) : ?action=feed
 
