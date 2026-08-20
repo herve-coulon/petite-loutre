@@ -1,10 +1,13 @@
 # Config Supabase (minimale) — le CLI complète le reste par ses défauts.
-# ⚠️ Les deux Edge Functions sont des endpoints PUBLICS du jeu, appelés SANS
-# en-tête d'authentification (cf. telemetry.js / kimi-client.js). Il FAUT donc
-# verify_jwt = false, sinon un redéploiement réactive la vérification JWT et
-# casse l'accès (le client reçoit 401). Ce fichier fige ce réglage : plus besoin
-# de penser à `--no-verify-jwt` à chaque déploiement.
+# Les deux Edge Functions (telemetry, push) sont des endpoints PUBLICS du jeu :
+# le client les appelle avec la clé anon (publique par nature). verify_jwt = false
+# évite tout 401 au redéploiement ; la sécurité repose sur la validation interne
+# (push : secret du cron pour {action:'tick'}, bornes sur les reminders) et sur
+# l'absence de politique RLS (accès service_role uniquement).
 project_id = "wjpoojscmnbgofymcmvz"
 
 [functions.telemetry]
+verify_jwt = false
+
+[functions.push]
 verify_jwt = false

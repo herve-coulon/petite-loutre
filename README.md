@@ -128,6 +128,33 @@ npm run icons # régénérer les icônes
 
 La logique de jeu est **pure** (pas de DOM, horloge/hasard injectés) : c'est elle qui tourne à l'identique en direct et en rattrapage hors-ligne, et c'est pour ça qu'elle est testable à la milliseconde près.
 
+### Backend Supabase (télémétrie + rappels push)
+
+Le jeu reste **100 % local** ; Supabase ne sert que deux fonctions publiques optionnelles, versionnées dans `supabase/` :
+
+| Fonction | Rôle | Tables |
+|---|---|---|
+| `telemetry` (`functions/telemetry/index.ts`) | ping quotidien anonyme (niveau, série, fonctionnalités) | `telemetry_daily` (RLS : insert fonction, aucune lecture) |
+| `push` (`functions/push/index.ts`) | abonnements push anonymes + envoi planifié des rappels | `push_subs`, `push_config` (RLS : fonction uniquement) |
+
+**Déploiement / reproduire le backend :**
+```bash
+supabase login                      # une fois
+supabase db push                    # applique les migrations (tables + RLS)
+supabase functions deploy telemetry push --no-verify-jwt
+```
+Puis, une seule fois, remplir `push_config` (Dashboard → SQL) :
+```sql
+insert into public.push_config (key, value) values
+  ('vapid_subject', 'mailto:ton@email.fr'),
+  ('vapid_public',  '<clé VAPID publique>'),
+  ('vapid_private', '<clé VAPID privée>'),
+  ('cron_secret',   '<mot de passe du cron>');
+```
+Enfin, dans le Dashboard → Edge Functions → **Scheduled** : « Envoyer les rappels dus » → cron **10 min** → POST `/functions/v1/push` avec le body `{"action":"tick"}` et l'en-tête `x-cron-secret: <cron_secret>`.
+
+Les clés VAPID publiques côté client sont dans `src/push.js` (publiques par nature) ; les valeurs sensibles (`vapid_private`, `cron_secret`) ne vivent que dans la base, **jamais dans le dépôt**.
+
 ## Passer en app native (App Store / Play Store)
 
 La PWA couvre déjà l'installation mobile. Si tu veux les stores, [Capacitor](https://capacitorjs.com) embarque ce projet tel quel dans une app native :
