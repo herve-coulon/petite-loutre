@@ -98,17 +98,31 @@ test('éclosion -> nommage', () => {
   assert.ok(!$('actionbar').classList.contains('hidden'));
 });
 
-test('télémétrie : l\'ID anonyme est généré une fois la loutre nommée (fix du code mort)', () => {
-  // Régression : l'ID n'était créé qu'À L'INTÉRIEUR du bloc gardé par
+test('télémétrie : ID généré, jour marqué SEULEMENT si le ping réussit (fix code mort + retry m8)', async () => {
+  // Régression 1 : l'ID n'était créé qu'À L'INTÉRIEUR du bloc gardé par
   // canSendTelemetry (qui exige l'ID) -> aucun ping n'était jamais envoyé.
-  Object.assign(L.state, { telemetry: true, name: 'Kiwi', stage: 'baby', telemetryId: null, lastTelemetryDay: null });
+  // Régression 2 (m8) : un ping raté ne marque PAS le jour -> réessayé plus tard.
+  const flush = () => new Promise(r => setTimeout(r, 0)); // laisse les .then s'exécuter
+
+  Object.assign(L.state, { telemetry: true, name: 'Kiwi', stage: 'baby', telemetryId: null, lastTelemetryDay: null, nextTelemetryRetry: 0 });
+  global.fetch = async () => ({ ok: false, json: async () => ({}) });   // réseau coupé
   tick();
+  await flush();
   assert.match(L.state.telemetryId, /^[0-9a-f]{16}$/, 'un ID anonyme 16 hex est généré');
-  assert.equal(L.state.lastTelemetryDay, dayKey(), 'le ping du jour est marqué envoyé');
-  // l'ID persiste (pas de re-génération au tick suivant)
+  assert.equal(L.state.lastTelemetryDay, null, 'jour PAS marqué quand le ping échoue');
+  assert.ok(L.state.nextTelemetryRetry > 0, 'un réessai est armé (throttle)');
+
+  // le ping suivant réussit : le jour est enfin marqué, l'ID reste stable
+  L.state.nextTelemetryRetry = 0;
+  global.fetch = async () => ({ ok: true, json: async () => ({}) });
+  tick();
+  await flush();
+  assert.equal(L.state.lastTelemetryDay, dayKey(), 'jour marqué après un ping réussi');
   const id = L.state.telemetryId;
   tick();
+  await flush();
   assert.equal(L.state.telemetryId, id, 'l\'ID est stable');
+  assert.equal(L.state.lastTelemetryDay, dayKey(), 'pas de re-ping le même jour');
 });
 
 test('fil narratif : Chapitre 1 s\'affiche, puis les premiers pas guident vers Manger', () => {

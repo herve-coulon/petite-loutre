@@ -63,13 +63,18 @@ export function telemetryPayload(s, rec, level, dayKeyFn = dayKey) {
   };
 }
 
+const TELEMETRY_TIMEOUT_MS = 8000;   // un réseau muet ne doit pas bloquer le retry
+
 /**
  * Envoie le ping (fire-and-forget). Erreur silencieuse.
- * @returns {Promise<boolean>} true si envoyé
+ * @returns {Promise<boolean>} true si le serveur a répondu ok (seul cas où le
+ *   jour est marqué envoyé — cf. main.js, retry audit m8)
  */
 export async function sendTelemetry(s, rec, level) {
   if (!canSendTelemetry(s)) return false;
   const payload = telemetryPayload(s, rec, level);
+  const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), TELEMETRY_TIMEOUT_MS) : null;
   try {
     const res = await fetch(TELEMETRY_URL, {
       method: 'POST',
@@ -78,8 +83,10 @@ export async function sendTelemetry(s, rec, level) {
         'Authorization': 'Bearer ' + TELEMETRY_ANON,
         'apikey': TELEMETRY_ANON
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: ctrl ? ctrl.signal : undefined
     });
     return res.ok;
   } catch { return false; }
+  finally { if (timer) clearTimeout(timer); }
 }

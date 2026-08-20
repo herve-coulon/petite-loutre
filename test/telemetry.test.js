@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { newState, loadState } from '../src/state.js';
-import { canSendTelemetry, featuresSeen, telemetryPayload, newTelemetryId } from '../src/telemetry.js';
+import { canSendTelemetry, featuresSeen, telemetryPayload, newTelemetryId, sendTelemetry } from '../src/telemetry.js';
 import { levelFromXp, xpCost } from '../src/level.js';
 
 const T0 = 1_750_000_000_000;
@@ -138,4 +138,28 @@ test('migration : save existante avec telemetry=false conservé', () => {
   const back = loadState(storage);
   assert.equal(back.telemetry, false, 'opt-out conservé');
   assert.equal(back.telemetryId, 'preexisting');
+});
+
+/* ---------------- sendTelemetry (retry m8) ---------------- */
+
+test('sendTelemetry : true seulement si le serveur répond ok', async () => {
+  const s = newState(T0);
+  s.name = 'Lila'; s.stage = 'baby'; s.telemetryId = 'abcdef1234567890';
+  const rec = { streakCount: 3 };
+  const originalFetch = global.fetch;
+
+  global.fetch = async () => ({ ok: true });
+  assert.equal(await sendTelemetry(s, rec, 4), true, 'ok -> true (jour marqué côté main.js)');
+
+  global.fetch = async () => ({ ok: false });
+  assert.equal(await sendTelemetry(s, rec, 4), false, 'non-ok -> false (retry armé)');
+
+  global.fetch = async () => { throw new Error('réseau coupé'); };
+  assert.equal(await sendTelemetry(s, rec, 4), false, 'erreur -> false (silencieux)');
+
+  s.telemetry = false;
+  global.fetch = async () => { throw new Error('ne doit pas être appelé'); };
+  assert.equal(await sendTelemetry(s, rec, 4), false, 'opt-out -> rien n\'est envoyé');
+
+  global.fetch = originalFetch;
 });

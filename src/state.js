@@ -125,8 +125,9 @@ export function newState(now = Date.now(), rnd = Math.random) {
     dayActs: null,   // Bonus de variété (v4.7) : { date, done:[…] } — activités déjà faites aujourd'hui
     bond: 0,         // lien/affinité avec CETTE loutre, grandit avec les soins
     telemetry: true,      // statistiques anonymes (opt-out dans ⚙️)
-    telemetryId: null,    // identifiant aléatoire, généré au 1er ping
-    lastTelemetryDay: null, // dernier jour de ping envoyé
+    telemetryId: null,    // identifiant aléatoire, généré au 1er envoi
+    lastTelemetryDay: null, // dernier jour de ping envoyé AVEC SUCCÈS (retry m8)
+    nextTelemetryRetry: 0,  // throttle de réessai après un ping raté (audit m8)
     lastTick: now
   };
 }
@@ -177,6 +178,7 @@ function normalizeState(o) {
   if (typeof o.telemetry !== 'boolean') o.telemetry = true;
   if (typeof o.telemetryId !== 'string') o.telemetryId = null;
   if (typeof o.lastTelemetryDay !== 'string') o.lastTelemetryDay = null;
+  if (typeof o.nextTelemetryRetry !== 'number' || o.nextTelemetryRetry < 0) o.nextTelemetryRetry = 0;
   // échelle courante de l'aventure (monde / berge / tanière) — repli sur berge
   if (o.place !== 'taniere' && o.place !== 'monde') o.place = 'berge';
   if (!o.hints || typeof o.hints !== 'object') o.hints = {}; // astuces de gestes déjà vues

@@ -2591,6 +2591,12 @@ function passAway(cause, t) {
   setTimeout(() => { passingInProgress = false; startNew(); }, 2600);
 }
 
+// Retry télémétrie (audit m8) : après un ping raté, on n'assiège pas le réseau —
+// prochain essai au plus tôt 10 min plus tard. Le compteur vit sur l'état
+// (s.nextTelemetryRetry) : testable, et un redémarrage rapide ne re-tente pas
+// immédiatement ; au-delà, le jour non marqué déclenche un nouvel essai.
+const TELEMETRY_RETRY_MS = 10 * MIN;
+
 function tick() {
   if (!s || switching) return;   // en plein changement de slot : on gèle tout jusqu'au reload
   const t = now();
@@ -2630,10 +2636,18 @@ function tick() {
     s.telemetryId = newTelemetryId();
     persist();
   }
-  if (s && canSendTelemetry(s) && s.lastTelemetryDay !== dayKey(t)) {
-    s.lastTelemetryDay = dayKey(t);
-    sendTelemetry(s, rec, curLevel());
-    persist();
+  // Envoi (retry m8) : le jour n'est marqué envoyé qu'en cas de SUCCÈS. Un ping
+  // raté (hors-ligne, erreur réseau…) est réessayé au prochain tick, throttlé
+  // à TELEMETRY_RETRY_MS pour ne pas marteler le réseau tant que c'est coupé.
+  if (s && canSendTelemetry(s) && s.lastTelemetryDay !== dayKey(t) && t >= (s.nextTelemetryRetry || 0)) {
+    s.nextTelemetryRetry = t + TELEMETRY_RETRY_MS;
+    const day = dayKey(t);
+    sendTelemetry(s, rec, curLevel()).then((ok) => {
+      if (ok && s && s.lastTelemetryDay !== day) {
+        s.lastTelemetryDay = day;
+        persist();
+      }
+    });
   }
   if (t - lastSave > 5 * SEC) {
     lastSave = t;
