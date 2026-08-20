@@ -52,7 +52,7 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 | M4 | **Politique RLS d'insertion ouverte à anon** (`with check (true)`) — insertion REST directe sans passer par la fonction | `telemetry_daily.sql:20-22` | ✅ **Corrigé, DÉPLOYÉ et VÉRIFIÉ** — politique supprimée + `revoke insert, update, delete` (anon/authenticated) sur `telemetry_daily`/`push_subs`/`push_config` ; test en prod : REST direct anon → `42501 permission denied` (401), fonction service_role → 200 |
 | M5 | **God files** : `main.js` 3 392 lignes / 142 fonctions / 46 imports ; `render.js` `makeRenderer` 2 216 lignes | `src/main.js`, `src/render.js` | ⏳ **À faire** (chantier multi-releases, voir §6) |
 | M6 | **Échecs de sauvegarde silencieux** — `persist()` ignorait le retour de `saveState` (QuotaExceeded, mode privé…) | `state.js:112-119`, `main.js` | ✅ **Corrigé v4.10.1** (toast « stockage plein/bloqué », throttle 60 s) |
-| M7 | **Import de sauvegarde à validation superficielle** — jauges/nom non bornés, taille non limitée | `state.js:266-276` | ⏳ **À faire** |
+| M7 | **Import de sauvegarde à validation superficielle** — jauges/nom non bornés, taille non limitée | `state.js:266-276` | ✅ **Corrigé v4.10.4** — bornes de taille (100 Ko), clamps des jauges (0-100, défauts sains), whitelist de stade, nom borné, NaN/Infinity (`1e999`) neutralisés, tableaux/chaînes tronqués — appliqué à l'import ET au chargement (`loadState`/`loadRecords`) + 7 tests |
 | M8 | **Raccourci manifest « Nourrir » mort** — `?action=feed` jamais lu | `manifest.webmanifest:15-21` | ✅ **Corrigé v4.10.1** (consommé au boot, URL nettoyée, testé) |
 | M9 | **Code mort** : exports jamais utilisés (`sfxBus`, `MEAL_FISH_COST`, `isGardenPlaying`…), 6 imports inutiles | divers | ✅ **Corrigé v4.10.1** (+ patch de design obsolète supprimé) |
 | M10 | **Duplications** : `esc` ×2, `clamp`/`clamp01` ×4, formateurs de durée ×3, seuils de jauge codés en dur à 3 endroits | `main.js`, `ui.js`, `audio.js`, `minigame.js`, `toboggan.js`, `photocard.js` | ✅ **Corrigé v4.10.3** (module `util.js` ; reste : seuils de jauge, voir §6) |
@@ -93,6 +93,8 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 | | `a6b5028` | **Backend push versionné** : fonction déployée téléchargée (`supabase/functions/push/index.ts`), migration `push_subs`/`push_config`, `[functions.push]` dans `config.toml`, procédure de déploiement + cron documentée dans le README |
 | | `283e84a` | **Durcissement telemetry (M3+M4)** : validation stricte (id 16 hex, jour borné, entiers bornés, corps ≤ 4 Ko), gardes de volume jour/id (429), erreurs génériques, CORS restreint ; politique d'insertion anon supprimée + privilèges révoqués (anon/authenticated) |
 | | — | **Déploiements prod** : `functions deploy telemetry` (M3) + application de la migration M4 (SQL Editor / db push) — **tous deux vérifiés en production** (200 valide / 400-413 abus / REST anon refusé 42501, clé anon du dépôt toujours valide) |
+| **v4.10.4** | `8703235` | **`importSave` durci (M7)** : borne de taille (100 Ko), clamps des jauges, whitelist de stade, nom borné, NaN/Infinity (`1e999`) → défauts sains, chaînes/tableaux tronqués ; appliqué aussi à `loadState`/`loadRecords` + `test/state.test.js` (7 tests) |
+| | `b84f6a5` | Bump v4.10.4 |
 
 **Nouveaux tests ajoutés** (5) : raccourci PWA « Nourrir » (smoke), télémétrie — ID généré (smoke), `esc` / `clamp01` / `fmtDur` (`test/util.test.js`).
 
@@ -106,7 +108,7 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 1. ~~**Versionner `supabase/functions/push/index.ts`** + le cron (M2)~~ ✅ fait — restent : déployer la migration (`supabase db push`) et re-créer le cron 10 min dans le Dashboard si un projet était recréé de zéro (procédure dans le README).
 2. ~~**Durcir l'edge function `telemetry`** (M3)~~ ✅ fait (validation stricte, gardes de volume, erreurs génériques, CORS restreint) — reste à **déployer** la nouvelle version (`supabase functions deploy telemetry`).
 3. ~~**`revoke insert, update, delete … from anon`** sur `telemetry_daily` (M4)~~ ✅ fait ET déployé (migration `20260820100000_telemetry_harden.sql` + `push_subs`/`push_config`) — vérifié en prod : REST anon refusé.
-4. **Durcir `importSave`** (M7) : whitelist de champs, bornes, taille max + test d'import malveillant.
+4. ~~**Durcir `importSave`** (M7)~~ ✅ fait v4.10.4 (whitelist de champs, bornes, taille max + tests d'import malveillant).
 5. **Retry télémétrie** (m8) : file d'attente au prochain tick si le ping échoue.
 6. Nettoyage : undeploy `kimi-chat` à distance, rotation d'ID à la réactivation de la télémétrie.
 
