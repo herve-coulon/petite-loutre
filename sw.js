@@ -68,6 +68,7 @@ const PRECACHE = [
   './src/garden.js',
   './src/weather.js',
   './src/creatures.js',
+  './src/heron-controller.js',
   './src/bestiary.js',
   './src/sky.js',
   './src/theme-color.js',

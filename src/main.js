@@ -2,9 +2,10 @@
 import {
   SEC, MIN, clamp, TREAT_CD, DIVE_MS, GRUMPY_MS, WAKE_OK_ENERGY, GEM_TREAT, GEM_HEAL,
   WARM_BOOST, WARM_CD, SHAKE_BOOST, SHAKE_CD, SHAKE_G,
-  AWAY_CARE_NEEDED, AWAY_CARE_CD, SEASON_FX, UNLOCK_LEVEL, GAME_VERSION, STAGES, SAVE_KEY
+  SEASON_FX, UNLOCK_LEVEL, GAME_VERSION, STAGES, SAVE_KEY
 } from './constants.js';
 import { setupStreak, checkStreak } from './streak-controller.js';
+import { setupHeron, actCare } from './heron-controller.js';
 import { greeting } from './mood.js';
 import * as push from './push.js';
 import { canSendTelemetry, sendTelemetry, newTelemetryId } from './telemetry.js';
@@ -2211,38 +2212,9 @@ function quest(key, n = 1) {
   checkUnlocks();
 }
 
-/* ---------------- Chez le héron : le rituel du retour ---------------- */
-function actCare() {
-  if (!s || !s.away || s.gameOver) return;
-  const t = now();
-  if (t < (s.awayNextCare || 0)) {
-    ui.log('Le héron veille sur elle… reviens dans ' + ui.fmtDur(s.awayNextCare - t) + '.');
-    return;
-  }
-  press();
-  s.awayCare = (s.awayCare || 0) + 1;
-  s.awayNextCare = t + AWAY_CARE_CD;
-  R.burst('sparkle', 8, s.stage);
-  if (s.awayCare >= AWAY_CARE_NEEDED) {
-    // retrouvailles ! elle rentre — un peu vexée quand même
-    s.away = false;
-    s.awayAt = 0; s.awayCare = 0; s.awayNextCare = 0;
-    s.health = 45; s.hunger = 55; s.clean = 70; s.energy = 60;
-    s.grumpyUntil = t + GRUMPY_MS;
-    R.burst('confetti', 30, s.stage);
-    R.squash();
-    sfx.hatch(); vibrate([20, 40, 20]);
-    gainXp(XP.reunion);
-    ui.toast('🦦 ' + (s.name || 'Elle') + ' est rentrée !');
-    ui.log(s.name + ' est rentrée du héron… encore un peu vexée. Un câlin s\'impose.');
-  } else {
-    sfx.heal();
-    ui.log('Tu portes un poisson frais chez le héron… ' + s.name + ' hésite encore. (' + s.awayCare + '/' + AWAY_CARE_NEEDED + ')');
-  }
-  persist();
-  ui.updateHUD(s, mg, rec);
-  careBond('care'); // ne compte qu'aux retrouvailles (garde-fou sur s.away)
-}
+/* ---------------- Chez le héron : le rituel du retour — extrait dans heron-controller.js (audit M5) ---------------- */
+// actCare est importé de heron-controller.js ; le contexte (état, effets, press,
+// careBond, gainXp, persist) est injecté au boot via setupHeron.
 
 /* ---------------- Série de jours (streak) — extrait dans streak-controller.js (audit M5) ---------------- */
 // checkStreak est importé de streak-controller.js ; le contexte (records, persist,
@@ -2561,6 +2533,17 @@ function boot() {
     persistRec: () => persistRec(),
     gainXp: (n) => gainXp(n),
     checkUnlocks: () => checkUnlocks()
+  });
+  setupHeron({
+    getState: () => s,
+    getRecords: () => rec,
+    getMinigame: () => mg,
+    press: () => press(),
+    burst: (kind, n, stage) => R.burst(kind, n, stage),
+    squash: () => R.squash(),
+    gainXp: (n) => gainXp(n),
+    persist: () => persist(),
+    careBond: (key) => careBond(key)
   });
   consumeBootAction(); // raccourci PWA « Nourrir » (manifest) : ?action=feed
 
