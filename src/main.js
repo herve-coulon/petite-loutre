@@ -6,6 +6,7 @@ import {
 } from './constants.js';
 import { setupStreak, checkStreak } from './streak-controller.js';
 import { setupHeron, actCare } from './heron-controller.js';
+import { setupTreasure, tryDrop } from './treasure-controller.js';
 import { greeting } from './mood.js';
 import * as push from './push.js';
 import { canSendTelemetry, sendTelemetry, newTelemetryId } from './telemetry.js';
@@ -54,7 +55,7 @@ import {
 import { nextBeat, markSeen, coachStep } from './story.js';
 import { seasonFor, seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 import { weatherFor, sicknessBonus } from './weather.js';
-import { ITEMS, RARITIES, itemById, rollDrop, milestoneItem, describeBonus, cosmeticPrice, treasurePrice } from './items.js';
+import { ITEMS, RARITIES, itemById, milestoneItem, describeBonus, cosmeticPrice, treasurePrice } from './items.js';
 import { pickTrait, traitById, isFavorite, favoriteLine, bondGain, bondLevel } from './personality.js';
 import { makeAncestor, inheritTrait, isRealOtter } from './lineage.js';
 import { endOfLife, isElder } from './lifecycle.js';
@@ -2158,29 +2159,9 @@ function gainXp(n) {
   persistRec();
 }
 
-/* ---------------- Trésors : drops dans les activités ---------------- */
-/** Tente un drop aléatoire (chance boostée par le trésor équipé + le contexte). */
-function tryDrop(boost = 1) {
-  if (!s || s.gameOver || s.stage === 'egg') return;
-  const id = rollDrop(Math.random, (equipBonus(s).luck || 1) * boost);
-  if (!id) return;
-  const it = itemById(id);
-  if (rec.items.includes(id)) { // déjà possédé -> le doublon part à l'atelier (É5)
-    rec.dupes = rec.dupes || {};
-    rec.dupes[it.rarity] = (rec.dupes[it.rarity] || 0) + 1;
-    persistRec();
-    ui.toast('✨ ' + it.emoji + ' doublon ' + it.name + ' → atelier 🛠️');
-    gainXp(10);
-    return;
-  }
-  rec.items.push(id);
-  persistRec();
-  const rar = RARITIES[it.rarity];
-  ui.toast(it.emoji + ' ' + rar.label + ' : ' + it.name + ' !');
-  ui.log('🎁 Trésor ' + rar.label.toLowerCase() + ' déniché : ' + it.emoji + ' ' + it.name + ' ! Équipe-le dans 🎩.');
-  if (!s.gameOver && s.stage !== 'egg') R.burst('confetti', 24, s.stage);
-  sfx.levelup(); vibrate([20, 40, 20]);
-}
+/* ---------------- Trésors : drops dans les activités — extrait dans treasure-controller.js (audit M5) ---------------- */
+// tryDrop est importé de treasure-controller.js ; le contexte (état, records,
+// persist, gainXp, burst) est injecté au boot via setupTreasure.
 
 /** Progression de quête + récompense immédiate si terminée. */
 // Bonus de variété (v4.7) : la 1re fois qu'on fait chaque activité DANS LA JOURNÉE,
@@ -2544,6 +2525,13 @@ function boot() {
     gainXp: (n) => gainXp(n),
     persist: () => persist(),
     careBond: (key) => careBond(key)
+  });
+  setupTreasure({
+    getState: () => s,
+    getRecords: () => rec,
+    persistRec: () => persistRec(),
+    gainXp: (n) => gainXp(n),
+    burst: (kind, n, stage) => R.burst(kind, n, stage)
   });
   consumeBootAction(); // raccourci PWA « Nourrir » (manifest) : ?action=feed
 

@@ -34,6 +34,7 @@ const PRECACHE = [
   './src/story.js',
   './src/seasons.js',
   './src/items.js',
+  './src/treasure-controller.js',
   './src/personality.js',
   './src/gang.js',
   './src/tilemap.js',
