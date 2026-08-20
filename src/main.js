@@ -8,6 +8,7 @@ import { setupStreak, checkStreak } from './streak-controller.js';
 import { setupHeron, actCare } from './heron-controller.js';
 import { setupTreasure, tryDrop } from './treasure-controller.js';
 import { setupSlots, openSlots } from './slots-controller.js';
+import { setupMarche, openBarter, openWorkshop, openMarche, closeWorkshop } from './marche-controller.js';
 import { greeting } from './mood.js';
 import * as push from './push.js';
 import { canSendTelemetry, sendTelemetry, newTelemetryId } from './telemetry.js';
@@ -28,7 +29,7 @@ import {
 import { slotKey, clampSlot } from './slots.js';
 import { stepSim, simulateOffline, ageMs } from './sim.js';
 import { newGame, tickGame, clickGame, WATER_Y } from './minigame.js';
-import { recruitFishCost, dailyBarter, canCraft, craftChoices, nextTier, TIERS, MEAL_HUNGER, CRAFT_NEED } from './economy.js';
+import { recruitFishCost, MEAL_HUNGER } from './economy.js';
 import { newSlide, tickSlide, setSlideLane, laneAt, DEGATS_EJECTION } from './toboggan.js';
 import { newGame as newGarden, tickGame as tickGarden, waterAt, harvestAt } from './garden.js';
 import { spawnCreatures, tickCreatures, checkAttack } from './creatures.js';
@@ -56,7 +57,7 @@ import {
 import { nextBeat, markSeen, coachStep } from './story.js';
 import { seasonFor, seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 import { weatherFor, sicknessBonus } from './weather.js';
-import { ITEMS, RARITIES, itemById, milestoneItem, describeBonus, cosmeticPrice, treasurePrice } from './items.js';
+import { RARITIES, itemById, milestoneItem, describeBonus, cosmeticPrice, treasurePrice } from './items.js';
 import { pickTrait, traitById, isFavorite, favoriteLine, bondGain, bondLevel } from './personality.js';
 import { makeAncestor, inheritTrait, isRealOtter } from './lineage.js';
 import { endOfLife, isElder } from './lifecycle.js';
@@ -1622,45 +1623,9 @@ function wakeActionbar() {
   actionbarTimer = setTimeout(() => ab.classList.add('dim'), 5000);
 }
 
-/* ---------------- Troc quotidien (É5) : coquillages ↔ poissons/gemmes ---------------- */
-const giveKindOf = (o) => (o.give.shells != null ? 'shells' : 'fish');
-function barterData() {
-  if (rec.barterDay !== dayKey()) { rec.barterDay = dayKey(); rec.barterUsed = []; }
-  const bal = { shells: rec.shells || 0, fish: rec.fish || 0, gems: rec.gems || 0 };
-  return {
-    balances: bal,
-    offers: dailyBarter(dayKey()).map(o => {
-      const gk = giveKindOf(o), gn = o.give[gk];
-      const afford = (bal[gk] || 0) >= gn;
-      return {
-        id: o.id, giveKind: gk, giveN: gn,
-        getKind: o.get.fish != null ? 'fish' : 'gems',
-        getN: o.get.fish != null ? o.get.fish : o.get.gems,
-        used: (rec.barterUsed || []).includes(o.id),
-        afford, rest: (bal[gk] || 0) - gn        // solde APRÈS achat (négatif = manque)
-      };
-    })
-  };
-}
-const barterHandlers = {
-  trade: (id) => {
-    if (rec.barterDay !== dayKey()) { rec.barterDay = dayKey(); rec.barterUsed = []; }
-    if ((rec.barterUsed || []).includes(id)) return;
-    const offer = dailyBarter(dayKey()).find(o => o.id === id);
-    if (!offer) return;
-    const gk = giveKindOf(offer), gn = offer.give[gk];
-    if ((rec[gk] || 0) < gn) { ui.toast((gk === 'shells' ? '🐚' : '🐟') + ' Pas assez pour cet échange.'); sfx.sad(); vibrate(20); return; }
-    rec[gk] -= gn;
-    if (offer.get.fish != null) rec.fish = (rec.fish || 0) + offer.get.fish;
-    else if (offer.get.gems != null) rec.gems = (rec.gems || 0) + offer.get.gems;
-    else if (offer.get.shells != null) rec.shells = (rec.shells || 0) + offer.get.shells;
-    (rec.barterUsed = rec.barterUsed || []).push(id);
-    persistRec(); sfx.happy(); vibrate(10);
-    ui.updateHUD(s, mg, rec); refreshBarter();
-  }
-};
-function refreshBarter() { ui.renderBarter(barterData(), barterHandlers); }
-function openBarter() { if (!rec) return; sfx.press(); refreshBarter(); ui.showOverlay('ovl-barter'); }
+/* ---------------- Troc / Atelier / Marché — extraits dans marche-controller.js (audit M5) ---------------- */
+// openBarter / openWorkshop / openMarche sont importés de marche-controller.js ;
+// le contexte (état, records, persist, openWardrobe, openGang) est injecté via setupMarche.
 
 // Les défis du jour (v4.5) : détail sur demande, via la pastille 🎯.
 function openQuests() { if (!s || !s.qDaily) return; sfx.press(); ui.renderQuestList(s, rec); ui.showOverlay('ovl-quests'); }
@@ -1692,72 +1657,7 @@ function deleteSlotKeys(target) {
 /* L'écran de gestion des slots est extrait dans slots-controller.js (audit M5) —
    openSlots y vit ; le cœur ci-dessus (storage, switching, commitSlot) reste ici. */
 
-/* ---------------- Atelier (É5) : 3 doublons → 1 trésor du palier supérieur ---------------- */
-let workshopChoice = null;   // { tier, ids } quand on choisit le trésor à forger
-function workshopData() {
-  return TIERS.slice(0, -1).map(t => ({
-    tier: t,
-    label: RARITIES[t].label,
-    color: RARITIES[t].color,
-    count: (rec.dupes && rec.dupes[t]) || 0,
-    need: CRAFT_NEED,
-    can: canCraft(rec.dupes, t),
-    upLabel: RARITIES[nextTier(t)].label
-  }));
-}
-function itemPoolByTier(preferUnowned) {
-  const pool = {};
-  for (const it of ITEMS) {
-    if (preferUnowned && rec.items.includes(it.id)) continue;
-    (pool[it.rarity] = pool[it.rarity] || []).push(it.id);
-  }
-  return pool;
-}
-const workshopHandlers = {
-  begin: (tier) => {
-    if (!canCraft(rec.dupes, tier)) return;
-    const up = nextTier(tier);
-    let pool = itemPoolByTier(true);
-    if (!(pool[up] || []).length) pool = itemPoolByTier(false);   // tout possédé : on rejoue quand même
-    const ids = craftChoices(tier, pool, dayKey(), (rec.dupes[tier] || 0));
-    if (!ids.length) { ui.toast('Rien à forger pour ce palier.'); return; }
-    workshopChoice = { tier, ids };
-    refreshWorkshop();
-  },
-  pick: (tier, id) => {
-    if (!canCraft(rec.dupes, tier)) { workshopChoice = null; refreshWorkshop(); return; }
-    rec.dupes[tier] = (rec.dupes[tier] || 0) - CRAFT_NEED;
-    const it = itemById(id);
-    if (it && !rec.items.includes(id)) {
-      rec.items.push(id);
-      ui.toast(it.emoji + ' ' + it.name + ' forgé !');
-      ui.log('🛠️ Atelier : 3 doublons ' + RARITIES[tier].label.toLowerCase() + ' fondus en ' + it.emoji + ' ' + it.name + ' (' + RARITIES[it.rarity].label + ') !');
-    } else if (it) {                       // déjà possédé : devient un doublon du palier sup + gemmes
-      rec.dupes[it.rarity] = (rec.dupes[it.rarity] || 0) + 1;
-      rec.gems = (rec.gems || 0) + 3;
-      ui.toast(it.emoji + ' doublon rangé + 3 💎');
-    }
-    workshopChoice = null;
-    persistRec(); sfx.levelup(); vibrate([15, 30, 15]);
-    ui.updateHUD(s, mg, rec); refreshWorkshop();
-  },
-  cancel: () => { workshopChoice = null; refreshWorkshop(); }
-};
-function refreshWorkshop() {
-  let choice = null;
-  if (workshopChoice) {
-    choice = {
-      tier: workshopChoice.tier,
-      upLabel: RARITIES[nextTier(workshopChoice.tier)].label,
-      items: workshopChoice.ids.map(id => {
-        const it = itemById(id);
-        return it ? { id, emoji: it.emoji, name: it.name, label: RARITIES[it.rarity].label } : { id, emoji: '❔', name: id, label: '' };
-      })
-    };
-  }
-  ui.renderWorkshop({ rows: workshopData(), choice }, workshopHandlers);
-}
-function openWorkshop() { if (!rec) return; workshopChoice = null; sfx.press(); ui.hideOverlay('ovl-menu'); refreshWorkshop(); ui.showOverlay('ovl-workshop'); }
+/* ---------------- Atelier (É5) — extrait dans marche-controller.js (audit M5) ---------------- */
 
 /* ---------------- La Crue (É5b) — extrait dans crue-controller.js (audit M5) ---------------- */
 
@@ -2510,6 +2410,14 @@ function boot() {
     switchTo: (target) => { commitSlot(target); reloadApp(); },
     deleteSlot: (target) => deleteSlotKeys(target)
   });
+  setupMarche({
+    getState: () => s,
+    getRecords: () => rec,
+    getMinigame: () => mg,
+    persistRec: () => persistRec(),
+    openWardrobe: (tab) => openWardrobe(tab),
+    openGang: () => openGang()
+  });
   consumeBootAction(); // raccourci PWA « Nourrir » (manifest) : ?action=feed
 
   $('btn-start').addEventListener('click', () => { sfx.press(); vibrate(15); enableMotion(); startNew(); });
@@ -2814,22 +2722,7 @@ function boot() {
   }
   $('btn-hats-close').addEventListener('click', () => ui.hideOverlay('ovl-hats'));
 
-  // ── Le Marché (v3.96) : le HUB économique. Il ne réinvente rien — il RASSEMBLE
-  //    et rend visible ce qui existait, éparpillé (garde-robe, troc, atelier,
-  //    recrutement). Surtout, il rend le troc atteignable sans marcher jusqu'au lac.
-  const marcheHandlers = {
-    cosmetics: () => { ui.hideOverlay('ovl-marche'); openWardrobe('hats'); },
-    troc: () => { ui.hideOverlay('ovl-marche'); openBarter(); },
-    atelier: () => { ui.hideOverlay('ovl-marche'); openWorkshop(); },
-    recrutement: () => { ui.hideOverlay('ovl-marche'); openGang(); }
-  };
-  const openMarche = (focus) => {
-    if (!rec) return;
-    sfx.press(); ui.hideOverlay('ovl-menu');
-    ui.renderMarche({ fish: rec.fish, shells: rec.shells, gems: rec.gems, focus: focus || null }, marcheHandlers);
-    ui.showOverlay('ovl-marche');
-    if (!rec.marcheSeen) { rec.marcheSeen = true; persistRec(); ui.toast('🪙 Voici ta bourse — dépense 🐟 🐚 💎 ici !'); }
-  };
+  // Le Marché (v3.96) : le HUB économique, extrait dans marche-controller.js.
   $('pt-marche').addEventListener('click', () => openMarche());
   // La bourse du HUD est TAPPABLE : 🐟 / 🐚 / 💎 ouvrent le Marché (stats → argent).
   [['gems', 'gem'], ['pill-fish', 'fish'], ['pill-shell', 'shell']].forEach(([id, key]) => {
@@ -3057,7 +2950,7 @@ function boot() {
     'ovl-menu': () => ui.hideOverlay('ovl-menu'),
     'ovl-gang': () => ui.hideOverlay('ovl-gang'),
     'ovl-barter': () => ui.hideOverlay('ovl-barter'),
-    'ovl-workshop': () => { workshopChoice = null; ui.hideOverlay('ovl-workshop'); },
+    'ovl-workshop': () => closeWorkshop(),
     'ovl-crue': () => ui.hideOverlay('ovl-crue'),
     'ovl-marche': () => ui.hideOverlay('ovl-marche'),
     'ovl-carnet': () => ui.hideOverlay('ovl-carnet'),

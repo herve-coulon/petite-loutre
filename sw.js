@@ -60,6 +60,7 @@ const PRECACHE = [
   './src/dojo.js',
   './src/dojo-controller.js',
   './src/economy.js',
+  './src/marche-controller.js',
   './src/crue.js',
   './src/crue-controller.js',
   './src/push.js',
