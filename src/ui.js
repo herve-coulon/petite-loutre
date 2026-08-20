@@ -1188,6 +1188,17 @@ let _duelAct = null;
 /** Enregistre le callback de sélection de technique (appelé par main.js). */
 export function setDuelAct(fn) { _duelAct = fn; }
 
+let _lastGridSig = null;
+/** Signature de la grille de techniques (phase, combo, PP restants). La grille
+    n'est reconstruite que quand cette signature change : avant ce fix, elle
+    était rebâtie à CHAQUE frame (innerHTML='' + N boutons à 60 fps) pendant
+    tout le combat — inutile et coûteux en layout/GC sur mobile bas de gamme. */
+function gridSignature(b) {
+  if (b.over) return 'over:' + b.winner;
+  if (b.phase !== 'choose') return 'busy';
+  return 'choose:' + b.combo + ':' + Object.keys(b.pp).map(id => id + ':' + b.pp[id]).join(',');
+}
+
 /**
  * Rend l'arène du duel tour-par-tour. Appelée à chaque changement d'état.
  */
@@ -1215,35 +1226,36 @@ export function updateBattleUI(b, now) {
   log.textContent = fb.text || '';
   log.className = 'small bt-feedback ' + (fb.kind || '');
 
-  // Grille de techniques
+  // Grille de techniques — reconstruite uniquement quand son contenu change.
   const grid = $('bt-techgrid');
-  grid.innerHTML = '';
-  if (!b.over && b.phase === 'choose') {
-    const atkIds = playerTechniques({});
-    // On utilise les IDs des techniques du combat (pas du rec, car les PP sont dans b.pp)
-    const allTechIds = Object.keys(b.pp);
-    for (const id of allTechIds) {
-      const t = techniqueById(id);
-      if (!t) continue;
-      const remaining = b.pp[id];
-      const btn = document.createElement('button');
-      btn.className = 'bt-tech-btn' + (remaining <= 0 ? ' empty' : '');
-      const minOk = !t.minCombo || b.combo >= t.minCombo;
-      btn.disabled = remaining <= 0 || !minOk;
-      btn.innerHTML = '<span class="bt-tech-icon">' + t.icon + '</span>' +
-        '<span class="bt-tech-name">' + t.name + '</span>' +
-        '<span class="bt-tech-pp">' + (t.cost > 0 ? remaining + ' PP' : '∞') + '</span>';
-      if (t.minCombo && !minOk) {
-        btn.innerHTML += '<span class="bt-tech-req">combo≥' + t.minCombo + '</span>';
-      }
-      btn.addEventListener('click', () => { if (_duelAct) _duelAct(id); });
-      grid.appendChild(btn);
-    }
-  } else if (b.over) {
+  const sig = gridSignature(b);
+  if (sig !== _lastGridSig) {
+    _lastGridSig = sig;
     grid.innerHTML = '';
-  } else {
-    // Phase intent/resolve : afficher "Tour en cours..."
-    grid.innerHTML = '<p class="small" style="text-align:center;opacity:.6">Tour en cours…</p>';
+    if (!b.over && b.phase === 'choose') {
+      // On utilise les IDs des techniques du combat (pas du rec, car les PP sont dans b.pp)
+      const allTechIds = Object.keys(b.pp);
+      for (const id of allTechIds) {
+        const t = techniqueById(id);
+        if (!t) continue;
+        const remaining = b.pp[id];
+        const btn = document.createElement('button');
+        btn.className = 'bt-tech-btn' + (remaining <= 0 ? ' empty' : '');
+        const minOk = !t.minCombo || b.combo >= t.minCombo;
+        btn.disabled = remaining <= 0 || !minOk;
+        btn.innerHTML = '<span class="bt-tech-icon">' + t.icon + '</span>' +
+          '<span class="bt-tech-name">' + t.name + '</span>' +
+          '<span class="bt-tech-pp">' + (t.cost > 0 ? remaining + ' PP' : '∞') + '</span>';
+        if (t.minCombo && !minOk) {
+          btn.innerHTML += '<span class="bt-tech-req">combo≥' + t.minCombo + '</span>';
+        }
+        btn.addEventListener('click', () => { if (_duelAct) _duelAct(id); });
+        grid.appendChild(btn);
+      }
+    } else if (!b.over) {
+      // Phase intent/resolve : afficher "Tour en cours..."
+      grid.innerHTML = '<p class="small" style="text-align:center;opacity:.6">Tour en cours…</p>';
+    }
   }
 
   setTxt('bt-tip', b.over
