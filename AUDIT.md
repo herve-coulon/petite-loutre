@@ -1,7 +1,7 @@
 # 🦦 AUDIT — Ma Petite Loutre
 
 > **Document vivant.** Audit initial : 20/08/2026 (commit `a341189`, v4.10.0).
-> Dernière mise à jour : 20/08/2026 (commit `4d381b4`, **v4.10.3**).
+> Dernière mise à jour : 20/08/2026 (commit `a6b5028`, v4.10.3).
 > Dépôt : `herve-coulon/petite-loutre` — PWA tamagotchi pixel art, JS vanilla (zéro dépendance runtime), déployée sur GitHub Pages.
 
 ---
@@ -47,7 +47,7 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 | # | Problème | Localisation | Statut |
 |---|---|---|---|
 | M1 | **Télémétrie morte** : ID jamais généré (code mort — génération dans le bloc gardé par `canSendTelemetry` qui l'exige) | `telemetry.js:46`, `main.js:2603` | ✅ **Corrigé v4.10.1** (ID généré hors du garde) + test d'intégration |
-| M2 | **Fonction Supabase `push` non versionnée** dans le dépôt (seul `telemetry` existe) — non reproductible, non auditable | `src/push.js:6`, `supabase/functions/` | ⏳ **À faire** (voir §6) |
+| M2 | **Fonction Supabase `push` non versionnée** dans le dépôt (seul `telemetry` existait) — non reproductible, non auditable | `src/push.js:6`, `supabase/functions/` | ✅ **Corrigé** (fonction déployée téléchargée et versionnée dans `supabase/functions/push/` + migration des tables + `config.toml` + doc README) |
 | M3 | **Endpoint télémétrie public** sans rate limiting ni validation (id/day seulement truthy, types non vérifiés) | `supabase/functions/telemetry/index.ts` | ⏳ **À faire** |
 | M4 | **Politique RLS d'insertion ouverte à anon** (`with check (true)`) — insertion REST directe sans passer par la fonction | `telemetry_daily.sql:20-22` | ⏳ **À faire** |
 | M5 | **God files** : `main.js` 3 392 lignes / 142 fonctions / 46 imports ; `render.js` `makeRenderer` 2 216 lignes | `src/main.js`, `src/render.js` | ⏳ **À faire** (chantier multi-releases, voir §6) |
@@ -89,6 +89,8 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 | | `c81f6ab` | Bump v4.10.2 |
 | **v4.10.3** | `8856fdc` | Refactor : module `util.js` (esc/clamp01/fmtDur — 6 implémentations dupliquées → 1 source), garde-fous globaux (`error`/`unhandledrejection` + sauvegarde + toast), garde-fou canvas, `clampN` → `clamp`, tests unitaires util |
 | | `4d381b4` | Bump v4.10.3 |
+| **infra** | `3721b85` | Docs : `AUDIT.md` créé (document vivant) |
+| | `a6b5028` | **Backend push versionné** : fonction déployée téléchargée (`supabase/functions/push/index.ts`), migration `push_subs`/`push_config`, `[functions.push]` dans `config.toml`, procédure de déploiement + cron documentée dans le README |
 
 **Nouveaux tests ajoutés** (5) : raccourci PWA « Nourrir » (smoke), télémétrie — ID généré (smoke), `esc` / `clamp01` / `fmtDur` (`test/util.test.js`).
 
@@ -99,12 +101,12 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 ## 6. Dette restante — prochaines étapes recommandées
 
 ### 🔒 Backend Supabase (prioritaire)
-1. **Versionner `supabase/functions/push/index.ts`** + le cron (M2) — le backend push n'existe que sur le projet distant.
+1. ~~**Versionner `supabase/functions/push/index.ts`** + le cron (M2)~~ ✅ fait — restent : déployer la migration (`supabase db push`) et re-créer le cron 10 min dans le Dashboard si un projet était recréé de zéro (procédure dans le README).
 2. **Durcir l'edge function `telemetry`** (M3) : validation stricte (`id` = 16 hex, `day` = YYYY-MM-DD borné, entiers ≥ 0, corps ≤ 4 Ko), rate limiting, erreurs génériques, CORS restreint.
 3. **`revoke insert, update, delete … from anon`** sur `telemetry_daily` (M4) — garder le `select using(false)`.
 4. **Durcir `importSave`** (M7) : whitelist de champs, bornes, taille max + test d'import malveillant.
 5. **Retry télémétrie** (m8) : file d'attente au prochain tick si le ping échoue.
-6. Nettoyage : undeploy `kimi-chat` à distance, commentaire `config.toml` obsolète, rotation d'ID à la réactivation de la télémétrie.
+6. Nettoyage : undeploy `kimi-chat` à distance, commentaire `config.toml` obsolète (fait), rotation d'ID à la réactivation de la télémétrie.
 
 ### 🏗️ Architecture (chantiers multi-releases)
 7. **Découper `main.js`** par domaines (Monde, Combat, Marché, Slots, Boot → modules `*Controller`) — les 20 bannières de sections sont le plan ; chaque tranche validée par les tests + snapshots visuels.
