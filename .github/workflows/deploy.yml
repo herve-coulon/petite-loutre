@@ -53,6 +53,33 @@ jobs:
             }
             console.log(fichiers.length + " fichiers précachés, tous présents.");
           '
+      - name: Vérifier que tout module chargé est dans le PRECACHE (sens inverse)
+        run: |
+          # Sens inverse : un module src/ importé (ou script de index.html) mais
+          # OUBLIÉ au PRECACHE casse le jeu hors-ligne après mise à jour. On parse
+          # les imports de tous les modules src/ + les scripts de index.html.
+          node -e '
+            const fs = require("fs"), path = require("path");
+            const sw = fs.readFileSync("sw.js", "utf8");
+            const bloc = sw.slice(sw.indexOf("const PRECACHE"), sw.indexOf("];", sw.indexOf("const PRECACHE")));
+            const precaches = new Set([...bloc.matchAll(/["\x27]\.\/([^"\x27]+)["\x27]/g)].map(m => m[1]));
+            const besoins = new Set();
+            const html = fs.readFileSync("index.html", "utf8");
+            for (const m of html.matchAll(/<script[^>]*src="\.\/([^"]+)"/g)) besoins.add(m[1]);
+            const visit = (f) => {
+              if (!fs.existsSync(f) || besoins.has(f)) return;
+              besoins.add(f);
+              const txt = fs.readFileSync(f, "utf8");
+              for (const m of txt.matchAll(/from\s*["\x27]\.\/([^"\x27]+)["\x27]/g)) visit(m[1]);
+            };
+            for (const f of fs.readdirSync("src")) if (f.endsWith(".js")) visit("src/" + f);
+            const manquants = [...besoins].filter(f => !precaches.has(f));
+            if (manquants.length) {
+              console.error("Chargés mais ABSENTS du PRECACHE :\n  " + manquants.join("\n  "));
+              process.exit(1);
+            }
+            console.log(besoins.size + " modules chargés, tous précachés.");
+          '
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v4
         with:

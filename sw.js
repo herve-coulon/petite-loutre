@@ -1,6 +1,6 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v4.10.7';
+const VERSION = 'v4.10.8';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [
@@ -57,6 +57,7 @@ const PRECACHE = [
   './src/dojo.js',
   './src/economy.js',
   './src/crue.js',
+  './src/crue-controller.js',
   './src/push.js',
   './src/photocard.js',
   './src/minigame.js',
@@ -72,6 +73,7 @@ const PRECACHE = [
   './src/music.js',
   './src/ambient.js',
   './src/ui.js',
+  './src/util.js',
   './src/pwa.js',
   './src/telemetry.js',
   './src/dialogue.js',
