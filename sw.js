@@ -27,6 +27,7 @@ const PRECACHE = [
   './src/quests.js',
   './src/level.js',
   './src/streak.js',
+  './src/streak-controller.js',
   './src/share.js',
   './src/events.js',
   './src/mood.js',

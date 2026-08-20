@@ -4,7 +4,7 @@ import {
   WARM_BOOST, WARM_CD, SHAKE_BOOST, SHAKE_CD, SHAKE_G,
   AWAY_CARE_NEEDED, AWAY_CARE_CD, SEASON_FX, UNLOCK_LEVEL, GAME_VERSION, STAGES, SAVE_KEY
 } from './constants.js';
-import { touchStreak } from './streak.js';
+import { setupStreak, checkStreak } from './streak-controller.js';
 import { greeting } from './mood.js';
 import * as push from './push.js';
 import { canSendTelemetry, sendTelemetry, newTelemetryId } from './telemetry.js';
@@ -2244,20 +2244,9 @@ function actCare() {
   careBond('care'); // ne compte qu'aux retrouvailles (garde-fou sur s.away)
 }
 
-/* ---------------- Série de jours (streak) ---------------- */
-function checkStreak() {
-  if (!rec) return;
-  const st = touchStreak(rec, now());
-  if (!st) return;
-  persistRec();
-  ui.renderLevel(rec);
-  if (st.count >= 2) ui.toast('🔥 ' + st.count + ' jours d\'affilée !');
-  if (st.xp) {
-    gainXp(st.xp);
-    ui.log('Palier de série : ' + st.count + ' jours d\'affilée ! Récompense : +' + st.xp + ' XP 🔥');
-    checkUnlocks(); // pelage Braise, succès Fidèle…
-  }
-}
+/* ---------------- Série de jours (streak) — extrait dans streak-controller.js (audit M5) ---------------- */
+// checkStreak est importé de streak-controller.js ; le contexte (records, persist,
+// gainXp, checkUnlocks) est injecté au boot via setupStreak.
 
 /* ---------------- Carte photo / partage — extrait dans share-controller.js (audit M5) ---------------- */
 // openPhoto / sharePhoto / savePhoto / closePhoto / shareDayResult sont importés
@@ -2566,6 +2555,12 @@ function boot() {
   setupShare({
     getState: () => s,
     getRecords: () => rec
+  });
+  setupStreak({
+    getRecords: () => rec,
+    persistRec: () => persistRec(),
+    gainXp: (n) => gainXp(n),
+    checkUnlocks: () => checkUnlocks()
   });
   consumeBootAction(); // raccourci PWA « Nourrir » (manifest) : ?action=feed
 
