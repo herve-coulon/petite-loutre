@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { H, MIN, HATCH_MS, CHILD_AT, ADULT_AT, SAVE_KEY } from '../src/constants.js';
+import { H, MIN, HATCH_MS, CHILD_AT, ADULT_AT, SAVE_KEY, AWAY_GRACE } from '../src/constants.js';
 import { newState, saveState, loadState, clearSave } from '../src/state.js';
 import { stepSim, simulateOffline, stageFor, ageMs } from '../src/sim.js';
 import { newGame, tickGame, clickGame, GAME_DURATION, TELL_MS } from '../src/minigame.js';
@@ -132,15 +132,33 @@ test('maladie : déclenchée quand la malchance frappe', () => {
 
 /* ---------- santé, mort, croissance ---------- */
 
-test('négligence totale : la santé chute puis départ chez le héron (v2.7)', () => {
+test('négligence totale : détresse d\'abord (grâce), PAS de départ immédiat (v4.10)', () => {
   const s = babyState({ hunger: 0, clean: 0, sick: true, health: 5 });
   const ev = stepSim(s, 1 * H, { simNow: T0 + H, rnd: noLuck });
-  assert.equal(s.away, true, 'partie bouder chez le héron — plus de mort');
+  // la santé tombe à 0 mais la loutre TIENT — elle ne file pas aussitôt
+  assert.equal(s.away, false, 'pas de départ immédiat : elle t\'attend');
+  assert.equal(s.health, 0);
+  assert.equal(s.criticalAt, T0 + H, 'détresse horodatée');
+  assert.ok(ev.some(e => e.type === 'critical'));
+  assert.ok(!ev.some(e => e.type === 'away'));
+});
+
+test('négligence prolongée : après la grâce, départ chez le héron (v4.10)', () => {
+  const s = babyState({ hunger: 0, clean: 0, sick: true, health: 0, criticalAt: T0 });
+  const ev = stepSim(s, AWAY_GRACE + H, { simNow: T0 + AWAY_GRACE + H, rnd: noLuck });
+  assert.equal(s.away, true, 'la grâce écoulée, elle part bouder chez le héron');
   assert.equal(s.gameOver, false);
-  assert.equal(s.awayAt, T0 + H);
-  assert.equal(s.awayCare, 0, 'rituel de retour à zéro');
   assert.equal(s.sick, false, 'le héron la soigne');
   assert.ok(ev.some(e => e.type === 'away'));
+});
+
+test('sauvée à temps : nourrie pendant la grâce, la détresse se lève (v4.10)', () => {
+  const s = babyState({ hunger: 80, clean: 80, sick: false, health: 0, criticalAt: T0 });
+  const ev = stepSim(s, 1 * H, { simNow: T0 + H, rnd: noLuck });
+  assert.equal(s.away, false);
+  assert.ok(s.health > 0, 'la santé remonte');
+  assert.equal(s.criticalAt, 0, 'détresse levée');
+  assert.ok(ev.some(e => e.type === 'rescued'));
 });
 
 test('chez le héron : plus aucune décroissance, elle est en sécurité', () => {

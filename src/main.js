@@ -121,7 +121,17 @@ function applyEvents(events, offline = false) {
       ui.log((s.name || 'Ta loutre') + ' n\'allait pas bien du tout… elle est partie bouder chez le héron. Porte-lui des poissons pour la ramener ! 🪶');
       continue;
     }
+    if (ev.type === 'critical') {
+      // Détresse : santé à zéro, mais elle T'ATTEND (grâce). On alerte, même au retour.
+      if (!offline) { if (sfx.over) sfx.over(); ui.shake(); vibrate([30, 50, 30]); }
+      ui.log('💔 ' + (s.name || 'Ta loutre') + ' est à bout de forces… Occupe-toi vite d\'elle (nourris-la, soigne-la 💊) avant qu\'elle ne parte chez le héron !');
+      continue;
+    }
     if (offline) continue; // le reste est résumé au retour
+    if (ev.type === 'rescued') {
+      ui.log('💚 Ouf… ' + (s.name || 'Elle') + ' reprend des forces. Tu l\'as sauvée à temps. 🫂');
+      continue;
+    }
     const msg = ui.liveEventMessage(ev, s);
     if (msg) ui.log(msg);
     if (ev.type === 'evolve') {

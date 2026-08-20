@@ -1,6 +1,6 @@
 // Moteur de simulation PUR : aucune dépendance DOM, horloge et hasard injectés.
 // Toute la vie de la loutre passe par ici — en direct comme en rattrapage hors-ligne.
-import { H, MIN, HATCH_MS, CHILD_AT, ADULT_AT, MAX_OFFLINE, R, RS, SEASON_FX, clamp } from './constants.js';
+import { H, MIN, HATCH_MS, CHILD_AT, ADULT_AT, MAX_OFFLINE, R, RS, SEASON_FX, AWAY_GRACE, clamp } from './constants.js';
 import { seasonFor } from './seasons.js';
 import { equipBonus } from './skins.js';
 
@@ -31,6 +31,7 @@ function goAway(s, simNow, events) {
   s.awayAt = simNow;
   s.awayCare = 0;
   s.awayNextCare = 0;
+  s.criticalAt = 0;
   s.sleeping = false;
   s.sick = false; // le héron la soigne — c'est le retour qui se mérite
   events.push({ type: 'away' });
@@ -108,7 +109,16 @@ export function stepSim(s, dt, opts = {}) {
   if (dh === 0 && !s.sick && s.hunger > 25 && s.clean > 25) dh = +6;
   s.health = clamp(s.health + dh * h, 0, 100);
 
-  if (s.health <= 0) { goAway(s, simNow, events); return events; }
+  // Détresse & grâce (v4.10) : à bout de forces, la loutre ne file PAS aussitôt
+  // chez le héron — elle tient AWAY_GRACE en t'attendant. De quoi la sauver au
+  // réveil : on ne perd pas sa loutre pour une simple nuit d'absence.
+  if (s.health <= 0) {
+    if (!s.criticalAt) { s.criticalAt = simNow; events.push({ type: 'critical' }); }
+    else if (simNow - s.criticalAt >= AWAY_GRACE) { goAway(s, simNow, events); return events; }
+  } else if (s.criticalAt) {
+    s.criticalAt = 0; // sauvée à temps — la détresse est passée
+    events.push({ type: 'rescued' });
+  }
 
   // Croissance
   const st = stageFor(ageMs(s, simNow));

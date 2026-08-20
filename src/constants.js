@@ -1,7 +1,7 @@
 // Constantes de jeu — ajuster ici pour équilibrer.
 // ⚠️ GAME_VERSION : à incrémenter avec package.json et sw.js à chaque release
 // (affichée dans ⚙️ Réglages pour vérifier ce que le téléphone exécute).
-export const GAME_VERSION = '4.9.0';
+export const GAME_VERSION = '4.10.0';
 export const SEC = 1000;
 export const MIN = 60 * SEC;
 export const H = 60 * MIN;
@@ -52,6 +52,10 @@ export const UNLOCK_LEVEL = { treat: 2, slide: 3, dive: 6, garden: 4, battle: 10
 // Chez le héron (v2.7) : plus de mort — un rituel de retour en 3 soins espacés
 export const AWAY_CARE_NEEDED = 3;
 export const AWAY_CARE_CD = 3 * H;
+// Détresse (v4.10) : à bout de forces (santé 0), la loutre ne file PAS aussitôt
+// chez le héron — elle tient et t'attend ce délai. On ne perd pas sa loutre pour
+// une simple nuit : au réveil, on peut encore la sauver.
+export const AWAY_GRACE = 12 * H;
 
 // Éclosion active — v2.5 : s'occuper de l'œuf doit VRAIMENT payer
 export const WARM_BOOST = 10 * SEC;       // par réchauffage (bouton ou toucher)

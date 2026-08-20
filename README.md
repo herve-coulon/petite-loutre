@@ -321,6 +321,15 @@ ou d'un canvas plein corps. Overflow hidden pour clipper au cercle.*
 v3.83 : cache API Kimi côté serveur (Supabase Edge Function) pour réutiliser
 les réponses identiques et économiser les crédits token — appels frontend via
 `askKimi()`, clé API protégée côté serveur, TTL réglable et suivi des hits.*
+v4.10.0 : Une nuit ne fait plus perdre sa loutre — la détresse patiente 💔🕊️. Problème signalé :
+on se réveille et la loutre est déjà partie chez le héron. En cause : dès que la santé touchait
+0 (faim à sec + maladie qui s'accumulent la nuit), le départ était IMMÉDIAT. Désormais, à bout de
+forces la loutre entre en DÉTRESSE mais ne file pas aussitôt : elle tient AWAY_GRACE (12 h) en
+t'attendant. De quoi la sauver au réveil — une simple nuit d'absence ne coûte plus la loutre ;
+seule une négligence prolongée (~un jour entier) l'envoie bouder. Un message d'alerte « 💔 à bout
+de forces… » (même au retour hors-ligne) et un « 💚 sauvée à temps » quand on la récupère. La
+grâce s'applique aussi en rattrapage hors-ligne (pas par minute). État `s.criticalAt` + événements
+`critical`/`rescued`. Tests refondus (détresse → grâce → départ ; sauvetage). 424 tests sim.*
 v4.9.0 : Le jardin réinventé — récolte au bon moment 🌸⏱️. Problème : le jardin (taper des fleurs
 / grenouilles / papillons qui apparaissent) rejouait exactement le VERBE de la pêche (viser des
 cibles). Deux jeux débloqués par niveau qui se ressemblaient. Le jardin a désormais un verbe

@@ -47,6 +47,7 @@ export function newState(now = Date.now(), rnd = Math.random) {
     heirOf: null,    // nom de la loutre dont celle-ci descend (null pour la 1re)
     heirTrait: null, // trait hérité à appliquer au baptême (null → tirage libre)
     elderSeen: false, // La vieillesse (v4.2) : l'annonce « aînée » a-t-elle été faite ?
+    criticalAt: 0,   // Détresse (v4.10) : depuis quand la santé est à 0 (grâce avant le héron) ; 0 = va bien
     dayActs: null,   // Bonus de variété (v4.7) : { date, done:[…] } — activités déjà faites aujourd'hui
     bond: 0,         // lien/affinité avec CETTE loutre, grandit avec les soins
     telemetry: true,      // statistiques anonymes (opt-out dans ⚙️)
@@ -76,6 +77,7 @@ function normalizeState(o) {
   if (o.heirOf === undefined) o.heirOf = null;
   if (o.heirTrait === undefined) o.heirTrait = null;
   if (typeof o.elderSeen !== 'boolean') o.elderSeen = false; // v4.2
+  if (typeof o.criticalAt !== 'number') o.criticalAt = 0;    // v4.10 (détresse)
   if (typeof o.livingDialogues !== 'boolean') o.livingDialogues = true;    // v3.95 : local, ON par défaut
   // Bascule UNIQUE : les saves d'avant la version locale (Kimi, réglage à false et
   // inopérant sans clé) passent une fois au nouveau défaut ON. L'utilisateur peut re-couper.

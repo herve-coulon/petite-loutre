@@ -194,7 +194,8 @@ test('HUD : jauges et libellés cohérents', () => {
 });
 
 test('négligence -> chez le héron -> rituel de retour en 3 soins (v2.7)', () => {
-  L.state.health = 1; L.state.hunger = 0; L.state.sick = true;
+  // détresse déjà là depuis longtemps (grâce v4.10 écoulée) → cette fois elle part
+  L.state.health = 0; L.state.hunger = 0; L.state.sick = true; L.state.criticalAt = 1;
   L.step(3600 * 1000);
   assert.equal(L.state.away, true, 'partie chez le héron');
   assert.equal(L.state.gameOver, false, 'plus de mort');
