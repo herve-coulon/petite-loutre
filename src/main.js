@@ -8,7 +8,7 @@ import { touchStreak } from './streak.js';
 import { greeting } from './mood.js';
 import * as push from './push.js';
 import { canSendTelemetry, sendTelemetry, newTelemetryId } from './telemetry.js';
-import { dailyShareText } from './share.js';
+import { setupShare, openPhoto, sharePhoto, savePhoto, closePhoto, shareDayResult } from './share-controller.js';
 import { dailyEvent, butterflyPos } from './events.js';
 import * as music from './music.js';
 import * as ambient from './ambient.js';
@@ -50,7 +50,6 @@ import {
   moveWithCollision, spawnPoint, zoneExit, safeEntry, nearestFree, findPath, zoneGates,
   zoneUnlocked, zoneReq
 } from './tilemap.js';
-import { makeCard, CARD_URL } from './photocard.js';
 import { nextBeat, markSeen, coachStep } from './story.js';
 import { seasonFor, seasonInfo, treatAvailable, TREAT_POS } from './seasons.js';
 import { weatherFor, sicknessBonus } from './weather.js';
@@ -2260,58 +2259,9 @@ function checkStreak() {
   }
 }
 
-/* ---------------- Carte photo partageable ---------------- */
-let cardCv = null; // canvas de la dernière carte générée
-
-function openPhoto() {
-  if (!s || s.gameOver) { ui.toast('📸 Pas de loutre à photographier…'); return; }
-  if (s.stage === 'egg') { ui.toast('📸 Attends que ta loutre soit née !'); return; }
-  sfx.press(); vibrate(10);
-  cardCv = makeCard(s, rec, document);
-  let url = '';
-  try { url = cardCv && cardCv.toDataURL('image/png'); } catch (e) {}
-  $('photo-img').src = url || '';
-  // un seul bon chemin par plateforme :
-  // - mobile (partage natif dispo) : PARTAGER — la feuille iOS/Android propose
-  //   « Enregistrer l'image » ; le téléchargement direct est ignoré en PWA iOS
-  // - desktop : ENREGISTRER (téléchargement classique)
-  const hasShare = typeof navigator.share === 'function';
-  $('btn-photo-share').classList.toggle('hidden', !hasShare);
-  $('btn-photo-save').classList.toggle('hidden', hasShare);
-  ui.showOverlay('ovl-photo');
-}
-
-async function sharePhoto() {
-  if (!s) return;
-  const text = 'Voici ' + (s.name || 'ma loutre') + ', ma petite loutre 🦦 Viens élever la tienne : ' + CARD_URL;
-  try {
-    let files = null;
-    if (cardCv && cardCv.toBlob && typeof File === 'function') {
-      const blob = await new Promise(res => { try { cardCv.toBlob(res, 'image/png'); } catch (e) { res(null); } });
-      if (blob) files = [new File([blob], 'ma-petite-loutre.png', { type: 'image/png' })];
-    }
-    if (files && navigator.canShare && navigator.canShare({ files })) {
-      await navigator.share({ files, title: 'Ma Petite Loutre', text });
-    } else {
-      await navigator.share({ title: 'Ma Petite Loutre', text, url: CARD_URL });
-    }
-    ui.toast('📸 Carte partagée !');
-  } catch (e) { /* partage annulé par le joueur : silence */ }
-}
-
-function savePhoto() {
-  const url = $('photo-img').src;
-  if (!url || !url.startsWith('data:')) { ui.toast('Image indisponible sur cet appareil…'); return; }
-  try {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'loutre-' + (s && s.name ? s.name.toLowerCase() : 'souvenir') + '.png';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    ui.toast('💾 Carte enregistrée !');
-  } catch (e) { ui.toast('Enregistrement impossible ici — fais une capture d\'écran !'); }
-}
+/* ---------------- Carte photo / partage — extrait dans share-controller.js (audit M5) ---------------- */
+// openPhoto / sharePhoto / savePhoto / closePhoto / shareDayResult sont importés
+// depuis share-controller.js ; le contexte (état, records) est injecté via setupShare.
 
 /* ---------------- Cycle de vie ---------------- */
 function startNew() {
@@ -2612,6 +2562,10 @@ function boot() {
     isBusy: () => busy(),
     gainXp: (n) => gainXp(n),
     persistRec: () => persistRec()
+  });
+  setupShare({
+    getState: () => s,
+    getRecords: () => rec
   });
   consumeBootAction(); // raccourci PWA « Nourrir » (manifest) : ?action=feed
 
@@ -2987,7 +2941,7 @@ function boot() {
   $('ovl-cheer').addEventListener('click', ui.closeCheer); // fermer la célébration au toucher
   $('btn-photo-share').addEventListener('click', sharePhoto);
   $('btn-photo-save').addEventListener('click', savePhoto);
-  $('btn-photo-close').addEventListener('click', () => { cardCv = null; ui.hideOverlay('ovl-photo'); });
+  $('btn-photo-close').addEventListener('click', closePhoto);
   $('btn-souvenir-close').addEventListener('click', () => { sfx.press(); ui.closeSouvenir(); });
   $('b-slots').addEventListener('click', openSlots);
   $('btn-slots-close').addEventListener('click', () => { sfx.press(); ui.hideOverlay('ovl-slots'); });
@@ -3087,22 +3041,7 @@ function boot() {
     document.addEventListener(ev, wakeActionbar, { passive: true }));
   wakeActionbar();
   $('btn-ach-close').addEventListener('click', () => ui.hideOverlay('ovl-ach'));
-  $('btn-day-share').addEventListener('click', async () => {
-    if (!s) return;
-    if (s.stage !== 'egg') ensureDaily(s, now());
-    const text = dailyShareText(s, rec, now());
-    sfx.press(); vibrate(10);
-    if (typeof navigator.share === 'function') {
-      try { await navigator.share({ text }); ui.toast('📣 Résultat partagé !'); } catch (e) { /* annulé */ }
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-      ui.toast('📋 Résultat copié — colle-le à tes amis !');
-    } catch (e) {
-      ui.toast('Partage indisponible sur cet appareil…');
-    }
-  });
+  $('btn-day-share').addEventListener('click', shareDayResult);
 
   // Réglages : export / import / reset. Ouvert depuis le menu de la pastille.
   const openSettings = () => {
@@ -3188,7 +3127,7 @@ function boot() {
     'ovl-hats': () => ui.hideOverlay('ovl-hats'),
     'ovl-ach': () => ui.hideOverlay('ovl-ach'),
     'ovl-set': () => ui.hideOverlay('ovl-set'),
-    'ovl-photo': () => { cardCv = null; ui.hideOverlay('ovl-photo'); },
+    'ovl-photo': () => closePhoto(),
     'ovl-battle': () => { battle = null; epreuveEnCours = null; ui.hideOverlay('ovl-battle'); }
   };
   for (const [id, close] of Object.entries(overlayClosers)) {

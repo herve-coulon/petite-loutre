@@ -61,6 +61,7 @@ const PRECACHE = [
   './src/crue-controller.js',
   './src/push.js',
   './src/photocard.js',
+  './src/share-controller.js',
   './src/minigame.js',
   './src/toboggan.js',
   './src/garden.js',
