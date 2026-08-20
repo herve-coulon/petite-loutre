@@ -134,7 +134,7 @@ Le jeu reste **100 % local** ; Supabase ne sert que deux fonctions publiques opt
 
 | Fonction | Rôle | Tables |
 |---|---|---|
-| `telemetry` (`functions/telemetry/index.ts`) | ping quotidien anonyme (niveau, série, fonctionnalités) | `telemetry_daily` (RLS : insert fonction, aucune lecture) |
+| `telemetry` (`functions/telemetry/index.ts`) | ping quotidien anonyme (niveau, série, fonctionnalités) | `telemetry_daily` (RLS : fonction uniquement, privilèges anon révoqués) |
 | `push` (`functions/push/index.ts`) | abonnements push anonymes + envoi planifié des rappels | `push_subs`, `push_config` (RLS : fonction uniquement) |
 
 **Déploiement / reproduire le backend :**
