@@ -1,7 +1,7 @@
 # 🦦 AUDIT — Ma Petite Loutre
 
 > **Document vivant.** Audit initial : 20/08/2026 (commit `a341189`, v4.10.0).
-> Dernière mise à jour : 20/08/2026 (v4.10.10, tranche 3 M5 — Carte photo / partage extraits).
+> Dernière mise à jour : 20/08/2026 (v4.10.11, tranche 4 M5 — Série de jours extraite).
 > Dépôt : `herve-coulon/petite-loutre` — PWA tamagotchi pixel art, JS vanilla (zéro dépendance runtime), déployée sur GitHub Pages.
 
 ---
@@ -50,7 +50,7 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 | M2 | **Fonction Supabase `push` non versionnée** dans le dépôt (seul `telemetry` existait) — non reproductible, non auditable | `src/push.js:6`, `supabase/functions/` | ✅ **Corrigé** (fonction déployée téléchargée et versionnée dans `supabase/functions/push/` + migration des tables + `config.toml` + doc README) |
 | M3 | **Endpoint télémétrie public** sans rate limiting ni validation (id/day seulement truthy, types non vérifiés) | `supabase/functions/telemetry/index.ts` | ✅ **Corrigé et DÉPLOYÉ** (validation stricte : id 16 hex, jour valide borné, entiers bornés, corps ≤ 4 Ko ; gardes de volume jour/id ; erreurs génériques ; CORS restreint) — **vérifié en production** (200 valide / 400 invalide / 413 gros corps / CORS bloqué) |
 | M4 | **Politique RLS d'insertion ouverte à anon** (`with check (true)`) — insertion REST directe sans passer par la fonction | `telemetry_daily.sql:20-22` | ✅ **Corrigé, DÉPLOYÉ et VÉRIFIÉ** — politique supprimée + `revoke insert, update, delete` (anon/authenticated) sur `telemetry_daily`/`push_subs`/`push_config` ; test en prod : REST direct anon → `42501 permission denied` (401), fonction service_role → 200 |
-| M5 | **God files** : `main.js` 3 392 lignes / 142 fonctions / 46 imports ; `render.js` `makeRenderer` 2 216 lignes | `src/main.js`, `src/render.js` | 🔄 **Chantier lancé** — **tranche 1 ✅ v4.10.7** (« La Crue » → `crue-controller.js`) · **tranche 2 ✅ v4.10.9** (« Dojo de parade » → `dojo-controller.js`) · **tranche 3 ✅ v4.10.10** (« Carte photo / partage du jour » → `share-controller.js`, `cardCv` dans le contrôleur, 61 lignes retirées, main.js **3 204 lignes**, 521 tests verts dont snapshots) ; reste : Streak, Héron, Trésors, Slots, Marché, Monde, Combat, Boot |
+| M5 | **God files** : `main.js` 3 392 lignes / 142 fonctions / 46 imports ; `render.js` `makeRenderer` 2 216 lignes | `src/main.js`, `src/render.js` | 🔄 **Chantier lancé** — **tranche 1 ✅ v4.10.7** (« La Crue » → `crue-controller.js`) · **tranche 2 ✅ v4.10.9** (« Dojo de parade » → `dojo-controller.js`) · **tranche 3 ✅ v4.10.10** (« Carte photo / partage » → `share-controller.js`) · **tranche 4 ✅ v4.10.11** (« Série de jours » → `streak-controller.js`, main.js **3 199 lignes**, 521 tests verts) ; reste : Héron, Trésors, Slots, Marché, Monde, Combat, Boot |
 | M6 | **Échecs de sauvegarde silencieux** — `persist()` ignorait le retour de `saveState` (QuotaExceeded, mode privé…) | `state.js:112-119`, `main.js` | ✅ **Corrigé v4.10.1** (toast « stockage plein/bloqué », throttle 60 s) |
 | M7 | **Import de sauvegarde à validation superficielle** — jauges/nom non bornés, taille non limitée | `state.js:266-276` | ✅ **Corrigé v4.10.4** — bornes de taille (100 Ko), clamps des jauges (0-100, défauts sains), whitelist de stade, nom borné, NaN/Infinity (`1e999`) neutralisés, tableaux/chaînes tronqués — appliqué à l'import ET au chargement (`loadState`/`loadRecords`) + 7 tests |
 | M8 | **Raccourci manifest « Nourrir » mort** — `?action=feed` jamais lu | `manifest.webmanifest:15-21` | ✅ **Corrigé v4.10.1** (consommé au boot, URL nettoyée, testé) |
@@ -106,7 +106,9 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 | **v4.10.9** | `03b3352` | **Découpage de main.js — tranche 2** : « Dojo de parade » extrait dans `src/dojo-controller.js` (`setupDojo` injecte état/records/gainXp/persist ; les timers `setTimeout` vivent dans le contrôleur ; ponts `openDojo`/`dojoTap`/`closeDojo`) ; 103 lignes retirées de main.js (3 368 → **3 265**) ; ajouté au PRECACHE ; 521 tests verts (snapshots inclus) |
 | | `884bb02` | Bump v4.10.9 |
 | **v4.10.10** | `3c4f39d` | **Découpage de main.js — tranche 3** : « Carte photo » + « Partage du jour » extraits dans `src/share-controller.js` (`setupShare` injecte état/records ; `cardCv` dans le contrôleur ; ponts `openPhoto`/`sharePhoto`/`savePhoto`/`closePhoto`/`shareDayResult`) ; 61 lignes retirées (3 265 → **3 204**) ; ajouté au PRECACHE ; 521 tests verts |
-| | — | Bump v4.10.10 |
+| | `197b2ce` | Bump v4.10.10 |
+| **v4.10.11** | `55a0ad8` | **Découpage de main.js — tranche 4** : « Série de jours » (streak 🔥) extraite dans `src/streak-controller.js` (`setupStreak` injecte records/persist/gainXp/checkUnlocks ; pont `checkStreak`) ; ajouté au PRECACHE ; 521 tests verts |
+| | — | Bump v4.10.11 |
 
 **Nouveaux tests ajoutés** (5) : raccourci PWA « Nourrir » (smoke), télémétrie — ID généré (smoke), `esc` / `clamp01` / `fmtDur` (`test/util.test.js`).
 
