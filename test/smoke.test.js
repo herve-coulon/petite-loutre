@@ -125,6 +125,16 @@ test('télémétrie : ID généré, jour marqué SEULEMENT si le ping réussit (
   assert.equal(L.state.lastTelemetryDay, dayKey(), 'pas de re-ping le même jour');
 });
 
+test('La Crue : le raccourci Profil → 🌊 ouvre l\'overlay (contrôleur extrait, audit M5)', () => {
+  $('lvl-badge').click();               // ouvre le Profil
+  assert.ok(!$('ovl-menu').classList.contains('hidden'), 'profil ouvert');
+  $('pt-crue').click();
+  assert.ok(!$('ovl-crue').classList.contains('hidden'), 'overlay Crue ouvert via crue-controller');
+  assert.ok($('ovl-menu').classList.contains('hidden'), 'profil refermé derrière');
+  $('ovl-crue').querySelector('.ovl-x').click();
+  assert.ok($('ovl-crue').classList.contains('hidden'), 'overlay Crue refermé');
+});
+
 test('fil narratif : Chapitre 1 s\'affiche, puis les premiers pas guident vers Manger', () => {
   // le nommage vient de déclencher le premier chapitre
   assert.ok(!$('ovl-story').classList.contains('hidden'), 'carte chapitre visible');
