@@ -64,7 +64,7 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 | m1 | Rebuild DOM de la grille de combat **à chaque frame** (60 fps inutiles) | ✅ **Corrigé v4.10.2** (grille mémoïsée sur signature phase/combo/PP) |
 | m2 | 115 `addEventListener`, 0 `removeEventListener` | ⏳ À faire (signal, sans conséquence SPA) |
 | m3 | `window.__loutre` exposé en production (tests e2e) | ⏳ Assumé (documenté) |
-| m4 | 383 magic numbers dans main.js ; seuils de jauge (20/15/25) désynchronisés ui/render/sim | ⏳ À faire (constantes partagées) |
+| m4 | 383 magic numbers dans main.js ; seuils de jauge (20/15/25) désynchronisés ui/render/sim | ✅ **Seuils centralisés v4.10.6** (`GAUGE_LOW`, `GAUGE_HEALTH_LOW`, `SICK_HUNGER`, `SICK_CLEAN` dans constants.js — valeurs inchangées, une source) ; reste : autres magic numbers |
 | m5 | Canvas sans garde-fou → écran blanc si non supporté ; aucune gestion d'erreur globale | ✅ **Corrigé v4.10.3** (erreur claire + handlers `error`/`unhandledrejection` avec sauvegarde) |
 | m6 | CSP incomplète (`base-uri`/`object-src`/`form-action` absents ; `unsafe-inline` style pour 3 styles) | ⏳ À faire |
 | m7 | Pas de headers de sécurité sur gh-pages (HSTS…) — limite plateforme | ⏳ À faire si migration CDN |
@@ -73,7 +73,7 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 | m10 | `esc()` n'échappe pas l'apostrophe (non exploité) | ⏳ À faire |
 | m11 | `manifest.id` en dur vers l'URL gh-pages ; « screenshot » = icône 512 (pas une vraie capture) | ⏳ À faire |
 | m12 | Couverture non mesurée pour main.js/ui.js (smoke exclu du run) | ✅ **Corrigé v4.10.1** (smoke dans `npm run coverage`) |
-| m13 | Migration vestigiale `telemetry_fix_id_type` ; commentaire `config.toml` mentionnant `kimi-client.js` disparu ; edge function `kimi-chat` dormante à distance | ⏳ À faire (cosmétique) |
+| m13 | Migration vestigiale `telemetry_fix_id_type` ; commentaire `config.toml` mentionnant `kimi-client.js` disparu ; edge function `kimi-chat` dormante à distance | ⏳ Cosmétique — `config.toml` corrigé (v4.10.2) ; **`kimi-chat` vérifiée NON déployée** (fonctions list = push + telemetry seulement, 08/2026) + note README à jour |
 | m14 | Avertissement CI « Node 20 déprécié » (checkout/configure-pages/deploy-pages/upload-pages-artifact) | ✅ **Corrigé v4.10.2** (actions passées aux majors récentes ; reste `setup-node@v4` + une dépendance transitive, bénins) |
 
 ---
@@ -97,6 +97,8 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 | | `b84f6a5` | Bump v4.10.4 |
 | **v4.10.5** | `f1089a4` | **Retry télémétrie (m8)** : jour marqué uniquement au succès, réessai throttlé 10 min, timeout fetch 8 s ; tests unitaires `sendTelemetry` + smoke mis à jour |
 | | `3d5586a` | Bump v4.10.5 |
+| **v4.10.6** | `021d41b` | **Seuils de jauge centralisés** (`GAUGE_LOW`/`GAUGE_HEALTH_LOW`/`SICK_HUNGER`/`SICK_CLEAN` — valeurs inchangées, une source ui/render/sim) + **kimi vérifié non déployé** (note README à jour) |
+| | `fb7c1fd` | Bump v4.10.6 |
 
 **Nouveaux tests ajoutés** (5) : raccourci PWA « Nourrir » (smoke), télémétrie — ID généré (smoke), `esc` / `clamp01` / `fmtDur` (`test/util.test.js`).
 
@@ -112,7 +114,7 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 3. ~~**`revoke insert, update, delete … from anon`** sur `telemetry_daily` (M4)~~ ✅ fait ET déployé (migration `20260820100000_telemetry_harden.sql` + `push_subs`/`push_config`) — vérifié en prod : REST anon refusé.
 4. ~~**Durcir `importSave`** (M7)~~ ✅ fait v4.10.4 (whitelist de champs, bornes, taille max + tests d'import malveillant).
 5. ~~**Retry télémétrie** (m8)~~ ✅ fait v4.10.5 (jour marqué au succès, réessai throttlé 10 min, timeout 8 s).
-6. Nettoyage : undeploy `kimi-chat` à distance, rotation d'ID à la réactivation de la télémétrie.
+6. ~~Nettoyage : undeploy `kimi-chat`~~ ✅ vérifié — kimi-chat n'est plus déployée (functions list : push + telemetry seulement) ; note README à jour. Reste cosmétique : migration vestigiale `telemetry_fix_id_type` (historique réécrit, sans conséquence), rotation d'ID à la réactivation de la télémétrie.
 
 ### 🏗️ Architecture (chantiers multi-releases)
 7. **Découper `main.js`** par domaines (Monde, Combat, Marché, Slots, Boot → modules `*Controller`) — les 20 bannières de sections sont le plan ; chaque tranche validée par les tests + snapshots visuels.
