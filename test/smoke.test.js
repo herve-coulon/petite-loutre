@@ -828,6 +828,45 @@ test('balade : on repart du dernier lieu quitté, pas systématiquement de la cl
   assert.equal(L.world && L.world.zone, 'clairiere', 'repli sur le lieu de départ');
 });
 
+// Régression T9 : le Monde a été extrait dans world-controller.js, mais le
+// mini-jeu (état `mg`) est resté dans main.js. L'auto-lancement du jardin en zone
+// « jardin » écrivait le `mg` LOCAL du contrôleur (copie synchronisée), jamais
+// celui de main — la boucle n'animait donc rien. Corrigé v4.10.19 (hook
+// setMinigame). Ce test verrouille le fait qu'entrer au jardin lance le jeu.
+test('jardin en balade : entrer dans la zone jardin lance le mini-jeu (régression T9)', () => {
+  L.state.gameOver = false; L.state.away = false; L.state.divingUntil = 0; L.state.sleeping = false;
+  L.state.stage = 'child'; L.state.hatchedAt = Date.now() - 25 * 3600 * 1000;
+  L.records.levelReached = 4;          // le jardin s'ouvre au niveau 4
+  L.state.energy = 90;                 // assez d'énergie pour jardiner
+  L.records.visited = ['clairiere', 'prairie', 'jardin'];
+  L.state.place = 'berge'; L.state.worldZone = 'clairiere';
+
+  $('b-world').dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(L.world && L.world.zone, 'clairiere', 'balade démarrée à la clairière');
+  assert.ok(!L.minigame, 'pas de mini-jeu en cours au départ');
+
+  // voyage vers la zone jardin via la carte -> doit lancer le mini-jeu jardin
+  $('lvl-badge').dispatchEvent(new window.Event('click', { bubbles: true }));
+  const cells = [...$('pm-grid').querySelectorAll('button.pm-cell')];
+  const jardin = cells.find(c => /jardin/i.test(c.getAttribute('aria-label') || ''));
+  assert.ok(jardin, 'le jardin, visité et débloqué, doit être proposé au voyage');
+  jardin.dispatchEvent(new window.Event('click', { bubbles: true }));
+
+  assert.equal(L.world.zone, 'jardin', 'arrivée au jardin');
+  assert.ok(L.minigame && L.minigame.mode === 'garden',
+    'entrer dans la zone jardin lance le mini-jeu jardin');
+
+  // nettoyage : forcer la fin du mini-jeu (son temps est écoulé) — la boucle
+  // appelle endGarden et remet mg à null — puis rentrer à la berge, pour ne pas
+  // laisser fuiter l'état (mg/place) dans les tests suivants.
+  L.minigame.endsAt = Date.now() - 1;
+  renderOnce();
+  $('b-world-back').dispatchEvent(new window.Event('click', { bubbles: true }));
+  L.records.levelReached = 1;
+  assert.ok(!L.minigame, 'nettoyage : le jardin est bien terminé');
+  assert.equal(L.state.place, 'berge', 'nettoyage : de retour à la berge');
+});
+
 // Le hit-stop (freezeUntil) gèle la frame après un choc ou une fin de partie :
 // ni stepWorld ni tickSlide ne tournent tant qu'il dure. Il s'ACCUMULE (chaque
 // choc le repousse), si bien qu'une attente fixe était parfois trop courte —

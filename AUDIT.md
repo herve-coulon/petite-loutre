@@ -1,7 +1,7 @@
 # 🦦 AUDIT — Ma Petite Loutre
 
 > **Document vivant.** Audit initial : 20/08/2026 (commit `a341189`, v4.10.0).
-> Dernière mise à jour : 21/08/2026 (v4.10.18, tranche 11 M5 — les Soins extraits, main.js 2 063 lignes).
+> Dernière mise à jour : 21/08/2026 (v4.10.19 — correctif régression T9 : mini-jeu jardin en zone monde).
 > Dépôt : `herve-coulon/petite-loutre` — PWA tamagotchi pixel art, JS vanilla (zéro dépendance runtime), déployée sur GitHub Pages.
 
 ---
@@ -123,6 +123,8 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 | | — | Bump v4.10.17 |
 | **v4.10.18** | `—` | **Découpage de main.js — tranche 11** : « Soins » (gestes de base) extraits dans `src/soins-controller.js` (`actTreat`/`actFeed`/`actWash`/`actSleep`/`actHeal`+`offrirTrousse`/`actDive`/`resolveDive`, interne `servirFriandise`). `setupSoins` injecte les helpers partagés (`press`/`feel`/`gainXp`/`afterAct`/`quest`/`varietyBonus`/`careBond`/`busy`/`unlocked`/`persist`/`persistRec`/`checkUnlocks`/`tryDrop`) + le renderer `R` ; `resolveDive` exporté pour `tick()`. `careBond`/`afterAct` (partagés pêche/pet/héron) restent dans main.js. Boutons `b-feed`/`b-wash`/… et hook debug inchangés (identifiants importés). −161 lignes (2 224 → **2 063**). Ajouté au PRECACHE. 521 tests verts. |
 | | — | Bump v4.10.18 |
+| **v4.10.19** | `—` | **Correctif — régression tranche 9** : l'auto-lancement du mini-jeu **jardin** en zone « jardin » du Monde était cassé depuis l'extraction T9. `goToZone` faisait `mg = newGarden(...)` sur le `mg` LOCAL du contrôleur (copie synchronisée depuis main), jamais celui de main.js où vit vraiment le mini-jeu — la boucle n'animait donc rien et le jardin était injouable en balade. Fix : nouveau hook `setMinigame` (world → main) appelé après le `newGarden`. **+1 test smoke** (« jardin en balade », 522 tests) qui verrouille le lancement — pan auparavant non couvert, signalé dans la note ⚠️ de T9. |
+| | — | Bump v4.10.19 |
 
 **Nouveaux tests ajoutés** (5) : raccourci PWA « Nourrir » (smoke), télémétrie — ID généré (smoke), `esc` / `clamp01` / `fmtDur` (`test/util.test.js`).
 

@@ -602,6 +602,7 @@ function goToZone(zoneId, px, py) {
   // Auto-lancer le mini-jeu jardin quand on entre dans la zone jardin
   if (zoneId === 'jardin' && curLevel() >= UNLOCK_LEVEL.garden && s.energy >= 10 && !mg) {
     mg = newGarden(now());
+    ctx.setMinigame(mg);   // le mini-jeu vit dans main.js : lui pousser l'état, sinon la boucle ne l'anime pas
     ambient.startGardenAmbient();
     sfx.press();
     ui.log('Jardin ! Plante des graines, arrose-les, récolte les fleurs et attrape les grenouilles ! 🌸🐸');

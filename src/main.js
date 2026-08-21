@@ -1458,7 +1458,8 @@ function boot() {
     crueDuelActive: () => crueDuelActive(),
     resolveCrueDuel: (won) => resolveCrueDuel(won),
     launchBattle: (foe, seed, mult) => startBattle(foe, seed, mult),
-    setBerCreatures: (c) => { berCreatures = c; }
+    setBerCreatures: (c) => { berCreatures = c; },
+    setMinigame: (v) => { mg = v; }   // le Monde lance le mini-jeu jardin -> l'état vit ici
   });
   // Le Combat (moteur de duel) : injecte les accès au jeu global au contrôleur
   // extrait (M5, tranche 10), puis câble les boutons de l'arène.
