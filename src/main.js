@@ -49,6 +49,7 @@ import { setupCombat, wireCombat, startBattle, stepCombat, getBattle as currentB
 import { setupSoins, actTreat, actDive, resolveDive, actFeed, actWash, actSleep, actHeal } from './soins-controller.js';
 import { setupJeux, actPlay, endGame, actSlide, actGarden, endSlide, endGarden, onFetchDone } from './jeux-controller.js';
 import { setupCoach, updateCoach, maybeStory, maybeSeasonCard, seasonHint, maybeHint, hintDone, currentHintTarget, suppressHint } from './coach-controller.js';
+import { setupReglages, wireReglages } from './reglages-controller.js';
 import { jeuBuffs, PASSIVE_TECHNIQUES } from './skills.js';
 import { isoWeekKey, crueOfWeek, medalFor, claimCrueRewards } from './crue.js';
 import { livingLine } from './dialogue.js';
@@ -643,6 +644,31 @@ function warnStorage() {
 }
 function persist() { if (!saveState(s, storage, now())) warnStorage(); }
 function persistRec() { if (!saveRecords(rec, storage)) warnStorage(); }
+
+// Import d'une sauvegarde par code (depuis le panneau Réglages, tranche 14).
+// Le geste RELIE de nouvelles s/rec au jeu -> il reste ici, où vivent s/rec et
+// les repères de déblocage (prevHats/prevFurs) que tout le monde lit. Verbatim.
+function importSaveFromCode(code) {
+  const r = importSave(code);
+  if (!r) { ui.toast('❌ Code invalide'); return; }
+  ui.askConfirm('Remplacer la partie actuelle par celle du code ?', () => {
+    s = r.s;
+    rec = r.rec;
+    setMuted(s.mute);
+    prevHats = new Set(unlockedHats(rec));
+    prevFurs = new Set(unlockedFurs(rec));
+    const { events } = simulateOffline(s, now());
+    applyEvents(events, true);
+    persist(); persistRec();
+    ui.renderLevel(rec);
+    ui.hideAllOverlays();
+    if (s.gameOver) ui.showGameOver(s);
+    else if (s.stage !== 'egg' && !s.name) ui.showNaming();
+    ui.updateHUD(s, mg, rec);
+    ui.log('Sauvegarde importée. Re-bonjour, ' + (s.name || 'petit œuf') + ' ! 💛');
+    sfx.happy();
+  });
+}
 
 // Badge « ! » du Cadeau : visible seulement quand un cadeau de saison est réclamable.
 function refreshGift() {
@@ -1310,105 +1336,23 @@ function boot() {
   // Combat de loutres : arène, adversaire sauvage et techniques -> combat-controller.js
   // (M5, tranche 10). Câblé plus haut par setupCombat({...}) + wireCombat().
 
-  $('b-mute').addEventListener('click', () => {
-    s.mute = !s.mute; setMuted(s.mute); syncMusic(); persist(); ui.updateHUD(s, mg, rec);
+  // Réglages (son/musique/volume/a11y/push/télémétrie/dialogues/cycle de vie/
+  // export-import/reset) -> reglages-controller.js (M5, tranche 14).
+  setupReglages({
+    getState: () => s,
+    getRecords: () => rec,
+    getMinigame: () => mg,
+    syncMusic: () => syncMusic(),
+    applyA11y: () => applyA11y(),
+    updateA11yLabels: () => updateA11yLabels(),
+    updateVolumeLabel: () => updateVolumeLabel(),
+    persist: () => persist(),
+    persistRec: () => persistRec(),
+    startNew: () => startNew(),
+    clearSave: () => clearSave(storage),
+    importSave: (code) => importSaveFromCode(code)
   });
-  $('b-music').addEventListener('click', () => {
-    s.music = s.music === false; // toggle
-    $('b-music').textContent = '🎵 MUSIQUE : ' + (s.music ? 'OUI' : 'NON');
-    syncMusic(); persist(); sfx.press();
-  });
-  $('b-volume').addEventListener('click', () => {
-    const levels = [0.35, 0.7, 1.0];
-    const i = levels.findIndex(v => Math.abs(v - (s.volume ?? 0.7)) < 0.01);
-    s.volume = levels[(i + 1) % levels.length];
-    setVolume(s.volume);
-    updateVolumeLabel();
-    persist(); sfx.press();
-  });
-  $('b-bigtext').addEventListener('click', () => {
-    s.bigText = !s.bigText;
-    applyA11y(); updateA11yLabels(); persist(); sfx.press();
-  });
-  $('b-motion').addEventListener('click', () => {
-    s.reduceMotion = !s.reduceMotion;
-    applyA11y(); updateA11yLabels(); persist(); sfx.press();
-  });
-  $('b-push').addEventListener('click', async () => {
-    sfx.press();
-    if (s.push) {
-      s.push = false;
-      $('b-push').textContent = '🔔 RAPPELS : NON';
-      persist();
-      push.disablePush();
-      ui.toast('🔕 Rappels coupés.');
-      return;
-    }
-    // iPhone/iPad : les notifications web n'existent QUE dans l'app installée sur
-    // l'écran d'accueil et lancée depuis son icône — jamais dans un onglet Safari.
-    if (isIOS() && !isStandalone()) {
-      $('ios-hint').classList.remove('hidden');   // révèle la marche à suivre (Partager → écran d'accueil)
-      ui.log('📲 Sur iPhone, les rappels ne marchent que dans l\'app installée : appuie sur Partager ⎋ en bas de Safari, choisis « Sur l\'écran d\'accueil », puis rouvre Loutre depuis son icône et réactive les rappels ici. (iOS 16.4+)');
-      ui.toast('📲 iPhone : installe l\'app d\'abord (voir en bas).');
-      return;
-    }
-    const res = await push.enablePush();
-    if (res === 'ok') {
-      s.push = true;
-      $('b-push').textContent = '🔔 RAPPELS : OUI';
-      persist();
-      push.syncReminders(s);
-      ui.toast('🔔 Rappels activés — elle saura te joindre !');
-    } else if (res === 'refuse') {
-      ui.toast(isIOS()
-        ? 'Notifications refusées — Réglages iPhone › Loutre › Notifications pour les réautoriser.'
-        : 'Notifications refusées — réactivable dans les réglages du navigateur.');
-    } else {
-      ui.toast(isIOS()
-        ? 'Rappels indisponibles : il faut iOS 16.4 ou plus récent.'
-        : 'Rappels indisponibles sur ce navigateur.');
-    }
-  });
-  $('b-telemetry').addEventListener('click', () => {
-    sfx.press();
-    s.telemetry = !s.telemetry;
-    $('b-telemetry').textContent = '📊 STATISTIQUES ANONYMES : ' + (s.telemetry ? 'OUI' : 'NON');
-    persist();
-    ui.toast(s.telemetry ? '📊 Statistiques anonymes activées.' : '📊 Statistiques anonymes désactivées.');
-  });
-  const livingLabel = () => { const b = $('b-living'); if (b) b.textContent = '🗣️ DIALOGUES VIVANTS : ' + (s && s.livingDialogues ? 'OUI' : 'NON'); };
-  $('b-living').addEventListener('click', () => {
-    sfx.press();
-    s.livingDialogues = !s.livingDialogues;
-    livingLabel();
-    persist();
-    ui.toast(s.livingDialogues
-      ? '🗣️ Dialogues vivants activés — les habitants varient leur accueil.'
-      : '🗣️ Dialogues vivants coupés — retour aux dialogues écrits.');
-  });
-  const lifecycleLabel = () => { const b = $('b-lifecycle'); if (b) b.textContent = '🌿 CYCLE DE VIE COMPLET : ' + (rec && rec.lifecycle ? 'OUI' : 'NON'); };
-  $('b-lifecycle').addEventListener('click', () => {
-    sfx.press();
-    const on = !(rec && rec.lifecycle);
-    if (on) {
-      ui.askConfirm('Activer le cycle de vie complet ?\nTes loutres vieilliront et s\'en iront un jour, paisiblement et fêtées — jamais une défaite. La lignée continue à chaque fois. (Réversible ici à tout moment.)', () => {
-        rec.lifecycle = true; persistRec(); lifecycleLabel();
-        ui.toast('🌿 Cycle de vie complet activé — chaque vie compte.');
-      });
-    } else {
-      rec.lifecycle = false; persistRec(); lifecycleLabel();
-      ui.toast('🌿 Cycle de vie complet coupé — tes loutres restent auprès de toi.');
-    }
-  });
-  $('b-reset').addEventListener('click', () => {
-    const passe = isRealOtter(s)
-      ? (s.name || 'Ta loutre') + ' rejoindra la lignée (mémorial et portraits, dans le Carnet 📖) et un œuf reprendra le fil — la suivante héritera souvent de son caractère.'
-      : 'Repartir d\'un nouvel œuf ?';
-    ui.askConfirm('Passer le relais à une nouvelle loutre ?\n' + passe + '\n(chapeaux et succès conservés)', () => {
-      clearSave(storage);
-      startNew();
-    });
-  });
+  wireReglages();
 
   // Garde-robe (chapeaux, pelages, décors)
   const wardrobeHandlers = {
@@ -1671,54 +1615,9 @@ function boot() {
   $('btn-ach-close').addEventListener('click', () => ui.hideOverlay('ovl-ach'));
   $('btn-day-share').addEventListener('click', shareDayResult);
 
-  // Réglages : export / import / reset. Ouvert depuis le menu de la pastille.
-  const openSettings = () => {
-    sfx.press();
-    $('exp-code').value = s ? exportSave(s, rec) : '';
-    $('imp-code').value = '';
-    $('b-music').textContent = '🎵 MUSIQUE : ' + (s && s.music !== false ? 'OUI' : 'NON');
-    updateVolumeLabel();
-    updateA11yLabels();
-    $('b-push').textContent = '🔔 RAPPELS : ' + (s && s.push ? 'OUI' : 'NON');
-    $('b-telemetry').textContent = '📊 STATISTIQUES ANONYMES : ' + (s && s.telemetry !== false ? 'OUI' : 'NON');
-    livingLabel();
-    lifecycleLabel();
-    ui.showOverlay('ovl-set');
-  };
 
   // La pastille de niveau ouvre l'écran « Profil de la loutre ».
   $('lvl-badge').addEventListener('click', () => { sfx.press(); ui.renderProfile(s, rec, worldTravelHandler()); ui.showOverlay('ovl-menu'); });
-  $('m-gear').addEventListener('click', () => { ui.hideOverlay('ovl-menu'); openSettings(); });
-  $('btn-set-close').addEventListener('click', () => ui.hideOverlay('ovl-set'));
-  $('btn-copy').addEventListener('click', async () => {
-    const code = $('exp-code').value;
-    let ok = false;
-    try { await navigator.clipboard.writeText(code); ok = true; } catch (e) {
-      try { $('exp-code').select(); ok = document.execCommand('copy'); } catch (e2) {}
-    }
-    ui.toast(ok ? '📋 Code copié !' : 'Copie impossible — sélectionne le texte à la main.');
-  });
-  $('btn-import').addEventListener('click', () => {
-    const r = importSave($('imp-code').value);
-    if (!r) { ui.toast('❌ Code invalide'); return; }
-    ui.askConfirm('Remplacer la partie actuelle par celle du code ?', () => {
-      s = r.s;
-      rec = r.rec;
-      setMuted(s.mute);
-      prevHats = new Set(unlockedHats(rec));
-  prevFurs = new Set(unlockedFurs(rec));
-      const { events } = simulateOffline(s, now());
-      applyEvents(events, true);
-      persist(); persistRec();
-      ui.renderLevel(rec);
-      ui.hideAllOverlays();
-      if (s.gameOver) ui.showGameOver(s);
-      else if (s.stage !== 'egg' && !s.name) ui.showNaming();
-      ui.updateHUD(s, mg, rec);
-      ui.log('Sauvegarde importée. Re-bonjour, ' + (s.name || 'petit œuf') + ' ! 💛');
-      sfx.happy();
-    });
-  });
 
   cv.addEventListener('pointerdown', onCanvasPointer);
   cv.addEventListener('pointermove', onCanvasMove);
