@@ -74,6 +74,7 @@ const PRECACHE = [
   './src/world-controller.js',
   './src/combat-controller.js',
   './src/soins-controller.js',
+  './src/jeux-controller.js',
   './src/heron-controller.js',
   './src/bestiary.js',
   './src/sky.js',
