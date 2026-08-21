@@ -45,8 +45,8 @@ import { registerSW, setupInstall, requestPersistentStorage, isIOS, isStandalone
 import { unlockedHats, hatById } from './accessories.js';
 import { unlockedFurs, unlockedDecors, equipBonus, furById, decorById } from './skins.js';
 import { newAchievements } from './achievements.js';
-import { encodeCard, decodeCard, newBattle, stepBattle, duelInput, wildFoe, makeFighter, playerTechniques } from './battle.js';
-import { combatBuffs, jeuBuffs, PASSIVE_TECHNIQUES } from './skills.js';
+import { setupCombat, wireCombat, startBattle, stepCombat, getBattle as currentBattle, battleActive, closeBattle } from './combat-controller.js';
+import { jeuBuffs, PASSIVE_TECHNIQUES } from './skills.js';
 import { isoWeekKey, crueOfWeek, medalFor, claimCrueRewards } from './crue.js';
 import { livingLine } from './dialogue.js';
 import { chasseurRode, newChasseur, stepChasseur, DEGATS_CAPTURE } from './chasseur.js';
@@ -95,8 +95,8 @@ let prevHats = new Set();     // pour détecter les nouveaux déblocages
 let prevFurs = new Set();     // idem pour les pelages, qu'on n'annonçait pas
 let mg = null;
 let berCreatures = []; // créatures vivantes sur la berge
-let battle = null;
-let battleStarter = null;    // pont vers le lanceur de combat (défini au boot) — utilisé par la Crue et le Monde
+// Le duel (état `battle`) et son lanceur vivent dans combat-controller.js (M5,
+// tranche 10). main.js le lit via currentBattle() et fait avancer via stepCombat().
 let frame = 0;
 let dragFood = null;          // {x,y} quand on glisse le poisson vers la loutre (px canvas)
 let draggingBall = false;     // vrai pendant qu'on tient la balle pour la lancer
@@ -1470,15 +1470,12 @@ function loop() {
   // Le DUEL TOUR-PAR-TOUR avance en temps réel : le moteur fait naître et tomber les
   // coups au fil de l'horloge, et l'arène se redessine à chaque image tant que le
   // combat tourne.
-  if (battle && !battle.over) {
-    stepBattle(battle, now());
-    ui.updateBattleUI(battle, now());
-  }
-  if (battle && battle.over) onDuelOverBridge();
+  if (stepCombat(now())) onDuelOverBridge();
+  const curBattle = currentBattle();
   R.render(s, mg, frame, {
     wobble: s && now() < wobbleUntil,
     diving: diving(),
-    foe: battle ? battle.foe : null,
+    foe: curBattle ? curBattle.foe : null,
     dragFood,
     owned: rec ? rec.items : null,
     memorial: (rec && s && s.place === 'taniere') ? rec.memorial : null,   // portraits de la lignée (v4.1)
@@ -1557,11 +1554,11 @@ function boot() {
   setupCrue({
     getState: () => s,
     getRecords: () => rec,
-    getBattle: () => battle,
+    getBattle: () => currentBattle(),
     getMinigame: () => mg,
     level: () => curLevel(),
     canFight: () => denAvailable(),
-    launchBattle: (foe, seed, mult) => battleStarter(foe, seed, mult),
+    launchBattle: (foe, seed, mult) => startBattle(foe, seed, mult),
     persistRec: () => persistRec()
   });
   setupDojo({
@@ -1620,7 +1617,7 @@ function boot() {
     getRecords: () => rec,
     getMinigame: () => mg,
     getFrame: () => frame,
-    getBattle: () => battle,
+    getBattle: () => currentBattle(),
     R,
     level: () => curLevel(),
     denAvailable: () => denAvailable(),
@@ -1642,9 +1639,27 @@ function boot() {
     crueBannerOnce: () => crueBannerOnce(),
     crueDuelActive: () => crueDuelActive(),
     resolveCrueDuel: (won) => resolveCrueDuel(won),
-    launchBattle: (foe, seed, mult) => battleStarter(foe, seed, mult),
+    launchBattle: (foe, seed, mult) => startBattle(foe, seed, mult),
     setBerCreatures: (c) => { berCreatures = c; }
   });
+  // Le Combat (moteur de duel) : injecte les accès au jeu global au contrôleur
+  // extrait (M5, tranche 10), puis câble les boutons de l'arène.
+  setupCombat({
+    getState: () => s,
+    getRecords: () => rec,
+    level: () => curLevel(),
+    unlocked: (f) => unlocked(f),
+    busy: () => busy(),
+    gainXp: (n) => gainXp(n),
+    quest: (k, n) => quest(k, n),
+    varietyBonus: (k) => varietyBonus(k),
+    feel: (t) => feel(t),
+    persistRec: () => persistRec(),
+    resetBattleDone: () => resetBattleDone(),
+    clearEpreuve: () => clearEpreuve(),
+    onDuelOver: () => onDuelOverBridge()
+  });
+  wireCombat();
   consumeBootAction(); // raccourci PWA « Nourrir » (manifest) : ?action=feed
 
   $('btn-start').addEventListener('click', () => { sfx.press(); vibrate(15); enableMotion(); startNew(); });
@@ -1684,66 +1699,8 @@ function boot() {
   $('dojo-parry').addEventListener('click', dojoTap);
   $('b-care').addEventListener('click', actCare);
 
-  // Combat de loutres : une sauvage à défier tout de suite (ou le code d'un ami)
-  let wildRoll = 0;                       // change d'adversaire sans quitter l'écran
-  // l'adversaire se cale sur la forme réelle de la loutre -> duels serrés
-  const rollWildFoe = () => wildFoe(curLevel(), 'wild|' + dayKey() + '|' + wildRoll, makeFighter(s, equipBonus(s)));
-  /** Lance un combat contre la carte donnée. */
-  const startBattle = (card, seed, foeMult) => {
-    if (!card) return;
-    const techIds = playerTechniques(rec);
-    battle = newBattle(s, card, seed,
-      { bonus: equipBonus(s), buffs: combatBuffs(rec), foeMult: foeMult || 1, level: curLevel(), now: now(), techIds });
-    resetBattleDone();
-    rec.battles++;
-    persistRec();
-    ui.shake();
-    sfx.evolve(); vibrate([20, 40, 20]);
-    ui.updateBattleUI(battle, now());
-    gainXp(XP.battle);
-    quest('battles');
-    varietyBonus('battle');
-  };
-  /** Ouvre l'arène sur l'écran de préparation (adversaire sauvage proposé). */
-  const openBattle = () => {
-    if (!unlocked('battle')) { ui.log('⚔️ Les combats s\'ouvrent au niveau ' + UNLOCK_LEVEL.battle + ' ! ⭐'); return; }
-    sfx.press();
-    battle = null;
-    ui.renderBattleSetup(rollWildFoe(), s, rec);
-    ui.showOverlay('ovl-battle');
-  };
-  $('b-battle').addEventListener('click', () => {
-    if (busy() || s.sleeping) return;
-    openBattle();
-  });
-  battleStarter = startBattle;   // les rencontres du monde peuvent lancer un combat
-  $('bt-wild').addEventListener('click', () => startBattle(rollWildFoe(), 'wild|' + dayKey() + '|' + wildRoll));
-  $('bt-reroll').addEventListener('click', () => { wildRoll++; sfx.press(); ui.renderBattleSetup(rollWildFoe(), s, rec); });
-  $('bt-again').addEventListener('click', () => { wildRoll++; ui.renderBattleSetup(rollWildFoe(), s, rec); });
-  $('bt-close').addEventListener('click', () => { battle = null; clearEpreuve(); ui.hideOverlay('ovl-battle'); });
-  $('bt-copy').addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText($('bt-mycode').value); ui.toast('📋 Code copié !'); }
-    catch (e) { try { $('bt-mycode').select(); document.execCommand('copy'); ui.toast('📋 Code copié !'); } catch (e2) {} }
-  });
-  $('bt-start').addEventListener('click', () => {
-    const card = decodeCard($('bt-foecode').value);
-    if (!card) { ui.toast('❌ Code de combat invalide'); return; }
-    startBattle(card, encodeCard(s) + $('bt-foecode').value.trim());
-  });
-  // Sélection d'une technique dans le duel tour-par-tour.
-  const duelAct = (techId) => {
-    if (!battle || battle.over) return;
-    duelInput(battle, techId, now());
-    vibrate(6);
-    const fk = battle.feedback && battle.feedback.kind;
-    if (fk === 'strike') { sfx.catch(); feel('soft'); }
-    else if (fk === 'hurt') { sfx.sad(); ui.shake(); }
-    else sfx.press();
-    ui.updateBattleUI(battle, now());
-    if (battle.over) onDuelOverBridge();
-  };
-  // Les boutons de technique sont créés dynamiquement par updateBattleUI
-  ui.setDuelAct(duelAct);
+  // Combat de loutres : arène, adversaire sauvage et techniques -> combat-controller.js
+  // (M5, tranche 10). Câblé plus haut par setupCombat({...}) + wireCombat().
 
   $('b-mute').addEventListener('click', () => {
     s.mute = !s.mute; setMuted(s.mute); syncMusic(); persist(); ui.updateHUD(s, mg, rec);
@@ -2191,14 +2148,14 @@ function boot() {
     'ovl-ach': () => ui.hideOverlay('ovl-ach'),
     'ovl-set': () => ui.hideOverlay('ovl-set'),
     'ovl-photo': () => closePhoto(),
-    'ovl-battle': () => { battle = null; clearEpreuve(); ui.hideOverlay('ovl-battle'); }
+    'ovl-battle': () => closeBattle()
   };
   for (const [id, close] of Object.entries(overlayClosers)) {
     const el = $(id);
     if (!el) continue;
     el.addEventListener('click', (e) => {
       if (e.target !== el) return; // un vrai toucher "à côté", pas sur un bouton
-      if (id === 'ovl-battle' && battle && !battle.over) return;
+      if (id === 'ovl-battle' && battleActive()) return;
       sfx.press();
       close();
     });
@@ -2218,7 +2175,7 @@ function boot() {
     for (const [id, close] of Object.entries(overlayClosers)) {
       const el = $(id);
       if (el && !el.classList.contains('hidden')) {
-        if (id === 'ovl-battle' && battle && !battle.over) return;
+        if (id === 'ovl-battle' && battleActive()) return;
         sfx.press();
         close();
         return;
@@ -2261,7 +2218,7 @@ window.__loutre = {
   step(ms) { applyEvents(stepSim(s, ms, { simNow: now() })); ui.updateHUD(s, mg, rec); },
   startNew, actFeed, actWash, actSleep, actHeal, actPlay, actTreat, actDive, actSlide, actCare, pet,
   consumeBootAction,
-  get battle() { return battle; }
+  get battle() { return currentBattle(); }
 };
 
 boot();

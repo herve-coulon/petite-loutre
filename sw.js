@@ -1,6 +1,6 @@
 /* Service worker : jeu 100% hors-ligne après la première visite.
    ⚠️ Incrémenter VERSION à chaque mise en production. */
-const VERSION = 'v4.10.16';
+const VERSION = 'v4.10.17';
 const CACHE = 'loutre-' + VERSION;
 
 const PRECACHE = [
@@ -72,6 +72,7 @@ const PRECACHE = [
   './src/weather.js',
   './src/creatures.js',
   './src/world-controller.js',
+  './src/combat-controller.js',
   './src/heron-controller.js',
   './src/bestiary.js',
   './src/sky.js',
