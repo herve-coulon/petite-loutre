@@ -51,6 +51,7 @@ import { setupJeux, actPlay, endGame, actSlide, actGarden, endSlide, endGarden, 
 import { setupCoach, updateCoach, maybeStory, maybeSeasonCard, seasonHint, maybeHint, hintDone, currentHintTarget, suppressHint } from './coach-controller.js';
 import { setupReglages, wireReglages } from './reglages-controller.js';
 import { setupProfil, wireProfil, openWardrobe, openGang } from './profil-controller.js';
+import { setupCollections, wireCollections } from './collections-controller.js';
 import { jeuBuffs, PASSIVE_TECHNIQUES } from './skills.js';
 import { isoWeekKey, crueOfWeek, medalFor, claimCrueRewards } from './crue.js';
 import { livingLine } from './dialogue.js';
@@ -1391,40 +1392,17 @@ function boot() {
   $('enc-fish').addEventListener('click', () => encHandlers.offer());
   $('enc-fight').addEventListener('click', () => encHandlers.fight());
 
-  // L'Almanach de saison (v3.99) : le bouton 🎁 ouvre la piste de 8 paliers gratuits
-  // (l'ancien cadeau unique en est le palier final). Réclamation palier par palier.
-  const REWARD_ICON = { gems: '💎', fish: '🐟', shells: '🐚' };
-  function rewardLabel(r) {
-    if (r.gift) return '🎁 Cadeau : 💎 ' + r.gems + ' + 🐟 ' + r.fish;
-    if (r.dupes && r.dupesTier) return '🛠️ ' + r.dupes + ' matériaux d\'atelier';
-    for (const k of ['gems', 'fish', 'shells']) if (r[k]) return REWARD_ICON[k] + ' ' + r[k];
-    return '✨';
-  }
-  function almanachData() {
-    const info = seasonInfo(new Date());
-    const label = (info && info.label) ? info.label : (seasonFor(new Date()) || 'Saison');
-    return {
-      seasonEmoji: (info && info.emoji) || '📅',
-      seasonLabel: label + ' ' + new Date().getFullYear(),
-      progress: almanachProgress(rec),
-      completion: almanachCompletion(rec),
-      tiers: ALMANACH_TIERS.map((t, i) => ({ need: t.need, rewardLabel: rewardLabel(t.reward), state: tierState(rec, i) }))
-    };
-  }
-  const almanachHandlers = {
-    claim: (i) => {
-      const r = claimTier(rec, i);
-      if (!r) return;
-      persistRec(); ui.renderLevel(rec); ui.updateHUD(s, mg, rec); refreshGift();
-      vibrate([15, 30, 15]); sfx.happy();
-      refreshAlmanach();
-      if (r.gift) ui.celebrate({ kicker: 'Almanach — palier final', big: '🎁', title: 'Cadeau de saison', reward: '+' + r.gems + ' 💎    +' + r.fish + ' 🐟', rewardColor: 'var(--teal)' });
-      else ui.toast('📅 Palier ' + (i + 1) + ' réclamé — ' + rewardLabel(r).replace(/^🛠️ /, '+') + ' !');
-    }
-  };
-  const refreshAlmanach = () => ui.renderAlmanach(almanachData(), almanachHandlers);
-  const openAlmanach = () => { if (!rec) return; sfx.press(); refreshAlmanach(); ui.showOverlay('ovl-almanach'); };
-  $('b-gift').addEventListener('click', openAlmanach);
+  // Collections : Almanach de saison + Succès + Carnet du naturaliste ->
+  // collections-controller.js (M5, tranche 16).
+  setupCollections({
+    getState: () => s,
+    getRecords: () => rec,
+    getMinigame: () => mg,
+    persistRec: () => persistRec(),
+    refreshGift: () => refreshGift(),
+    openSouvenir: (anc) => openSouvenir(anc)
+  });
+  wireCollections();
   $('ovl-cheer').addEventListener('click', ui.closeCheer); // fermer la célébration au toucher
   $('btn-photo-share').addEventListener('click', sharePhoto);
   $('btn-photo-save').addEventListener('click', savePhoto);
@@ -1433,33 +1411,7 @@ function boot() {
   $('b-slots').addEventListener('click', openSlots);
   $('btn-slots-close').addEventListener('click', () => { sfx.press(); ui.hideOverlay('ovl-slots'); });
 
-  // Succès
-  const openAch = () => {
-    sfx.press();
-    ui.hideOverlay('ovl-menu');
-    if (s && s.stage !== 'egg') ensureDaily(s, now());
-    ui.renderAchievements(rec, s);
-    // Succès consultés : on éteint le badge de notif jusqu'aux prochains débloqués.
-    if (rec) { rec.achSeen = (rec.achievements || []).length; persistRec(); ui.renderLevel(rec); }
-    ui.showOverlay('ovl-ach');
-  };
-  $('b-ach').addEventListener('click', openAch);
-  { const el = $('ps-ach'); if (el) el.addEventListener('click', openAch); }
 
-  // Le Carnet du naturaliste (v3.98) : unifie bestiaire + trouvailles + records.
-  let carnetSection = 'bestiaire';
-  const refreshCarnet = () => ui.renderCarnet(rec, s, carnetSection, { onSouvenir: openSouvenir });
-  const openCarnet = () => {
-    if (!rec) return;
-    sfx.press(); ui.hideOverlay('ovl-menu');
-    carnetSection = 'bestiaire';
-    refreshCarnet();
-    ui.showOverlay('ovl-carnet');
-  };
-  $('pt-carnet').addEventListener('click', openCarnet);
-  document.querySelectorAll('#carnet-tabs .carnet-tab').forEach(tab => {
-    tab.addEventListener('click', () => { carnetSection = tab.getAttribute('data-sec'); sfx.press(); refreshCarnet(); });
-  });
 
   $('pt-atelier').addEventListener('click', openWorkshop);   // atelier de trésors (É5)
   $('pt-crue').addEventListener('click', openCrue);          // La Crue de la semaine (É5b)
@@ -1472,7 +1424,6 @@ function boot() {
   ['pointerdown', 'keydown'].forEach(ev =>
     document.addEventListener(ev, wakeActionbar, { passive: true }));
   wakeActionbar();
-  $('btn-ach-close').addEventListener('click', () => ui.hideOverlay('ovl-ach'));
   $('btn-day-share').addEventListener('click', shareDayResult);
 
 
