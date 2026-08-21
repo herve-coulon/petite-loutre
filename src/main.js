@@ -50,6 +50,7 @@ import { setupSoins, actTreat, actDive, resolveDive, actFeed, actWash, actSleep,
 import { setupJeux, actPlay, endGame, actSlide, actGarden, endSlide, endGarden, onFetchDone } from './jeux-controller.js';
 import { setupCoach, updateCoach, maybeStory, maybeSeasonCard, seasonHint, maybeHint, hintDone, currentHintTarget, suppressHint } from './coach-controller.js';
 import { setupReglages, wireReglages } from './reglages-controller.js';
+import { setupProfil, wireProfil, openWardrobe, openGang } from './profil-controller.js';
 import { jeuBuffs, PASSIVE_TECHNIQUES } from './skills.js';
 import { isoWeekKey, crueOfWeek, medalFor, claimCrueRewards } from './crue.js';
 import { livingLine } from './dialogue.js';
@@ -1354,109 +1355,23 @@ function boot() {
   });
   wireReglages();
 
-  // Garde-robe (chapeaux, pelages, décors)
-  const wardrobeHandlers = {
-    onHat(id) {
-      if (!s || !unlockedHats(rec).includes(id)) return;
-      s.hat = (s.hat === id ? null : id);
-      sfx.press(); vibrate(10); persist();
-      ui.renderWardrobe(s, rec, wardrobeHandlers);
-    },
-    onFur(id) {
-      if (!s || !unlockedFurs(rec).includes(id)) return;
-      s.fur = id;
-      sfx.press(); vibrate(10); persist();
-      ui.renderWardrobe(s, rec, wardrobeHandlers);
-    },
-    onDecor(id) {
-      if (!s || !unlockedDecors(rec).includes(id)) return;
-      s.decor = id;
-      sfx.press(); vibrate(10); persist();
-      ui.renderWardrobe(s, rec, wardrobeHandlers);
-    },
-    onGear(id) {
-      if (!s || !rec.items.includes(id)) return;
-      s.gear = (s.gear === id ? null : id); // touché à nouveau = retirer
-      sfx.press(); vibrate(10); persist();
-      ui.renderWardrobe(s, rec, wardrobeHandlers);
-    },
-    // Acheter un TRÉSOR avec des gemmes. Réservé aux trouvables (drop:true) :
-    // les exclusifs de palier se gagnent en montant de niveau. On l'équipe.
-    onBuyTresor(id) {
-      const it = itemById(id);
-      if (!s || !rec || !it || !it.drop) return;         // milestone -> non vendable
-      if ((rec.items || []).includes(id)) return;        // déjà à toi
-      const prix = treasurePrice(it);
-      if (prix <= 0) return;
-      if ((rec.gems || 0) < prix) {
-        ui.toast('💎 Pas assez de gemmes — il en faut ' + prix + '.'); sfx.sad(); vibrate(20);
-        return;
-      }
-      ui.askConfirm('Acheter ' + it.emoji + ' ' + it.name + ' pour 💎 ' + prix + ' ?', () => {
-        if ((rec.gems || 0) < prix) return;
-        rec.gems -= prix;
-        (rec.items = rec.items || []).push(id);
-        s.gear = id;                                        // satisfaction immédiate
-        persist(); persistRec();
-        sfx.levelup(); vibrate([20, 40, 20]);
-        if (s && !s.gameOver && s.stage !== 'egg') R.burst('confetti', 16, s.stage);
-        ui.toast(it.emoji + ' Acheté : ' + it.name + ' ! (−' + prix + ' 💎)');
-        ui.renderLevel(rec);
-        ui.renderWardrobe(s, rec, wardrobeHandlers);
-      });
-    },
-    // Acheter un cosmétique avec des gemmes : la voie « impatiente », en plus de
-    // l'exploit. On équipe dans la foulée — la récompense doit être immédiate.
-    onBuyHat(id) { buyCosmetic(hatById(id), unlockedHats, (i) => { s.hat = i; }); },
-    onBuyFur(id) { buyCosmetic(furById(id), unlockedFurs, (i) => { s.fur = i; }); },
-    onBuyDecor(id) { buyCosmetic(decorById(id), unlockedDecors, (i) => { s.decor = i; }); }
-  };
-
-  /**
-   * Achat d'un cosmétique en gemmes. Refuse les trophées (earnOnly) et les
-   * emplettes déjà à soi ; débite, inscrit dans rec.bought, équipe aussitôt.
-   * On réaligne prevHats/prevFurs pour que checkUnlocks ne le ré-annonce pas
-   * comme un cadeau — on vient de le PAYER.
-   */
-  function buyCosmetic(item, unlockedFn, equip) {
-    if (!s || !rec || !item || item.earnOnly) return;
-    if (item.id && unlockedFn(rec).includes(item.id)) return;   // déjà débloqué
-    const prix = cosmeticPrice(item.bonus);
-    if (prix <= 0) return;
-    if ((rec.gems || 0) < prix) {
-      ui.toast('💎 Pas assez de gemmes — il en faut ' + prix + '.'); sfx.sad(); vibrate(20);
-      return;
-    }
-    ui.askConfirm('Acheter ' + item.icon + ' ' + item.name + ' pour 💎 ' + prix + ' ?', () => {
-      if ((rec.gems || 0) < prix) return;
-      rec.gems -= prix;
-      (rec.bought = rec.bought || []).push(item.id);
-      equip(item.id);                                             // satisfaction immédiate
-      prevHats = new Set(unlockedHats(rec));
-      prevFurs = new Set(unlockedFurs(rec));
-      persist(); persistRec();
-      sfx.levelup(); vibrate([20, 40, 20]);
-      if (s && !s.gameOver && s.stage !== 'egg') R.burst('sparkle', 12, s.stage);
-      ui.toast(item.icon + ' Acheté : ' + item.name + ' ! (−' + prix + ' 💎)');
-      ui.renderLevel(rec);
-      ui.renderWardrobe(s, rec, wardrobeHandlers);
-    });
-  }
-  // exposé pour les tests (le banc jsdom pilote l'achat via ces gestionnaires)
-  if (window.__loutre) window.__loutre.__wardrobeHandlers = wardrobeHandlers;
-  // La garde-robe s'ouvre SUR L'ONGLET voulu : chaque slot du profil est un
-  // raccourci distinct (chapeau, pelage, décor, trésors) — plus un doublon.
-  const openWardrobe = (tab) => {
-    sfx.press();
-    ui.hideOverlay('ovl-menu');
-    ui.renderWardrobe(s, rec, wardrobeHandlers, tab);
-    ui.showOverlay('ovl-hats');
-  };
-  const SLOT_TAB = { 'ps-hat': 'hats', 'ps-fur': 'furs', 'ps-gear': 'tresors', 'ps-decor2': 'decors' };
-  for (const [id, tab] of Object.entries(SLOT_TAB)) {
-    const el = $(id); if (el) el.addEventListener('click', () => openWardrobe(tab));
-  }
-  $('btn-hats-close').addEventListener('click', () => ui.hideOverlay('ovl-hats'));
+  // Profil : Garde-robe (chapeaux/pelages/décors/trésors) + Gang (créer/
+  // recruter/bataille) -> profil-controller.js (M5, tranche 15).
+  setupProfil({
+    getState: () => s,
+    getRecords: () => rec,
+    getMinigame: () => mg,
+    R,
+    persist: () => persist(),
+    persistRec: () => persistRec(),
+    gainXp: (n) => gainXp(n),
+    level: () => curLevel(),
+    isRecruited: (id) => isRecruited(id),
+    markRecruited: (id) => markRecruited(id),
+    worldTravel: () => worldTravelHandler(),
+    syncUnlockBaselines: () => { prevHats = new Set(unlockedHats(rec)); prevFurs = new Set(unlockedFurs(rec)); }
+  });
+  wireProfil();
 
   // Le Marché (v3.96) : le HUB économique, extrait dans marche-controller.js.
   $('pt-marche').addEventListener('click', () => openMarche());
@@ -1546,61 +1461,6 @@ function boot() {
     tab.addEventListener('click', () => { carnetSection = tab.getAttribute('data-sec'); sfx.press(); refreshCarnet(); });
   });
 
-  // Escouade (gang) : création, recrutement (se paie en POISSONS 🐟, prix doux
-  // progressif selon la taille de l'escouade — fini l'XP-monnaie), combats de bande.
-  const gangBoard = () => {
-    const cost = recruitFishCost((rec.gang && rec.gang.members.length) || 0);
-    return recruitBoard(curLevel(), dayKey(), 3)
-      .map(c => ({ ...c, cost, recruited: isRecruited(c.id) }));
-  };
-  const refreshGang = () => ui.renderGang(rec, s, gangHandlers, gangBoard());
-  const gangHandlers = {
-    create: (name, emblem) => {
-      rec.gang = makeGang(name, emblem, s);
-      persistRec(); sfx.happy(); vibrate(12);
-      ui.renderProfile(s, rec, worldTravelHandler()); refreshGang();
-    },
-    recruit: (c) => {
-      if (!rec.gang || rec.gang.members.length >= MAX_MEMBERS) return;
-      const cost = recruitFishCost(rec.gang.members.length);
-      if ((rec.fish || 0) < cost) { ui.toast('🐟 Pas assez de poissons — il en faut ' + cost + '.'); sfx.sad(); vibrate(20); return; }
-      if (recruit(rec.gang, c)) {
-        rec.fish -= cost; markRecruited(c.id);
-        persistRec(); sfx.happy(); vibrate(12);
-        ui.renderProfile(s, rec, worldTravelHandler()); refreshGang();
-        ui.updateHUD(s, mg, rec);
-      }
-    },
-    battle: () => {
-      if (!rec.gang || !rec.gang.members.length) return;
-      const seed = 'gb|' + dayKey() + '|' + ((rec.gang.wins || 0) + (rec.gang.losses || 0));
-      const rival = generateRival(gangPower(rec.gang), curLevel(), 'rv|' + seed);
-      const res = resolveGangBattle(rec.gang, rival, seed);
-      applyGangResult(rec.gang, rival, res.winner);
-      rec.battles = (rec.battles || 0) + 1;
-      if (res.winner === 'a') {
-        rec.wins = (rec.wins || 0) + 1;
-        rec.gems = (rec.gems || 0) + 2;
-        res.reward = '+20 XP · +2 💎';
-        gainXp(20);
-      } else {
-        res.reward = '+5 XP';
-        gainXp(5);
-      }
-      persistRec();
-      if (res.winner === 'a') { sfx.happy(); vibrate([15, 30, 15]); } else { sfx.press(); vibrate(20); }
-      ui.renderProfile(s, rec, worldTravelHandler());
-      ui.renderGangResult(res, rival, rec.gang, gangHandlers);
-    },
-    back: () => refreshGang()
-  };
-  const openGang = () => {
-    sfx.press();
-    ui.hideOverlay('ovl-menu');
-    refreshGang();
-    ui.showOverlay('ovl-gang');
-  };
-  $('pt-gang').addEventListener('click', openGang);
   $('pt-atelier').addEventListener('click', openWorkshop);   // atelier de trésors (É5)
   $('pt-crue').addEventListener('click', openCrue);          // La Crue de la semaine (É5b)
 
