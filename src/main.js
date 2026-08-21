@@ -48,6 +48,7 @@ import { newAchievements } from './achievements.js';
 import { setupCombat, wireCombat, startBattle, stepCombat, getBattle as currentBattle, battleActive, closeBattle } from './combat-controller.js';
 import { setupSoins, actTreat, actDive, resolveDive, actFeed, actWash, actSleep, actHeal } from './soins-controller.js';
 import { setupJeux, actPlay, endGame, actSlide, actGarden, endSlide, endGarden, onFetchDone } from './jeux-controller.js';
+import { setupCoach, updateCoach, maybeStory, maybeSeasonCard, seasonHint, maybeHint, hintDone, currentHintTarget, suppressHint } from './coach-controller.js';
 import { jeuBuffs, PASSIVE_TECHNIQUES } from './skills.js';
 import { isoWeekKey, crueOfWeek, medalFor, claimCrueRewards } from './crue.js';
 import { livingLine } from './dialogue.js';
@@ -103,10 +104,6 @@ let frame = 0;
 let dragFood = null;          // {x,y} quand on glisse le poisson vers la loutre (px canvas)
 let draggingBall = false;     // vrai pendant qu'on tient la balle pour la lancer
 let wobbleUntil = 0, lastWarm = 0, lastPet = 0, lastSave = 0, lastTickAt = now();
-let storyOpen = false;        // une carte chapitre est à l'écran
-let coachTarget = null;       // bouton actuellement surligné par le tutoriel
-let activeHint = null, hintAt = 0, hintCooldown = 0; // astuce de geste en cours (onboarding)
-let lastSeasonHint = 0;       // throttle des rappels saisonniers (froid/chaud)
 const isRecruited = id => !!rec && Array.isArray(rec.recruited) && rec.recruited.includes(id);
 const markRecruited = id => { if (rec && !isRecruited(id)) (rec.recruited = rec.recruited || []).push(id); };
 const BEFRIEND_NEED = 3;      // nombre d'attentions pour amadouer une loutre sauvage
@@ -678,129 +675,11 @@ function careBond(actionKey) {
   persist();
 }
 
-/* ---------------- Fil narratif + premiers pas guidés ---------------- */
-/** Joue le prochain chapitre en attente (et enchaîne s'il y en a plusieurs). */
-function maybeStory() {
-  if (storyOpen || !s) return;
-  const b = nextBeat(s);
-  if (!b) return;
-  storyOpen = true;
-  ui.setCoach(null); // pas de surlignage sous l'overlay
-  sfx.evolve();
-  ui.showStory(b, () => {
-    markSeen(s, b.id);
-    storyOpen = false;
-    persist();
-    coachTarget = null;   // force la ré-annonce du geste guidé au retour
-    updateCoach();
-    maybeStory();          // un autre chapitre attend peut-être derrière
-  });
-}
-
-/** Annonce un changement de saison (réutilise l'overlay d'histoire). */
-function maybeSeasonCard() {
-  if (storyOpen || !s || s.gameOver) return;
-  const cur = seasonFor(new Date());
-  if (s.season === cur) return;
-  if (s.season == null) { s.season = cur; persist(); return; } // 1er lancement : silencieux
-  storyOpen = true;
-  ui.setCoach(null);
-  sfx.evolve();
-  ui.showStory(seasonInfo(new Date()).card, () => {
-    s.season = cur;
-    storyOpen = false;
-    persist();
-    coachTarget = null;
-    updateCoach();
-  });
-}
-
-/** Rappel doux (throttlé) du contre-geste quand la saison malmène la loutre. */
-function seasonHint() {
-  if (!s || s.coach || s.gameOver || s.away || s.stage === 'egg' || s.sleeping || mg || storyOpen) return;
-  const t = now();
-  if (t - lastSeasonHint < 110 * SEC) return;
-  const season = seasonFor(new Date(t));
-  let msg = null;
-  if (season === 'ete' && s.clean < SEASON_FX.HEAT_OVERHEAT_CLEAN) {
-    msg = s.name + ' a chaud… un bon bain la rafraîchirait ! 💧';
-  } else if (season === 'hiver' && !s.sick && (s.energy < SEASON_FX.COLD_LOW_ENERGY || s.hunger < SEASON_FX.COLD_LOW_HUNGER)) {
-    msg = s.name + ' grelotte… nourris-la et fais-lui un câlin pour la réchauffer. ❄️';
-  }
-  if (msg) { ui.log(msg); lastSeasonHint = t; }
-}
-
-/** Surligne/souffle le prochain geste du tutoriel, ou le clôt en beauté. */
-function updateCoach() {
-  if (!s || !s.coach) { if (coachTarget) { ui.setCoach(null); coachTarget = null; } return; }
-  // tutoriel pas encore démarré (œuf, ou pas encore nommée) : on ne conclut rien
-  if (s.stage === 'egg' || !s.name) { if (coachTarget) { ui.setCoach(null); coachTarget = null; } return; }
-  const step = coachStep(s);
-  if (!step) { // les trois bases sont acquises -> fin douce du tutoriel + révélation du caractère
-    s.coach = false; coachTarget = null; ui.setCoach(null);
-    const tr = traitById(s.trait);
-    ui.toast('🎉 Tu sais tout !');
-    ui.log(tr
-      ? 'Bravo ! Tu apprends à connaître ' + (s.name || 'ta loutre') + ' : c\'est une petite ' + tr.name + ' ' + tr.emoji + ', elle ' + tr.desc + '. 💛'
-      : 'Bravo ! 💡 Astuce : touche ta loutre pour la câliner. 💛');
-    persist();
-    return;
-  }
-  const blocked = s.sleeping || s.away || s.gameOver || storyOpen || !!mg || diving();
-  ui.setCoach(blocked ? null : step);
-  if (!blocked && step.target !== coachTarget) { coachTarget = step.target; ui.log(step.msg); }
-  else if (blocked) coachTarget = null;
-}
-
-/* ---------------- Découvrabilité : astuces de gestes (après le tuto de base) ---------------- */
-const HINT_MAX = 22000, HINT_GAP = 6000;
-const HINTS = [
-  { id: 'pet',       msg: '💡 Astuce : touche ta loutre pour la câliner. 💛',
-    when: () => s.place === 'berge' },
-  { id: 'dragfood',  msg: '💡 Tu peux glisser le poisson 🐟 posé sur la berge jusqu\'à sa bouche pour la nourrir.',
-    when: () => s.place === 'berge' && s.hunger < 92 },
-  { id: 'callwater', msg: '💡 Tape la berge ou l\'eau 💧 : ta loutre vient à cet endroit.',
-    when: () => s.place === 'berge' },
-  { id: 'ball',      msg: '💡 Attrape la balle 🎾 sur la berge et lance-la : elle court la rapporter !',
-    when: () => s.place === 'berge' },
-  { id: 'den',       msg: '💡 Le bouton 🏠 (en haut à droite) ouvre sa tanière — ta collection de trésors s\'y expose.',
-    when: () => denAvailable() }
-];
-
-function hintTargetFor(id) {
-  if (id === 'pet') { const b = R.otterBox(s.stage); return { x: b.x + b.w / 2, y: b.y - 2 }; }
-  if (id === 'dragfood') return { x: FOOD_POS.x + 10, y: FOOD_POS.y + 2 };
-  if (id === 'callwater') return { x: 104, y: 110 };
-  if (id === 'ball') return { x: BALL_HOME.x, y: BALL_HOME.y - 2 };
-  if (id === 'den') return { x: 146, y: 30, up: true };
-  return null;
-}
-
-/** Le joueur a fait le geste -> l'astuce est classée. */
-function hintDone(id) {
-  if (!s || !s.hints) return;
-  if (!s.hints[id]) { s.hints[id] = 1; persist(); }
-  if (activeHint === id) { activeHint = null; hintCooldown = now() + HINT_GAP; }
-}
-
-/** Révèle les astuces de gestes une par une, une fois le tuto de base terminé. */
-function maybeHint() {
-  const blocked = !s || s.coach || s.gameOver || s.away || s.stage === 'egg' || !s.name
-    || s.sleeping || mg || storyOpen || diving();
-  if (blocked) { activeHint = null; return; }
-  if (!s.hints) s.hints = {};
-  if (activeHint) {
-    const h = HINTS.find(x => x.id === activeHint);
-    if (!h || s.hints[activeHint] || !h.when() || now() - hintAt > HINT_MAX) {
-      if (h && now() - hintAt > HINT_MAX) { s.hints[activeHint] = 1; persist(); } // vue assez longtemps -> classée
-      activeHint = null; hintCooldown = now() + HINT_GAP;
-    }
-    return;
-  }
-  if (now() < hintCooldown) return;
-  const next = HINTS.find(h => !s.hints[h.id] && h.when());
-  if (next) { activeHint = next.id; hintAt = now(); ui.log(next.msg); }
-}
+// Coach / Onboarding (tutoriel guidé, cartes histoire+saison, astuces de gestes)
+// -> coach-controller.js (M5, tranche 13). Câblé au boot par setupCoach({...}).
+// updateCoach/maybeStory/maybeSeasonCard/seasonHint/maybeHint appelés par la
+// boucle, afterAct et le boot ; hintDone par le routeur de pointeur ; le rendu
+// lit currentHintTarget().
 
 /**
  * Un message qui COMPTE (éjection, perte, événement). Les astuces et le coach
@@ -809,8 +688,7 @@ function maybeHint() {
  */
 function messageImportant(msg) {
   ui.log(msg);
-  activeHint = null;
-  hintCooldown = now() + HINT_GAP;
+  suppressHint();   // coach-controller : ne pas écraser ce message par une astuce
 }
 
 /** Détecte chapeaux et succès nouvellement débloqués -> toast + son. */
@@ -1157,7 +1035,7 @@ function loop() {
     memorial: (rec && s && s.place === 'taniere') ? rec.memorial : null,   // portraits de la lignée (v4.1)
     world: (s && s.place === 'monde') ? getWorld() : null,
     level: curLevel(),
-    hint: (s && activeHint) ? hintTargetFor(activeHint) : null,
+    hint: currentHintTarget(),
     weather: (s && s.place === 'berge') ? weatherFor(new Date()) : null,
     creatures: (s && s.place === 'berge') ? berCreatures : null
   });
@@ -1379,6 +1257,16 @@ function boot() {
     checkUnlocks: () => checkUnlocks(),
     tryDrop: (b) => tryDrop(b),
     messageImportant: (m) => messageImportant(m)
+  });
+  // Le Coach / Onboarding : injecte l'état + helpers au contrôleur extrait
+  // (M5, tranche 13). Appelé par la boucle, afterAct, le routeur et le boot.
+  setupCoach({
+    getState: () => s,
+    getMinigame: () => mg,
+    R,
+    persist: () => persist(),
+    diving: () => diving(),
+    denAvailable: () => denAvailable()
   });
   consumeBootAction(); // raccourci PWA « Nourrir » (manifest) : ?action=feed
 
