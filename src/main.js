@@ -1100,6 +1100,19 @@ function boot() {
   ui.renderLevel(rec);
   refreshGift();
 
+  // ⚠️ Le Coach / Onboarding doit être injecté AVANT toute restauration d'état :
+  // le retour d'un joueur nommé (plus bas) appelle maybeStory/maybeSeasonCard/
+  // updateCoach, qui vivent dans coach-controller.js. Sans ce setup en amont, le
+  // boot d'une sauvegarde existante plantait (ctx null -> getState). (M5, T13.)
+  setupCoach({
+    getState: () => s,
+    getMinigame: () => mg,
+    R,
+    persist: () => persist(),
+    diving: () => diving(),
+    denAvailable: () => denAvailable()
+  });
+
   const prev = loadState(storage);
   if (prev) {
     s = prev;
@@ -1285,16 +1298,6 @@ function boot() {
     checkUnlocks: () => checkUnlocks(),
     tryDrop: (b) => tryDrop(b),
     messageImportant: (m) => messageImportant(m)
-  });
-  // Le Coach / Onboarding : injecte l'état + helpers au contrôleur extrait
-  // (M5, tranche 13). Appelé par la boucle, afterAct, le routeur et le boot.
-  setupCoach({
-    getState: () => s,
-    getMinigame: () => mg,
-    R,
-    persist: () => persist(),
-    diving: () => diving(),
-    denAvailable: () => denAvailable()
   });
   consumeBootAction(); // raccourci PWA « Nourrir » (manifest) : ?action=feed
 

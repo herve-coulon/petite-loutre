@@ -1,7 +1,7 @@
 # 🦦 AUDIT — Ma Petite Loutre
 
 > **Document vivant.** Audit initial : 20/08/2026 (commit `a341189`, v4.10.0).
-> Dernière mise à jour : 21/08/2026 (v4.10.24, tranche 16 M5 — Collections extraites, main.js 1 542 lignes).
+> Dernière mise à jour : 24/08/2026 (v4.10.25 — HOTFIX boot : sauvegarde existante plantait depuis T13).
 > Dépôt : `herve-coulon/petite-loutre` — PWA tamagotchi pixel art, JS vanilla (zéro dépendance runtime), déployée sur GitHub Pages.
 
 ---
@@ -135,6 +135,8 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 | | — | Bump v4.10.23 |
 | **v4.10.24** | `—` | **Découpage de main.js — tranche 16** : « Collections » (Almanach de saison + Succès + Carnet du naturaliste) extraites dans `src/collections-controller.js`. Almanach : piste de 8 paliers de saison, réclamation palier par palier (`claimTier`) ; Succès : consultation + extinction du badge de notif ; Carnet : bestiaire/trouvailles/records à onglets. `wireCollections()` câble `b-gift`/`b-ach`/`ps-ach`/`pt-carnet`/onglets/`btn-ach-close`. `setupCollections` injecte `persistRec`/`refreshGift`/`openSouvenir` ; tables almanach/seasons/quests importées directement. −49 lignes (1 591 → **1 542**). Ajouté au PRECACHE. 522 tests verts. |
 | | — | Bump v4.10.24 |
+| **v4.10.25** | `—` | **HOTFIX boot (régression tranche 13)** : toute sauvegarde d'un joueur **nommé** plantait le boot depuis l'extraction du Coach. Le bloc de restauration d'état (main.js) appelle `maybeStory`/`maybeSeasonCard`/`updateCoach` — désormais dans `coach-controller.js` — mais `setupCoach` était injecté APRÈS ce bloc : `ctx` null → `TypeError: getState`, boot interrompu, **aucun bouton câblé, app morte**. Les tests smoke ne démarrent qu'en PREMIÈRE visite (sans sauvegarde), d'où l'angle mort. Fix : `setupCoach` hissé AVANT la restauration d'état. **+1 test** `boot-resume.test.js` (jsdom, processus isolé, sauvegarde nommée pré-remplie → boot sans plantage) : échoue sur le code bugué, passe corrigé. **523 tests verts.** Vérifié navigateur (retour joueur → Chapitre 1 s'affiche, zéro erreur console). |
+| | — | Bump v4.10.25 |
 
 **Nouveaux tests ajoutés** (5) : raccourci PWA « Nourrir » (smoke), télémétrie — ID généré (smoke), `esc` / `clamp01` / `fmtDur` (`test/util.test.js`).
 
