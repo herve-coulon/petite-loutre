@@ -54,6 +54,7 @@ import { setupProfil, wireProfil, openWardrobe, openGang } from './profil-contro
 import { setupCollections, wireCollections } from './collections-controller.js';
 import { setupLifecycle, checkLifecycle } from './lifecycle-controller.js';
 import { setupLieux, denAvailable, updatePlaceBtn, togglePlace } from './lieux-controller.js';
+import { setupProgress, gainXp, quest, varietyBonus, careBond } from './progress-controller.js';
 import { jeuBuffs, PASSIVE_TECHNIQUES } from './skills.js';
 import { isoWeekKey, crueOfWeek, medalFor, claimCrueRewards } from './crue.js';
 import { livingLine } from './dialogue.js';
@@ -177,17 +178,6 @@ function press() { vibrate(10); }
 const curLevel = () => Math.max(levelFromXp((rec && rec.xp) || 0).level, (rec && rec.levelReached) || 1);
 const unlocked = (feat) => curLevel() >= UNLOCK_LEVEL[feat];
 
-/** Contexte de filtrage des quêtes : level, features débloquées, monde ouvert. */
-function questCtx() {
-  return questContext(curLevel(), s && s.place === 'monde');
-}
-const UNLOCK_LABEL = { treat: '🍡 Friandise', slide: '🛝 Toboggan', battle: '⚔️ Combat', dive: '🤿 Plongée' };
-/** Activités qui s'ouvrent en passant de `before` à `after` (annonce de palier). */
-function featuresOpenedBetween(before, after) {
-  return Object.keys(UNLOCK_LABEL)
-    .filter(f => before < UNLOCK_LEVEL[f] && after >= UNLOCK_LEVEL[f])
-    .map(f => UNLOCK_LABEL[f]);
-}
 
 // Soins (friandise, repas, bain, dodo, soin/trousse, plongée) -> soins-controller.js
 // (M5, tranche 11). Câblés au boot par setupSoins({...}). resolveDive() est
@@ -639,27 +629,6 @@ function refreshGift() {
 /** Après chaque action joueur : sauvegarde + HUD à jour immédiatement. */
 function afterAct() { persist(); ui.updateHUD(s, mg, rec); updateCoach(); refreshGift(); }
 
-/**
- * Le LIEN grandit à chaque geste attentionné. Si c'est l'activité préférée de
- * sa personnalité : réaction spéciale + éclat de joie. Un palier franchi = fête.
- */
-function careBond(actionKey) {
-  if (!s || s.stage === 'egg' || s.gameOver || s.away) return;
-  const before = bondLevel(s.bond);
-  s.bond = (s.bond || 0) + bondGain(actionKey, s.trait);
-  const after = bondLevel(s.bond);
-  if (isFavorite(s.trait, actionKey)) { // c'est ce qu'ELLE préfère
-    s.fun = clamp(s.fun + 5, 0, 100);
-    ui.log(favoriteLine(s.trait, s.name));
-    R.spawn('heart', s.stage);
-  }
-  if (after.level > before.level) { // nouveau palier de lien
-    ui.toast('💛 Lien : ' + after.name + ' !');
-    R.burst('sparkle', 12, s.stage);
-    sfx.happy(); vibrate([15, 30, 15]);
-  }
-  persist();
-}
 
 // Coach / Onboarding (tutoriel guidé, cartes histoire+saison, astuces de gestes)
 // -> coach-controller.js (M5, tranche 13). Câblé au boot par setupCoach({...}).
@@ -712,59 +681,9 @@ function checkUnlocks() {
   persistRec();
 }
 
-/** XP du soigneur : chaque geste compte. Montée de niveau = fête + friandise rechargée. */
-function gainXp(n) {
-  if (!rec || !n) return;
-  n = Math.round(n * (equipBonus(s).xp || 1)); // bonus d'XP de tout l'équipement porté
-  const before = levelFromXp(rec.xp || 0).level;
-  rec.xp = (rec.xp || 0) + n;
-  const L = levelFromXp(rec.xp);
-  rec.levelReached = Math.max(rec.levelReached || 0, L.level);
-  if (s && !s.gameOver && s.stage !== 'egg') R.xpText('+' + n, s.stage);
-  if (L.level > before) {
-    if (s) {
-      s.lastTreat = 0; // récompense immédiate : friandise rechargée
-      s.fun = clamp(s.fun + 15, 0, 100);
-      if (!s.gameOver && s.stage !== 'egg') R.burst('confetti', 30, s.stage);
-      persist();
-    }
-    checkUnlocks(); // cosmétiques et succès de palier viennent d'apparaître
-    // trésors de palier garantis (un ou plusieurs niveaux franchis)
-    const gotItems = [];
-    for (let lv = before + 1; lv <= L.level; lv++) {
-      const mid = milestoneItem(lv);
-      if (mid && !rec.items.includes(mid)) { rec.items.push(mid); gotItems.push(itemById(mid)); }
-    }
-    // Gemmes de montée (v4.7) : chaque niveau franchi en donne — le level-up
-    // redonne toujours quelque chose, et le Marché a de quoi tourner.
-    let gemsWon = 0;
-    for (let lv = before + 1; lv <= L.level; lv++) gemsWon += levelUpGems(lv);
-    if (gemsWon > 0) rec.gems = (rec.gems || 0) + gemsWon;
-    const gemLine = gemsWon > 0 ? '💎 +' + gemsWon + ' gemme' + (gemsWon > 1 ? 's' : '') : '';
-    const gemLog = gemsWon > 0 ? ' (+' + gemsWon + ' 💎)' : '';
-    const opened = featuresOpenedBetween(before, L.level);
-    let reward, rewardColor;
-    if (gotItems.length) {
-      const it = gotItems[gotItems.length - 1];
-      reward = '🎁 Trésor ' + RARITIES[it.rarity].label.toLowerCase() + '<br>' + it.emoji + ' <b>' + esc(it.name) + '</b>' + (gemLine ? '<br>' + gemLine : '');
-      rewardColor = RARITIES[it.rarity].color;
-      ui.log('🏅 Niveau ' + L.level + ' ! Trésor ' + RARITIES[it.rarity].label.toLowerCase() + ' : ' + it.emoji + ' ' + it.name + ' ! Équipe-le dans 🎩.' + gemLog);
-    } else if (opened.length) {
-      reward = '🔓 Débloqué<br><b>' + opened.join(' + ') + '</b>' + (gemLine ? '<br>' + gemLine : '');
-      ui.log('⭐ Niveau ' + L.level + ' ! Débloqué : ' + opened.join(' + ') + ' ! Va essayer !' + gemLog);
-    } else if (gemLine) {
-      reward = gemLine + '<br>🍡 Friandise rechargée';
-      ui.log('Niveau ' + L.level + ' ! Récompense : ' + gemsWon + ' 💎 + friandise rechargée. 🍡');
-    } else {
-      reward = '🍡 Friandise rechargée';
-      ui.log('Niveau ' + L.level + ' ! Récompense : friandise rechargée. 🍡');
-    }
-    ui.celebrate({ kicker: 'Niveau', big: L.level, title: titleFor(L.level), reward, rewardColor });
-    sfx.levelup(); vibrate([20, 40, 20]); feel('big');
-  }
-  ui.renderLevel(rec);
-  persistRec();
-}
+// Progression partagée (gainXp / quête du jour / bonus variété / lien careBond)
+// -> progress-controller.js (M5, tranche 19). checkUnlocks + prevHats/prevFurs
+// restent ici (repères de déblocage) ; injecté au boot par setupProgress({...}).
 
 /* ---------------- Trésors : drops dans les activités — extrait dans treasure-controller.js (audit M5) ---------------- */
 // tryDrop est importé de treasure-controller.js ; le contexte (état, records,
@@ -772,33 +691,7 @@ function gainXp(n) {
 
 /** Progression de quête + récompense immédiate si terminée. */
 // Bonus de variété (v4.7) : la 1re fois qu'on fait chaque activité DANS LA JOURNÉE,
-// un petit +XP — récompense une journée cozy VARIÉE, sans toucher aux défis.
-const VARIETY_XP = 5;
-const VARIETY_LABEL = { feed: 'repas', wash: 'bain', sleep: 'sieste', treat: 'friandise', play: 'pêche', dive: 'plongée', slide: 'toboggan', garden: 'jardin', battle: 'combat' };
-function varietyBonus(key) {
-  if (!s || s.gameOver || s.stage === 'egg') return;
-  const d = dayKey(now());
-  if (!s.dayActs || s.dayActs.date !== d) s.dayActs = { date: d, done: [] };
-  if (s.dayActs.done.includes(key)) return;   // déjà fait aujourd'hui → pas de bonus
-  s.dayActs.done.push(key);
-  ui.toast('✨ 1re ' + (VARIETY_LABEL[key] || 'activité') + ' du jour — variété +' + VARIETY_XP + ' XP');
-  gainXp(VARIETY_XP);
-}
 
-function quest(key, n = 1) {
-  if (!s || s.stage === 'egg' || s.gameOver) return;
-  bumpQuest(s, key, n, now());
-  for (const q of completedQuests(s, rec, now(), questCtx())) {
-    s.fun = clamp(s.fun + 10, 0, 100);
-    R.spawn('heart', s.stage);
-    R.burst('sparkle', 10, s.stage);
-    gainXp(XP.quest);
-    ui.toast(q.icon + ' Quête du jour réussie : ' + q.label + ' !');
-    sfx.hatch(); vibrate([10, 30, 10]);
-  }
-  persistRec();
-  checkUnlocks();
-}
 
 /* ---------------- Chez le héron : le rituel du retour — extrait dans heron-controller.js (audit M5) ---------------- */
 // actCare est importé de heron-controller.js ; le contexte (état, effets, press,
@@ -1035,6 +928,19 @@ function boot() {
     diving: () => diving(),
     persist: () => persist(),
     hintDone: (id) => hintDone(id)
+  });
+  // Progression partagée (gainXp/quest/varietyBonus/careBond) : injectée tôt, car
+  // appelée par tout le monde (dont checkStreak au boot). checkUnlocks reste dans
+  // main (il possède prevHats/prevFurs) et lui est passé en hook (M5, tranche 19).
+  setupProgress({
+    getState: () => s,
+    getRecords: () => rec,
+    R,
+    level: () => curLevel(),
+    persist: () => persist(),
+    persistRec: () => persistRec(),
+    feel: (t) => feel(t),
+    checkUnlocks: () => checkUnlocks()
   });
 
   const prev = loadState(storage);
