@@ -52,6 +52,7 @@ import { setupCoach, updateCoach, maybeStory, maybeSeasonCard, seasonHint, maybe
 import { setupReglages, wireReglages } from './reglages-controller.js';
 import { setupProfil, wireProfil, openWardrobe, openGang } from './profil-controller.js';
 import { setupCollections, wireCollections } from './collections-controller.js';
+import { setupLifecycle, checkLifecycle } from './lifecycle-controller.js';
 import { jeuBuffs, PASSIVE_TECHNIQUES } from './skills.js';
 import { isoWeekKey, crueOfWeek, medalFor, claimCrueRewards } from './crue.js';
 import { livingLine } from './dialogue.js';
@@ -882,51 +883,8 @@ function startNew() {
   ui.updateHUD(s, mg, rec);
 }
 
-/* ---------------- Le cycle de vie complet (v4.2) ----------------
-   Opt-in (⚙️ rec.lifecycle), éteint par défaut : le jeu cozy reste intact.
-   Une fois allumé, la loutre devient aînée après une longue vie, puis s'en va
-   paisiblement — jamais un échec. Elle rejoint alors la lignée (mémorial +
-   héritage, cf. startNew) et un œuf reprend le fil. Le grand départ vient aussi
-   d'une trop longue absence chez le héron (l'antichambre douce). */
-let passingInProgress = false;
-
-function checkLifecycle(t) {
-  if (!s || !rec || !rec.lifecycle) return;
-  if (passingInProgress || s.gameOver || s.stage === 'egg') return;
-  const age = ageMs(s, t);
-  // L'annonce des cheveux d'argent, une seule fois.
-  if (!s.elderSeen && isElder(age)) {
-    s.elderSeen = true;
-    persist();
-    ui.log('🌾 ' + (s.name || 'Elle') + ' est devenue une aînée — le poil argenté, le cœur plein d\'histoires.');
-  }
-  const awayMs = s.away ? (t - (s.awayAt || t)) : null;
-  const cause = endOfLife({ ageMs: age, awayMs, lifecycle: true });
-  if (cause) passAway(cause, t);
-}
-
-// Le grand départ : une carte d'adieu paisible, puis l'œuf de la génération suivante.
-function passAway(cause, t) {
-  passingInProgress = true;
-  const name = s.name || 'Ta loutre';
-  s.diedAt = t;         // fige l'âge pour le mémorial (cf. ageMs)
-  s.gameOver = true;    // suspend la simulation le temps de l'adieu
-  persist();
-  if (sfx.over) sfx.over();
-  vibrate([40, 60, 40]);
-  const vecu = ui.fmtAge ? ui.fmtAge(s, t) : '';
-  const card = cause === 'age'
-    ? { kicker: 'Une belle vie', big: '🕊️', title: name + ' s\'en est allée paisiblement',
-        reward: 'Elle a bien vécu' + (vecu ? ' — ' + vecu : '') + '. Elle veille sur la lignée.', rewardColor: 'var(--accent)' }
-    : { kicker: 'Adieu tout doux', big: '🕊️', title: name + ' est restée auprès du héron',
-        reward: 'Elle s\'en est allée sereinement. La lignée, elle, continue.', rewardColor: 'var(--accent)' };
-  ui.celebrate(card);
-  ui.log('🕊️ ' + name + ' nous a quittés en paix. ' +
-    (cause === 'age' ? 'Quelle belle vie…' : 'Le héron veillera sur elle…') +
-    ' Un œuf reprend le fil de la lignée.');
-  // On laisse la carte respirer, puis l'œuf de la génération suivante arrive.
-  setTimeout(() => { passingInProgress = false; startNew(); }, 2600);
-}
+// Cycle de vie complet (vieillissement opt-in + grand départ) -> lifecycle-controller.js
+// (M5, tranche 17). checkLifecycle appelé par tick() ; startNew reste ici (rebinde s/mg).
 
 // Retry télémétrie (audit m8) : après un ping raté, on n'assiège pas le réseau —
 // prochain essai au plus tôt 10 min plus tard. Le compteur vit sur l'état
@@ -1406,6 +1364,14 @@ function boot() {
     openSouvenir: (anc) => openSouvenir(anc)
   });
   wireCollections();
+  // Cycle de vie complet (opt-in) : injecté au contrôleur extrait (M5, tranche 17).
+  // Appelé par tick() (démarre après tous les setups) ; startNew reste dans main.
+  setupLifecycle({
+    getState: () => s,
+    getRecords: () => rec,
+    persist: () => persist(),
+    startNew: () => startNew()
+  });
   $('ovl-cheer').addEventListener('click', ui.closeCheer); // fermer la célébration au toucher
   $('btn-photo-share').addEventListener('click', sharePhoto);
   $('btn-photo-save').addEventListener('click', savePhoto);

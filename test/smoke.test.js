@@ -867,6 +867,28 @@ test('jardin en balade : entrer dans la zone jardin lance le mini-jeu (régressi
   assert.equal(L.state.place, 'berge', 'nettoyage : de retour à la berge');
 });
 
+// Cycle de vie complet (opt-in) extrait dans lifecycle-controller.js (M5 T17) :
+// le tick doit promouvoir l'aînée via checkLifecycle du contrôleur. On teste le
+// palier « aînée » (entre ELDER_AT et LIFE_MAX) : il exerce tout le câblage
+// (setup/sync/getState/getRecords/persist) SANS déclencher le grand départ (qui
+// programme un setTimeout -> startNew, à éviter dans le banc).
+test('cycle de vie : le tick promeut la loutre en aînée (lifecycle-controller)', () => {
+  Object.assign(L.state, {
+    gameOver: false, away: false, sleeping: false, divingUntil: 0,
+    stage: 'adult', name: 'Mamie',
+    hatchedAt: Date.now() - 8 * 24 * 3600 * 1000,   // 8 j : entre ELDER_AT (7 j) et LIFE_MAX (10 j)
+    elderSeen: false
+  });
+  L.records.lifecycle = true;   // l'option est activée
+  tick();
+  assert.equal(L.state.elderSeen, true,
+    'checkLifecycle du contrôleur a bien promu l\'aînée (câblage OK)');
+  assert.equal(L.state.gameOver, false, 'pas de grand départ à ce palier');
+  // nettoyage : ne pas laisser fuiter l'option dans les tests suivants
+  L.records.lifecycle = false;
+  L.state.elderSeen = true;
+});
+
 // Le hit-stop (freezeUntil) gèle la frame après un choc ou une fin de partie :
 // ni stepWorld ni tickSlide ne tournent tant qu'il dure. Il s'ACCUMULE (chaque
 // choc le repousse), si bien qu'une attente fixe était parfois trop courte —
