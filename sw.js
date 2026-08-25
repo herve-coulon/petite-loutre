@@ -80,6 +80,7 @@ const PRECACHE = [
   './src/profil-controller.js',
   './src/collections-controller.js',
   './src/lifecycle-controller.js',
+  './src/lieux-controller.js',
   './src/heron-controller.js',
   './src/bestiary.js',
   './src/sky.js',

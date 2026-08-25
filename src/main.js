@@ -53,6 +53,7 @@ import { setupReglages, wireReglages } from './reglages-controller.js';
 import { setupProfil, wireProfil, openWardrobe, openGang } from './profil-controller.js';
 import { setupCollections, wireCollections } from './collections-controller.js';
 import { setupLifecycle, checkLifecycle } from './lifecycle-controller.js';
+import { setupLieux, denAvailable, updatePlaceBtn, togglePlace } from './lieux-controller.js';
 import { jeuBuffs, PASSIVE_TECHNIQUES } from './skills.js';
 import { isoWeekKey, crueOfWeek, medalFor, claimCrueRewards } from './crue.js';
 import { livingLine } from './dialogue.js';
@@ -268,52 +269,8 @@ function pet() {
 // (M5, tranche 12). Câblés au boot par setupJeux({...}). endGame/endSlide/
 // endGarden appelés par la boucle ; onFetchDone par la boucle (retour de balle).
 
-/* ---------------- Lieux : berge <-> tanière ---------------- */
-// La tanière est accessible quand la loutre est là, disponible et hors mini-jeu.
-function denAvailable() {
-  return s && !s.gameOver && !s.away && s.stage !== 'egg' && !mg;
-}
-function updatePlaceBtn() {
-  const inWorld = !!(s && s.place === 'monde');
-  const overlayOpen = !!document.querySelector('.ovl:not(.hidden)');
-  const b = $('b-place');
-  if (b) {
-    const show = !!denAvailable() && !overlayOpen && !inWorld;
-    b.classList.toggle('hidden', !show);
-    const inDen = show && s.place === 'taniere';
-    b.textContent = inDen ? '🌊' : '🏠';
-    b.title = inDen ? 'Retourner à la rivière' : 'Aller à la tanière';
-  }
-  // Commandes de lieu, dans la colonne de gauche : « Explorer » depuis la berge,
-  // « Rentrer » depuis la vallée. Jamais les deux, jamais l'une sur l'avatar.
-  const bw = $('b-world');
-  if (bw) bw.classList.toggle('hidden', !(denAvailable() && !overlayOpen && s.place === 'berge'));
-  const bb = $('b-world-back');
-  if (bb) bb.classList.toggle('hidden', !(inWorld && !overlayOpen));
-  // Séparation des écrans, pilotée en CSS (robuste face à updateHUD chaque frame) :
-  //   • BERGE  = vie active   • TANIÈRE = repos/collection   • MONDE = balade/rencontres
-  const app = $('app');
-  if (app) {
-    app.classList.toggle('in-den', !!(s && s.place === 'taniere') && !overlayOpen);
-    app.classList.toggle('in-world', inWorld);
-    // un mini-jeu prend tout l'écran : le HUD de la berge s'efface
-    app.classList.toggle('in-game', !!mg);
-    // plongée : on la regarde nager au large. Les deux panneaux du bas
-    // recouvraient justement la rivière ; les actions sont bloquées de toute
-    // façon pendant la plongée, mais on garde la barre du haut pour naviguer.
-    app.classList.toggle('in-dive', diving() && !mg && !overlayOpen);
-  }
-}
-function togglePlace() {
-  if (!denAvailable()) return;
-  s.place = s.place === 'taniere' ? 'berge' : 'taniere';
-  sfx.press(); vibrate(8);
-  if (s.place === 'taniere') { sfx.chirp(); ui.log(s.name + ' rentre dans sa tanière douillette. 🏠'); }
-  else ui.log(s.name + ' retourne au bord de la rivière. 🌊');
-  updatePlaceBtn();
-  hintDone('den');
-  persist();
-}
+// Lieux (berge <-> tanière <-> monde : denAvailable/updatePlaceBtn/togglePlace)
+// -> lieux-controller.js (M5, tranche 18). Câblé au boot par setupLieux({...}).
 
 /* ---------------- Le Monde — extrait dans world-controller.js (audit M5, tranche 9) ---------------- */
 // L'état runtime world/encounterOtter et toutes les fonctions du Monde (balade,
@@ -1069,6 +1026,15 @@ function boot() {
     persist: () => persist(),
     diving: () => diving(),
     denAvailable: () => denAvailable()
+  });
+  // Les Lieux (denAvailable/updatePlaceBtn/togglePlace) : injectés AVANT la
+  // restauration d'état, car le boot appelle updatePlaceBtn() juste après (M5, T18).
+  setupLieux({
+    getState: () => s,
+    getMinigame: () => mg,
+    diving: () => diving(),
+    persist: () => persist(),
+    hintDone: (id) => hintDone(id)
   });
 
   const prev = loadState(storage);
