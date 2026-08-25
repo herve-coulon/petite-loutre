@@ -1,7 +1,7 @@
 # 🦦 AUDIT — Ma Petite Loutre
 
 > **Document vivant.** Audit initial : 20/08/2026 (commit `a341189`, v4.10.0).
-> Dernière mise à jour : 24/08/2026 (v4.10.25 — HOTFIX boot : sauvegarde existante plantait depuis T13).
+> Dernière mise à jour : 25/08/2026 (audit régression des 16 contrôleurs M5 — RAS, cf. journal v4.10.25).
 > Dépôt : `herve-coulon/petite-loutre` — PWA tamagotchi pixel art, JS vanilla (zéro dépendance runtime), déployée sur GitHub Pages.
 
 ---
@@ -137,6 +137,7 @@ Depuis l'audit, **8 correctifs/améliorations ont été livrés** (v4.10.1 → v
 | | — | Bump v4.10.24 |
 | **v4.10.25** | `—` | **HOTFIX boot (régression tranche 13)** : toute sauvegarde d'un joueur **nommé** plantait le boot depuis l'extraction du Coach. Le bloc de restauration d'état (main.js) appelle `maybeStory`/`maybeSeasonCard`/`updateCoach` — désormais dans `coach-controller.js` — mais `setupCoach` était injecté APRÈS ce bloc : `ctx` null → `TypeError: getState`, boot interrompu, **aucun bouton câblé, app morte**. Les tests smoke ne démarrent qu'en PREMIÈRE visite (sans sauvegarde), d'où l'angle mort. Fix : `setupCoach` hissé AVANT la restauration d'état. **+1 test** `boot-resume.test.js` (jsdom, processus isolé, sauvegarde nommée pré-remplie → boot sans plantage) : échoue sur le code bugué, passe corrigé. **523 tests verts.** Vérifié navigateur (retour joueur → Chapitre 1 s'affiche, zéro erreur console). |
 | | — | Bump v4.10.25 |
+| **Audit régression** (25/08/2026, sans code) | — | **Passe de sécurité sur les 16 contrôleurs M5**, après les 2 régressions trouvées (jardin-monde T9, boot sauvegarde T13). Trois motifs vérifiés : **(A)** fonction de contrôleur appelée au boot AVANT son `setupX` → RAS (seuls les appels Coach + `checkStreak` sont synchrones au boot, tous après leur setup ; `tick`/`loop` démarrent en dernier). **(B)** contrôleur réécrivant sa copie locale d'un état possédé par main sans le répercuter → RAS (seul `mg` en zone jardin, déjà corrigé T9 ; `battle`/`world`/`encounterOtter` sont possédés par leur contrôleur, lus par main via getter). **(C)** hook `ctx.X()` utilisé par un contrôleur mais non fourni par main → RAS (tous câblés). Vérif runtime navigateur : les 16 points d'entrée (soins/jeux/réglages/gang/carnet/garde-robe/almanach/succès/marché/dojo/combat) répondent, zéro erreur console (hors ping télémétrie CORS, hors périmètre). **Aucune correction nécessaire.** |
 
 **Nouveaux tests ajoutés** (5) : raccourci PWA « Nourrir » (smoke), télémétrie — ID généré (smoke), `esc` / `clamp01` / `fmtDur` (`test/util.test.js`).
 
